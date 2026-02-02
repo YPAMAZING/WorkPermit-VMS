@@ -1,0 +1,79 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id            String          @id @default(uuid())
+  email         String          @unique
+  password      String
+  firstName     String
+  lastName      String
+  role          String          @default("REQUESTOR")
+  department    String?
+  isActive      Boolean         @default(true)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  
+  permitRequests PermitRequest[]
+  
+  @@map("users")
+}
+
+model PermitRequest {
+  id            String          @id @default(uuid())
+  title         String
+  description   String
+  location      String
+  workType      String
+  startDate     DateTime
+  endDate       DateTime
+  status        String          @default("PENDING")
+  priority      String          @default("MEDIUM")
+  hazards       String          @default("[]")
+  precautions   String          @default("[]")
+  equipment     String          @default("[]")
+  createdBy     String
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  
+  user          User            @relation(fields: [createdBy], references: [id])
+  approvals     PermitApproval[]
+  
+  @@map("permit_requests")
+}
+
+model PermitApproval {
+  id            String           @id @default(uuid())
+  permitId      String
+  approverName  String?
+  approverRole  String           @default("SAFETY_OFFICER")
+  decision      String           @default("PENDING")
+  comment       String?
+  approvedAt    DateTime?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  
+  permit        PermitRequest    @relation(fields: [permitId], references: [id], onDelete: Cascade)
+  
+  @@map("permit_approvals")
+}
+
+model AuditLog {
+  id            String   @id @default(uuid())
+  userId        String?
+  action        String
+  entity        String
+  entityId      String?
+  oldValue      String?
+  newValue      String?
+  ipAddress     String?
+  userAgent     String?
+  createdAt     DateTime @default(now())
+  
+  @@map("audit_logs")
+}

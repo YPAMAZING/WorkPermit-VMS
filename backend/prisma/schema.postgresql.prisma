@@ -1,0 +1,150 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String          @id @default(uuid())
+  email         String          @unique
+  password      String
+  firstName     String
+  lastName      String
+  roleId        String?
+  department    String?
+  isActive      Boolean         @default(true)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  
+  role          Role?           @relation(fields: [roleId], references: [id])
+  permitRequests PermitRequest[]
+  
+  @@map("users")
+}
+
+model Role {
+  id            String          @id @default(uuid())
+  name          String          @unique
+  displayName   String
+  description   String?
+  permissions   String          @default("[]")
+  uiConfig      String          @default("{}")
+  isSystem      Boolean         @default(false)
+  isActive      Boolean         @default(true)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  
+  users         User[]
+  
+  @@map("roles")
+}
+
+model Permission {
+  id            String          @id @default(uuid())
+  key           String          @unique
+  name          String
+  description   String?
+  module        String
+  action        String
+  isActive      Boolean         @default(true)
+  createdAt     DateTime        @default(now())
+  
+  @@map("permissions")
+}
+
+model PermitRequest {
+  id            String          @id @default(uuid())
+  permitNumber  String          @unique @default(uuid())
+  title         String
+  description   String
+  location      String
+  workType      String
+  startDate     DateTime
+  endDate       DateTime
+  status        String          @default("PENDING")
+  priority      String          @default("MEDIUM")
+  hazards       String          @default("[]")
+  precautions   String          @default("[]")
+  equipment     String          @default("[]")
+  measures      String          @default("[]")
+  workers       String          @default("[]")
+  contractorName String?
+  contractorPhone String?
+  companyName   String?
+  companyLogo   String?
+  timezone      String          @default("UTC")
+  isExtended    Boolean         @default(false)
+  extendedUntil DateTime?
+  closedAt      DateTime?
+  closureChecklist String       @default("[]")
+  createdBy     String
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  
+  user          User            @relation(fields: [createdBy], references: [id])
+  approvals     PermitApproval[]
+  
+  @@map("permit_requests")
+}
+
+model PermitApproval {
+  id            String           @id @default(uuid())
+  permitId      String
+  approverName  String?
+  approverRole  String           @default("SAFETY_OFFICER")
+  decision      String           @default("PENDING")
+  comment       String?
+  signature     String?
+  signedAt      DateTime?
+  approvedAt    DateTime?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  
+  permit        PermitRequest    @relation(fields: [permitId], references: [id], onDelete: Cascade)
+  
+  @@map("permit_approvals")
+}
+
+model Worker {
+  id            String   @id @default(uuid())
+  name          String
+  phone         String?
+  email         String?
+  company       String?
+  trade         String?
+  badgeNumber   String?
+  photo         String?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@map("workers")
+}
+
+model AuditLog {
+  id            String   @id @default(uuid())
+  userId        String?
+  action        String
+  entity        String
+  entityId      String?
+  oldValue      String?
+  newValue      String?
+  ipAddress     String?
+  userAgent     String?
+  createdAt     DateTime @default(now())
+  
+  @@map("audit_logs")
+}
+
+model SystemSettings {
+  id            String   @id @default(uuid())
+  key           String   @unique
+  value         String
+  description   String?
+  updatedAt     DateTime @updatedAt
+  
+  @@map("system_settings")
+}

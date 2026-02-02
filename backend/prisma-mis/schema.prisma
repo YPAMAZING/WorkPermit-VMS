@@ -1,0 +1,271 @@
+// MIS-only Database Schema
+// This is a SEPARATE database from Work Permit and VMS
+// Location: ./prisma-mis/mis.db
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/mis-client"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./mis.db"
+}
+
+// ==================== USER MANAGEMENT ====================
+
+model User {
+  id              String    @id @default(uuid())
+  email           String    @unique
+  password        String
+  firstName       String
+  lastName        String
+  phone           String?
+  department      String?
+  roleId          String?
+  role            Role?     @relation(fields: [roleId], references: [id])
+  isActive        Boolean   @default(true)
+  isApproved      Boolean   @default(false)
+  approvedBy      String?
+  approvedAt      DateTime?
+  rejectionReason String?
+  lastLogin       DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  meterReadings     MeterReading[]     @relation("ReadingCreator")
+  verifiedReadings  MeterReading[]     @relation("ReadingVerifier")
+  transmitterData   TransmitterData[]  @relation("TransmitterCreator")
+  verifiedTransmitter TransmitterData[] @relation("TransmitterVerifier")
+  auditLogs         AuditLog[]
+  ssoTokens         SSOToken[]
+
+  @@map("users")
+}
+
+model Role {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  displayName String?
+  description String?
+  permissions String   // JSON string of permission keys
+  isSystem    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  users User[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @default(uuid())
+  key         String   @unique // e.g., "mis.meters.view"
+  name        String
+  description String?
+  module      String   // meters, transmitter, analytics, reports, settings
+  action      String   // view, create, edit, delete, verify, export
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("permissions")
+}
+
+// ==================== METER MANAGEMENT ====================
+
+model MeterConfig {
+  id            String   @id @default(uuid())
+  meterType     String   // electricity, water, gas, diesel, hvac
+  meterName     String
+  meterSerial   String   @unique
+  location      String
+  buildingName  String?
+  floorNumber   String?
+  unit          String   // kWh, m³, Liters, etc.
+  multiplier    Float    @default(1)
+  isActive      Boolean  @default(true)
+  metadata      String?  // JSON for additional info
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  readings MeterReading[]
+
+  @@map("meter_configs")
+}
+
+model MeterReading {
+  id                String    @id @default(uuid())
+  meterId           String?
+  meter             MeterConfig? @relation(fields: [meterId], references: [id])
+  
+  // Reading Details
+  meterType         String    // electricity, water, gas, diesel, hvac
+  meterName         String
+  meterSerial       String?
+  location          String?
+  buildingName      String?
+  floorNumber       String?
+  
+  // Reading Values
+  readingDate       DateTime
+  currentReading    Float
+  previousReading   Float?
+  consumption       Float?
+  unit              String?
+  multiplier        Float     @default(1)
+  
+  // Meter-specific fields
+  runningHours      Float?    // For DG hours
+  fuelLevel         Float?    // For diesel tanks
+  temperature       Float?    // For HVAC
+  humidity          Float?    // For HVAC
+  
+  // OCR and Image
+  ocrReading        Float?
+  ocrConfidence     Float?
+  imageUrl          String?
+  imageData         String?   // Base64 encoded
+  
+  // Verification
+  isVerified        Boolean   @default(false)
+  verifiedBy        String?
+  verifiedByUser    User?     @relation("ReadingVerifier", fields: [verifiedBy], references: [id])
+  verifiedAt        DateTime?
+  verificationNotes String?
+  
+  // Status
+  status            String    @default("pending") // pending, verified, flagged, rejected
+  remarks           String?
+  
+  // Creator
+  createdById       String?
+  createdBy         User?     @relation("ReadingCreator", fields: [createdById], references: [id])
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@map("meter_readings")
+}
+
+// ==================== TRANSMITTER DATA ====================
+
+model TransmitterData {
+  id                String    @id @default(uuid())
+  
+  // Transmitter Details
+  transmitterType   String    // radio, cable, satellite, etc.
+  transmitterName   String
+  transmitterSerial String?
+  location          String?
+  frequency         String?
+  
+  // Reading Values
+  readingDate       DateTime
+  signalStrength    Float?
+  powerOutput       Float?
+  temperature       Float?
+  status            String?   // active, standby, maintenance, offline
+  
+  // Additional Data
+  forwardPower      Float?
+  reflectedPower    Float?
+  vswr              Float?
+  modulationDepth   Float?
+  
+  // Metadata
+  metadata          String?   // JSON for additional readings
+  remarks           String?
+  
+  // Verification
+  isVerified        Boolean   @default(false)
+  verifiedBy        String?
+  verifiedByUser    User?     @relation("TransmitterVerifier", fields: [verifiedBy], references: [id])
+  verifiedAt        DateTime?
+  
+  // Creator
+  createdById       String?
+  createdBy         User?     @relation("TransmitterCreator", fields: [createdById], references: [id])
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@map("transmitter_data")
+}
+
+// ==================== ANALYTICS & REPORTS ====================
+
+model AnalyticsCache {
+  id          String   @id @default(uuid())
+  reportType  String   // daily, weekly, monthly, yearly
+  reportDate  DateTime
+  meterType   String?  // null for aggregate
+  meterId     String?
+  data        String   // JSON data
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([reportType, reportDate, meterType, meterId])
+  @@map("analytics_cache")
+}
+
+model Alert {
+  id          String    @id @default(uuid())
+  alertType   String    // high_consumption, missing_reading, anomaly, threshold_exceeded
+  severity    String    // low, medium, high, critical
+  title       String
+  message     String
+  meterType   String?
+  meterId     String?
+  readingId   String?
+  isResolved  Boolean   @default(false)
+  resolvedBy  String?
+  resolvedAt  DateTime?
+  resolveNote String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("alerts")
+}
+
+// ==================== SYSTEM ====================
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+  action      String   // create, update, delete, login, logout, verify
+  module      String   // meters, transmitter, users, settings, auth
+  resourceId  String?
+  details     String?  // JSON
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  @@map("audit_logs")
+}
+
+model SystemSettings {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("system_settings")
+}
+
+model SSOToken {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  token       String    @unique
+  expiresAt   DateTime
+  used        Boolean   @default(false)
+  usedAt      DateTime?
+  targetApp   String    // "mis", "workpermit", "vms"
+  createdAt   DateTime  @default(now())
+
+  @@map("sso_tokens")
+}

@@ -1,0 +1,262 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String          @id @default(uuid())
+  email         String          @unique
+  password      String
+  firstName     String
+  lastName      String
+  roleId        String?
+  department    String?
+  phone         String?
+  profilePicture String?                         // URL or base64 of profile picture
+  isActive      Boolean         @default(true)
+  isApproved    Boolean         @default(false)  // Requires admin approval for certain roles
+  requestedRole String?                          // Role requested during registration
+  approvedBy    String?                          // Admin who approved
+  approvedAt    DateTime?                        // When approved
+  rejectionReason String?                        // If rejected, reason
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  
+  role          Role?           @relation(fields: [roleId], references: [id])
+  permitRequests PermitRequest[]
+  
+  @@map("users")
+}
+
+model Role {
+  id            String          @id @default(uuid())
+  name          String          @unique
+  displayName   String
+  description   String?
+  permissions   String          @default("[]")  // JSON array of permission keys
+  uiConfig      String          @default("{}")  // JSON for UI customization
+  isSystem      Boolean         @default(false) // System roles cannot be deleted
+  isActive      Boolean         @default(true)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  
+  users         User[]
+  
+  @@map("roles")
+}
+
+model Permission {
+  id            String          @id @default(uuid())
+  key           String          @unique
+  name          String
+  description   String?
+  module        String          // dashboard, permits, approvals, users, workers, settings, roles
+  action        String          // view, create, edit, delete, approve, export
+  isActive      Boolean         @default(true)
+  createdAt     DateTime        @default(now())
+  
+  @@map("permissions")
+}
+
+model PermitRequest {
+  id            String          @id @default(uuid())
+  permitNumber  String          @unique @default(uuid())
+  title         String
+  description   String
+  location      String
+  workType      String
+  startDate     DateTime
+  endDate       DateTime
+  status        String          @default("PENDING")
+  priority      String          @default("MEDIUM")
+  hazards       String          @default("[]")
+  precautions   String          @default("[]")
+  equipment     String          @default("[]")
+  measures      String          @default("[]")
+  workers       String          @default("[]")
+  vendorDetails String?
+  contractorName String?
+  contractorPhone String?
+  companyName   String?
+  companyLogo   String?
+  timezone      String          @default("UTC")
+  isExtended    Boolean         @default(false)
+  extendedUntil DateTime?
+  closedAt      DateTime?
+  closureChecklist String       @default("[]")
+  safetyRemarks String?
+  remarksAddedBy String?
+  remarksAddedAt DateTime?
+  autoClosedAt  DateTime?
+  createdBy     String
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  
+  user          User            @relation(fields: [createdBy], references: [id])
+  approvals     PermitApproval[]
+  actionHistory PermitActionHistory[]
+  
+  @@map("permit_requests")
+}
+
+model PermitApproval {
+  id            String           @id @default(uuid())
+  permitId      String
+  approverName  String?
+  approverRole  String           @default("FIREMAN")
+  decision      String           @default("PENDING")
+  comment       String?
+  signature     String?
+  signedAt      DateTime?
+  approvedAt    DateTime?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  
+  permit        PermitRequest    @relation(fields: [permitId], references: [id], onDelete: Cascade)
+  
+  @@map("permit_approvals")
+}
+
+// Track all permit actions (approve, revoke, reapprove, extend, close)
+model PermitActionHistory {
+  id              String    @id @default(uuid())
+  permitId        String
+  action          String    // APPROVED, REJECTED, REVOKED, REAPPROVED, EXTENDED, CLOSED
+  performedBy     String?   // User ID who performed the action
+  performedByName String?   // Name of the person
+  performedByRole String?   // Role of the person
+  comment         String?   // Remarks/comments for this action
+  previousStatus  String?   // Status before the action
+  newStatus       String?   // Status after the action
+  signature       String?   // Digital signature if any
+  createdAt       DateTime  @default(now())
+  
+  permit          PermitRequest @relation(fields: [permitId], references: [id], onDelete: Cascade)
+  
+  @@map("permit_action_history")
+}
+
+model Worker {
+  id            String   @id @default(uuid())
+  name          String
+  phone         String?
+  email         String?
+  company       String?
+  trade         String?
+  badgeNumber   String?
+  photo         String?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@map("workers")
+}
+
+model AuditLog {
+  id            String   @id @default(uuid())
+  userId        String?
+  action        String
+  entity        String
+  entityId      String?
+  oldValue      String?
+  newValue      String?
+  ipAddress     String?
+  userAgent     String?
+  createdAt     DateTime @default(now())
+  
+  @@map("audit_logs")
+}
+
+model SystemSettings {
+  id            String   @id @default(uuid())
+  key           String   @unique
+  value         String
+  description   String?
+  updatedAt     DateTime @updatedAt
+  
+  @@map("system_settings")
+}
+
+// SSO Token for external MIS integration
+model SSOToken {
+  id            String   @id @default(uuid())
+  token         String   @unique
+  userId        String
+  externalUserId String?  // User ID from external MIS system
+  externalSystem String   @default("MIS") // Source system name
+  expiresAt     DateTime
+  isUsed        Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  
+  @@map("sso_tokens")
+}
+
+// Meter Readings for Site Engineers
+model MeterReading {
+  id              String   @id @default(uuid())
+  siteEngineerId  String
+  meterType       String   // electricity, water, gas, transmitter, etc.
+  meterName       String
+  meterSerial     String?
+  location        String
+  readingValue    Float
+  unit            String   // kWh, m³, psi, dBm, etc.
+  imageUrl        String?
+  ocrRawText      String?  // Raw text extracted from image
+  ocrConfidence   Float?   // OCR confidence score
+  previousReading Float?
+  consumption     Float?   // Calculated consumption
+  readingDate     DateTime @default(now())
+  notes           String?
+  isVerified      Boolean  @default(false)
+  verifiedBy      String?
+  verifiedAt      DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@map("meter_readings")
+}
+
+// Transmitter Data for Site Engineers
+model TransmitterData {
+  id              String   @id @default(uuid())
+  siteEngineerId  String
+  transmitterId   String
+  transmitterName String
+  location        String
+  signalStrength  Float?   // dBm
+  frequency       Float?   // MHz/GHz
+  temperature     Float?   // Celsius
+  humidity        Float?   // Percentage
+  pressure        Float?   // PSI/Bar
+  voltage         Float?   // Volts
+  current         Float?   // Amps
+  power           Float?   // Watts
+  status          String   @default("NORMAL") // NORMAL, WARNING, CRITICAL
+  imageUrl        String?
+  ocrRawText      String?
+  readingDate     DateTime @default(now())
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@map("transmitter_data")
+}
+
+// Dashboard Analytics Cache
+model AnalyticsCache {
+  id            String   @id @default(uuid())
+  reportType    String   // daily, weekly, monthly, custom
+  reportName    String
+  data          String   // JSON data
+  filters       String?  // JSON filters used
+  generatedAt   DateTime @default(now())
+  expiresAt     DateTime
+  createdBy     String?
+  
+  @@map("analytics_cache")
+}
