@@ -1,45 +1,53 @@
-# Reliable Group MEP - Multi-System Platform
+# WorkPermit-VMS - Work Permit & Visitor Management System
 
-A comprehensive management platform combining **Work Permit System**, **MIS (Meter Information System)**, and **VMS (Visitor Management System)**. Each system has its own separate database for complete data isolation.
+A comprehensive management platform combining **Work Permit System** and **VMS (Visitor Management System)**. Each system has its own separate MySQL database for complete data isolation.
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Node](https://img.shields.io/badge/node-v20+-green.svg)
 ![React](https://img.shields.io/badge/react-v18-blue.svg)
+![MySQL](https://img.shields.io/badge/database-MySQL-orange.svg)
 
-## 🚀 Live Preview
+## 🚀 Systems Overview
 
-**URL**: https://3000-ixpax1uqdsifzsp0z1cc4-ad490db5.sandbox.novita.ai
-
-## 📦 Systems Overview
-
-### 1. Work Permit System (Active)
+### 1. Work Permit System ✅
 - Create and manage work permits
-- Approval workflows
+- Multi-level approval workflows
 - Worker registration with QR codes
-- PDF generation
+- PDF generation & digital signatures
+- Safety compliance tracking
 
-### 2. MIS - Meter Information System (Active - Separate DB)
-- Meter readings and OCR capture
-- Consumption analytics
-- Transmitter data management
-- Reports and exports
-
-### 3. VMS - Visitor Management System (Coming Soon - Separate DB)
+### 2. VMS - Visitor Management System ✅
 - QR code gatepasses
 - Visitor pre-registration
 - Blacklist/watchlist management
 - Security dashboard
+- Check-in/Check-out tracking
 
-## 📂 Database Architecture
+## 📦 Database Architecture (MySQL)
 
 ```
-/home/user/webapp/backend/
-├── prisma/
-│   └── dev.db              ← Work Permit Database
-├── prisma-mis/
-│   └── mis.db              ← MIS Database (SEPARATE)
-└── prisma-vms/
-    └── vms.db              ← VMS Database (SEPARATE)
+MySQL Server
+├── workpermit_db          ← Work Permit Database
+│   ├── users
+│   ├── roles
+│   ├── permissions
+│   ├── permit_requests
+│   ├── permit_approvals
+│   ├── permit_action_history
+│   ├── workers
+│   ├── audit_logs
+│   └── system_settings
+│
+└── vms_db                 ← VMS Database (SEPARATE)
+    ├── users
+    ├── roles
+    ├── permissions
+    ├── visitors
+    ├── gatepasses
+    ├── pre_approved_visitors
+    ├── blacklist_entries
+    ├── audit_logs
+    └── system_settings
 ```
 
 ## 🔐 Default Login Credentials
@@ -51,14 +59,7 @@ A comprehensive management platform combining **Work Permit System**, **MIS (Met
 | Fireman | fireman@permitmanager.com | fireman123 |
 | Requestor | requestor@permitmanager.com | user123 |
 
-### MIS System (Separate Database)
-| Role | Email | Password |
-|------|-------|----------|
-| MIS Admin | misadmin@reliablegroup.com | Admin@123 |
-| Site Engineer | engineer@reliablegroup.com | Admin@123 |
-| MIS Verifier | verifier@reliablegroup.com | Admin@123 |
-
-### VMS System (Separate Database) - Coming Soon
+### VMS System
 | Role | Email | Password |
 |------|-------|----------|
 | VMS Admin | vmsadmin@reliablegroup.com | Admin@123 |
@@ -72,69 +73,13 @@ A comprehensive management platform combining **Work Permit System**, **MIS (Met
 |--------|-------|-------------|
 | System Selector | `/select-system` | Choose between systems |
 | Work Permit | `/workpermit/*` | Work Permit System |
-| MIS | `/mis/*` | Meter Information System |
 | VMS | `/vms/*` | Visitor Management System |
 
 ### API Endpoints
 | System | Base Path | Database |
 |--------|-----------|----------|
-| Work Permit | `/api/*` | `prisma/dev.db` |
-| MIS | `/api/mis/*` | `prisma-mis/mis.db` |
-| VMS | `/api/vms/*` | `prisma-vms/vms.db` |
-
-## 📊 MIS Features
-
-### Completed
-- ✅ Separate MIS database with Prisma
-- ✅ MIS-specific roles (ADMIN, MIS_ADMIN, MIS_VERIFIER, SITE_ENGINEER, MIS_VIEWER, FIREMAN, SAFETY_OFFICER)
-- ✅ MIS login page
-- ✅ MIS dashboard layout
-- ✅ MIS authentication routes
-- ✅ Meter reading management API
-- ✅ MIS analytics API
-
-### MIS API Endpoints
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/mis/auth/login` | Login to MIS |
-| GET | `/api/mis/auth/me` | Get current user |
-| GET | `/api/mis/dashboard/stats` | Dashboard statistics |
-| GET | `/api/mis/dashboard/analytics` | Consumption analytics |
-| GET | `/api/mis/meters/configs` | Get meter configurations |
-| GET | `/api/mis/meters/readings` | Get meter readings |
-| POST | `/api/mis/meters/readings` | Create reading |
-| POST | `/api/mis/meters/readings/:id/verify` | Verify reading |
-
-## 🎨 VMS Features (Planned)
-
-### Implemented (Backend Ready)
-- ✅ Separate VMS database with Prisma
-- ✅ VMS-specific roles (VMS_ADMIN, SECURITY_GUARD, SECURITY_SUPERVISOR, RECEPTIONIST, HOST, VMS_VIEWER)
-- ✅ VMS authentication routes
-- ✅ Visitor management API
-- ✅ Gatepass generation with QR codes
-- ✅ Blacklist management API
-- ✅ Pre-approved visitors API
-- ✅ VMS dashboard API
-
-### Pending (Frontend)
-- ⏳ Complete VMS login flow
-- ⏳ VMS dashboard UI
-- ⏳ Visitor registration forms
-- ⏳ Gatepass printing
-
-## 🏗️ Architecture
-
-### For Hostinger (MIS-only)
-When deploying to Hostinger for MIS-only mode:
-- Use `MISOnlySelector.jsx` as the landing page
-- Only MIS routes and database
-- Single centered card UI
-
-### For New VPS (Work Permit + VMS)
-- Use `SystemSelector.jsx` with both cards
-- Work Permit database + VMS database
-- Block-style card selection UI
+| Work Permit | `/api/*` | `workpermit_db` |
+| VMS | `/api/vms/*` | `vms_db` |
 
 ## 🛠️ Tech Stack
 
@@ -142,112 +87,224 @@ When deploying to Hostinger for MIS-only mode:
 |-------|------------|
 | **Frontend** | React 18, Vite, TailwindCSS, React Router |
 | **Backend** | Node.js, Express.js |
-| **Database** | SQLite (Prisma) - Separate DBs per system |
+| **Database** | MySQL 8.0 (via Prisma ORM) |
 | **Auth** | JWT (JSON Web Tokens) |
 | **Process Manager** | PM2 |
+| **Web Server** | Nginx |
 
-## 🚀 Quick Start
+## 🚀 Quick Start (Development)
 
+### Prerequisites
+- Node.js 20+
+- MySQL 8.0+
+- npm or yarn
+
+### 1. Clone Repository
 ```bash
-# Install dependencies
+git clone https://github.com/YPAMAZING/WorkPermit-VMS.git
+cd WorkPermit-VMS
+```
+
+### 2. Setup MySQL Databases
+```bash
+# Login to MySQL
+mysql -u root -p
+
+# Run setup script
+source scripts/mysql-setup.sql
+```
+
+Or manually:
+```sql
+CREATE DATABASE workpermit_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE vms_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'workpermit_user'@'localhost' IDENTIFIED BY 'YourPassword123!';
+GRANT ALL PRIVILEGES ON workpermit_db.* TO 'workpermit_user'@'localhost';
+GRANT ALL PRIVILEGES ON vms_db.* TO 'workpermit_user'@'localhost';
+FLUSH PRIVILEGES;
+```
+
+### 3. Configure Environment
+```bash
+cd backend
+cp .env.example .env
+# Edit .env with your MySQL credentials
+```
+
+### 4. Install Dependencies
+```bash
+# Backend
 cd backend && npm install
-cd ../frontend && npm install
-
-# Setup databases
-cd ../backend
-npm run prisma:push && npm run prisma:seed  # Work Permit
-npm run mis:push && npm run mis:seed        # MIS
-npm run vms:push && npm run vms:seed        # VMS
-
-# Build and start
-cd ../frontend && npm run build
-cd ..
-pm2 start ecosystem.config.cjs
-```
-
-## 📋 Scripts
-
-### Backend Scripts
-```bash
-# Work Permit Database
-npm run prisma:push    # Push schema
-npm run prisma:seed    # Seed data
-
-# MIS Database
-npm run mis:push       # Push schema
-npm run mis:seed       # Seed data
-npm run mis:studio     # Open Prisma Studio
-
-# VMS Database
-npm run vms:push       # Push schema
-npm run vms:seed       # Seed data
-npm run vms:studio     # Open Prisma Studio
-```
-
-## 📝 Environment Variables
-
-```env
-# Server
-PORT=5000
-NODE_ENV=development
-
-# Database
-DATABASE_URL=file:./prisma/dev.db
-MIS_DATABASE_URL=file:./prisma-mis/mis.db
-VMS_DATABASE_URL=file:./prisma-vms/vms.db
-
-# JWT
-JWT_SECRET=your-secret-key
-JWT_EXPIRES_IN=24h
 
 # Frontend
-FRONTEND_URL=http://localhost:3000
+cd ../frontend && npm install
+```
+
+### 5. Setup Databases
+```bash
+cd backend
+
+# Generate Prisma clients
+npm run prisma:generate
+
+# Push schemas and seed data
+npm run db:setup
+```
+
+### 6. Start Development Server
+```bash
+# From project root
+pm2 start ecosystem.config.cjs
+
+# Or manually:
+# Terminal 1 - Backend
+cd backend && npm run dev
+
+# Terminal 2 - Frontend
+cd frontend && npm run dev
+```
+
+### 7. Access Application
+- Frontend: http://localhost:3000
+- API: http://localhost:5000
+- System Selector: http://localhost:3000/select-system
+
+## 🌐 Production Deployment (Hostinger VPS)
+
+### Recommended VPS: KVM 4
+- 4 vCPU, 16 GB RAM, 200 GB NVMe
+- Handles 300 concurrent users
+- Cost: ~$12.99/month
+
+### Quick Deploy
+```bash
+# 1. SSH into your VPS
+ssh user@your-vps-ip
+
+# 2. Run setup script
+chmod +x scripts/hostinger-setup.sh
+./scripts/hostinger-setup.sh
+
+# 3. Clone and setup (follow script output)
+git clone https://github.com/YPAMAZING/WorkPermit-VMS.git
+cd WorkPermit-VMS
+cp /tmp/workpermit-vms.env backend/.env
+
+# 4. Install and build
+cd backend && npm install
+cd ../frontend && npm install && npm run build
+
+# 5. Setup databases
+cd ../backend && npm run db:setup
+
+# 6. Start with PM2
+cd .. && pm2 start ecosystem.config.cjs --env production
+pm2 save
+pm2 startup
+
+# 7. Setup Nginx
+sudo cp nginx/workpermit-vms.conf /etc/nginx/sites-available/
+sudo ln -s /etc/nginx/sites-available/workpermit-vms.conf /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+
+# 8. Setup SSL
+sudo apt install certbot python3-certbot-nginx
+sudo certbot --nginx -d yourdomain.com
+```
+
+## 📋 Available Scripts
+
+### Backend
+```bash
+npm start              # Start production server
+npm run dev            # Start development server
+npm run prisma:generate # Generate Prisma clients
+npm run prisma:push    # Push Work Permit schema
+npm run prisma:seed    # Seed Work Permit data
+npm run vms:push       # Push VMS schema
+npm run vms:seed       # Seed VMS data
+npm run db:setup       # Setup both databases
+npm run db:reset:all   # Reset all databases
+```
+
+### Frontend
+```bash
+npm run dev            # Start Vite dev server
+npm run build          # Build for production
+npm run preview        # Preview production build
 ```
 
 ## 🗂️ Project Structure
 
 ```
-webapp/
+WorkPermit-VMS/
 ├── backend/
-│   ├── prisma/              # Work Permit schema & DB
-│   ├── prisma-mis/          # MIS schema & DB
-│   ├── prisma-vms/          # VMS schema & DB
+│   ├── prisma/                 # Work Permit schema
+│   │   ├── schema.prisma
+│   │   └── seed.js
+│   ├── prisma-vms/             # VMS schema (separate)
+│   │   ├── schema.prisma
+│   │   └── seed.js
 │   └── src/
 │       ├── config/
-│       │   ├── index.js
-│       │   ├── mis-prisma.js    # MIS Prisma client
-│       │   └── vms-prisma.js    # VMS Prisma client
 │       ├── controllers/
-│       │   ├── mis/             # MIS controllers
-│       │   └── vms/             # VMS controllers
+│       │   └── vms/            # VMS controllers
 │       ├── middleware/
-│       │   ├── mis-auth.js      # MIS auth middleware
-│       │   └── vms-auth.js      # VMS auth middleware
+│       │   └── vms-auth.js     # VMS auth middleware
 │       └── routes/
-│           ├── mis/             # MIS routes
-│           └── vms/             # VMS routes
+│           └── vms/            # VMS routes
 ├── frontend/
 │   └── src/
 │       ├── context/
-│       │   ├── AuthContext.jsx      # Work Permit auth
-│       │   ├── MISAuthContext.jsx   # MIS auth
-│       │   └── VMSAuthContext.jsx   # VMS auth
+│       │   ├── AuthContext.jsx     # Work Permit auth
+│       │   └── VMSAuthContext.jsx  # VMS auth
 │       ├── pages/
-│       │   ├── mis/                 # MIS pages
-│       │   ├── vms/                 # VMS pages
-│       │   ├── SystemSelector.jsx   # Multi-system selector
-│       │   └── MISOnlySelector.jsx  # MIS-only selector
+│       │   ├── vms/                # VMS pages
+│       │   └── SystemSelector.jsx  # System selector
 │       └── services/
-│           ├── api.js               # Work Permit API
-│           ├── misApi.js            # MIS API
-│           └── vmsApi.js            # VMS API
-└── ecosystem.config.cjs            # PM2 config
+│           ├── api.js              # Work Permit API
+│           └── vmsApi.js           # VMS API
+├── nginx/
+│   └── workpermit-vms.conf     # Nginx config
+├── scripts/
+│   ├── hostinger-setup.sh      # VPS setup script
+│   └── mysql-setup.sql         # MySQL setup script
+└── ecosystem.config.cjs        # PM2 config
 ```
+
+## 🔒 Security Features
+
+- JWT-based authentication
+- Role-based access control (RBAC)
+- Separate databases per system
+- Password hashing (bcrypt)
+- CORS protection
+- Rate limiting (Nginx)
+- SQL injection prevention (Prisma ORM)
+- XSS protection headers
+
+## 📊 Database Access (GUI Tools)
+
+### Option 1: phpMyAdmin (Web-based)
+```bash
+sudo apt install phpmyadmin
+# Access via: https://yourdomain.com/phpmyadmin
+```
+
+### Option 2: DBeaver (Desktop)
+- Download: https://dbeaver.io
+- Connect with MySQL credentials
+- Browse tables like file explorer
+
+### Option 3: MySQL Workbench
+- Download: https://dev.mysql.com/downloads/workbench/
+- Official MySQL GUI tool
 
 ## 📅 Last Updated
 
-**Date**: 2026-02-01
-**Status**: MIS database and auth complete, VMS backend complete, frontend in progress
+**Date**: 2026-02-06
+**Version**: 2.0.0 (MySQL Edition)
+**Status**: Work Permit ✅ Active | VMS ✅ Active
 
 ---
 

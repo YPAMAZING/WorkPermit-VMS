@@ -1,262 +1,228 @@
+// Work Permit System Database Schema
+// Using MySQL for production
+
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
 model User {
-  id            String          @id @default(uuid())
-  email         String          @unique
-  password      String
-  firstName     String
-  lastName      String
-  roleId        String?
-  department    String?
-  phone         String?
-  profilePicture String?                         // URL or base64 of profile picture
-  isActive      Boolean         @default(true)
-  isApproved    Boolean         @default(false)  // Requires admin approval for certain roles
-  requestedRole String?                          // Role requested during registration
-  approvedBy    String?                          // Admin who approved
-  approvedAt    DateTime?                        // When approved
-  rejectionReason String?                        // If rejected, reason
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  id              String          @id @default(uuid()) @db.VarChar(36)
+  email           String          @unique @db.VarChar(255)
+  password        String          @db.VarChar(255)
+  firstName       String          @db.VarChar(100)
+  lastName        String          @db.VarChar(100)
+  roleId          String?         @db.VarChar(36)
+  department      String?         @db.VarChar(100)
+  phone           String?         @db.VarChar(20)
+  profilePicture  String?         @db.Text
+  isActive        Boolean         @default(true)
+  isApproved      Boolean         @default(false)
+  requestedRole   String?         @db.VarChar(50)
+  approvedBy      String?         @db.VarChar(36)
+  approvedAt      DateTime?
+  rejectionReason String?         @db.Text
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
   
-  role          Role?           @relation(fields: [roleId], references: [id])
-  permitRequests PermitRequest[]
+  role            Role?           @relation(fields: [roleId], references: [id])
+  permitRequests  PermitRequest[]
   
+  @@index([email])
+  @@index([roleId])
   @@map("users")
 }
 
 model Role {
-  id            String          @id @default(uuid())
-  name          String          @unique
-  displayName   String
-  description   String?
-  permissions   String          @default("[]")  // JSON array of permission keys
-  uiConfig      String          @default("{}")  // JSON for UI customization
-  isSystem      Boolean         @default(false) // System roles cannot be deleted
-  isActive      Boolean         @default(true)
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  id          String   @id @default(uuid()) @db.VarChar(36)
+  name        String   @unique @db.VarChar(50)
+  displayName String   @db.VarChar(100)
+  description String?  @db.Text
+  permissions String   @default("[]") @db.Text
+  uiConfig    String   @default("{}") @db.Text
+  isSystem    Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
   
-  users         User[]
+  users       User[]
   
   @@map("roles")
 }
 
 model Permission {
-  id            String          @id @default(uuid())
-  key           String          @unique
-  name          String
-  description   String?
-  module        String          // dashboard, permits, approvals, users, workers, settings, roles
-  action        String          // view, create, edit, delete, approve, export
-  isActive      Boolean         @default(true)
-  createdAt     DateTime        @default(now())
+  id          String   @id @default(uuid()) @db.VarChar(36)
+  key         String   @unique @db.VarChar(100)
+  name        String   @db.VarChar(100)
+  description String?  @db.Text
+  module      String   @db.VarChar(50)
+  action      String   @db.VarChar(50)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
   
+  @@index([module])
   @@map("permissions")
 }
 
 model PermitRequest {
-  id            String          @id @default(uuid())
-  permitNumber  String          @unique @default(uuid())
-  title         String
-  description   String
-  location      String
-  workType      String
-  startDate     DateTime
-  endDate       DateTime
-  status        String          @default("PENDING")
-  priority      String          @default("MEDIUM")
-  hazards       String          @default("[]")
-  precautions   String          @default("[]")
-  equipment     String          @default("[]")
-  measures      String          @default("[]")
-  workers       String          @default("[]")
-  vendorDetails String?
-  contractorName String?
-  contractorPhone String?
-  companyName   String?
-  companyLogo   String?
-  timezone      String          @default("UTC")
-  isExtended    Boolean         @default(false)
-  extendedUntil DateTime?
-  closedAt      DateTime?
-  closureChecklist String       @default("[]")
-  safetyRemarks String?
-  remarksAddedBy String?
-  remarksAddedAt DateTime?
-  autoClosedAt  DateTime?
-  createdBy     String
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  id               String    @id @default(uuid()) @db.VarChar(36)
+  permitNumber     String    @unique @db.VarChar(50)
+  title            String    @db.VarChar(255)
+  description      String    @db.Text
+  location         String    @db.VarChar(255)
+  workType         String    @db.VarChar(100)
+  startDate        DateTime
+  endDate          DateTime
+  status           String    @default("PENDING") @db.VarChar(20)
+  priority         String    @default("MEDIUM") @db.VarChar(20)
+  hazards          String    @default("[]") @db.Text
+  precautions      String    @default("[]") @db.Text
+  equipment        String    @default("[]") @db.Text
+  measures         String    @default("[]") @db.Text
+  workers          String    @default("[]") @db.Text
+  vendorDetails    String?   @db.Text
+  contractorName   String?   @db.VarChar(255)
+  contractorPhone  String?   @db.VarChar(20)
+  companyName      String?   @db.VarChar(255)
+  companyLogo      String?   @db.Text
+  timezone         String    @default("UTC") @db.VarChar(50)
+  isExtended       Boolean   @default(false)
+  extendedUntil    DateTime?
+  closedAt         DateTime?
+  closureChecklist String    @default("[]") @db.Text
+  safetyRemarks    String?   @db.Text
+  remarksAddedBy   String?   @db.VarChar(36)
+  remarksAddedAt   DateTime?
+  autoClosedAt     DateTime?
+  createdBy        String    @db.VarChar(36)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
   
-  user          User            @relation(fields: [createdBy], references: [id])
+  user          User                  @relation(fields: [createdBy], references: [id])
   approvals     PermitApproval[]
   actionHistory PermitActionHistory[]
   
+  @@index([status])
+  @@index([createdBy])
+  @@index([startDate, endDate])
   @@map("permit_requests")
 }
 
 model PermitApproval {
-  id            String           @id @default(uuid())
-  permitId      String
-  approverName  String?
-  approverRole  String           @default("FIREMAN")
-  decision      String           @default("PENDING")
-  comment       String?
-  signature     String?
-  signedAt      DateTime?
-  approvedAt    DateTime?
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
+  id           String    @id @default(uuid()) @db.VarChar(36)
+  permitId     String    @db.VarChar(36)
+  approverName String?   @db.VarChar(255)
+  approverRole String    @default("FIREMAN") @db.VarChar(50)
+  decision     String    @default("PENDING") @db.VarChar(20)
+  comment      String?   @db.Text
+  signature    String?   @db.LongText
+  signedAt     DateTime?
+  approvedAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
   
-  permit        PermitRequest    @relation(fields: [permitId], references: [id], onDelete: Cascade)
+  permit       PermitRequest @relation(fields: [permitId], references: [id], onDelete: Cascade)
   
+  @@index([permitId])
+  @@index([decision])
   @@map("permit_approvals")
 }
 
-// Track all permit actions (approve, revoke, reapprove, extend, close)
 model PermitActionHistory {
-  id              String    @id @default(uuid())
-  permitId        String
-  action          String    // APPROVED, REJECTED, REVOKED, REAPPROVED, EXTENDED, CLOSED
-  performedBy     String?   // User ID who performed the action
-  performedByName String?   // Name of the person
-  performedByRole String?   // Role of the person
-  comment         String?   // Remarks/comments for this action
-  previousStatus  String?   // Status before the action
-  newStatus       String?   // Status after the action
-  signature       String?   // Digital signature if any
-  createdAt       DateTime  @default(now())
+  id              String   @id @default(uuid()) @db.VarChar(36)
+  permitId        String   @db.VarChar(36)
+  action          String   @db.VarChar(50)
+  performedBy     String?  @db.VarChar(36)
+  performedByName String?  @db.VarChar(255)
+  performedByRole String?  @db.VarChar(50)
+  comment         String?  @db.Text
+  previousStatus  String?  @db.VarChar(20)
+  newStatus       String?  @db.VarChar(20)
+  signature       String?  @db.LongText
+  createdAt       DateTime @default(now())
   
   permit          PermitRequest @relation(fields: [permitId], references: [id], onDelete: Cascade)
   
+  @@index([permitId])
+  @@index([action])
   @@map("permit_action_history")
 }
 
 model Worker {
-  id            String   @id @default(uuid())
-  name          String
-  phone         String?
-  email         String?
-  company       String?
-  trade         String?
-  badgeNumber   String?
-  photo         String?
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id          String   @id @default(uuid()) @db.VarChar(36)
+  name        String   @db.VarChar(255)
+  phone       String?  @db.VarChar(20)
+  email       String?  @db.VarChar(255)
+  company     String?  @db.VarChar(255)
+  trade       String?  @db.VarChar(100)
+  badgeNumber String?  @db.VarChar(50)
+  photo       String?  @db.LongText
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
   
+  @@index([phone])
+  @@index([badgeNumber])
   @@map("workers")
 }
 
 model AuditLog {
-  id            String   @id @default(uuid())
-  userId        String?
-  action        String
-  entity        String
-  entityId      String?
-  oldValue      String?
-  newValue      String?
-  ipAddress     String?
-  userAgent     String?
-  createdAt     DateTime @default(now())
+  id        String   @id @default(uuid()) @db.VarChar(36)
+  userId    String?  @db.VarChar(36)
+  action    String   @db.VarChar(100)
+  entity    String   @db.VarChar(100)
+  entityId  String?  @db.VarChar(36)
+  oldValue  String?  @db.LongText
+  newValue  String?  @db.LongText
+  ipAddress String?  @db.VarChar(45)
+  userAgent String?  @db.Text
+  createdAt DateTime @default(now())
   
+  @@index([entity, entityId])
+  @@index([createdAt])
   @@map("audit_logs")
 }
 
 model SystemSettings {
-  id            String   @id @default(uuid())
-  key           String   @unique
-  value         String
-  description   String?
-  updatedAt     DateTime @updatedAt
+  id          String   @id @default(uuid()) @db.VarChar(36)
+  key         String   @unique @db.VarChar(100)
+  value       String   @db.Text
+  description String?  @db.Text
+  updatedAt   DateTime @updatedAt
   
   @@map("system_settings")
 }
 
-// SSO Token for external MIS integration
 model SSOToken {
-  id            String   @id @default(uuid())
-  token         String   @unique
-  userId        String
-  externalUserId String?  // User ID from external MIS system
-  externalSystem String   @default("MIS") // Source system name
-  expiresAt     DateTime
-  isUsed        Boolean  @default(false)
-  createdAt     DateTime @default(now())
+  id             String   @id @default(uuid()) @db.VarChar(36)
+  token          String   @unique @db.VarChar(255)
+  userId         String   @db.VarChar(36)
+  externalUserId String?  @db.VarChar(36)
+  externalSystem String   @default("VMS") @db.VarChar(50)
+  expiresAt      DateTime
+  isUsed         Boolean  @default(false)
+  createdAt      DateTime @default(now())
   
+  @@index([token])
+  @@index([expiresAt])
   @@map("sso_tokens")
 }
 
-// Meter Readings for Site Engineers
-model MeterReading {
-  id              String   @id @default(uuid())
-  siteEngineerId  String
-  meterType       String   // electricity, water, gas, transmitter, etc.
-  meterName       String
-  meterSerial     String?
-  location        String
-  readingValue    Float
-  unit            String   // kWh, m³, psi, dBm, etc.
-  imageUrl        String?
-  ocrRawText      String?  // Raw text extracted from image
-  ocrConfidence   Float?   // OCR confidence score
-  previousReading Float?
-  consumption     Float?   // Calculated consumption
-  readingDate     DateTime @default(now())
-  notes           String?
-  isVerified      Boolean  @default(false)
-  verifiedBy      String?
-  verifiedAt      DateTime?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
-  @@map("meter_readings")
-}
-
-// Transmitter Data for Site Engineers
-model TransmitterData {
-  id              String   @id @default(uuid())
-  siteEngineerId  String
-  transmitterId   String
-  transmitterName String
-  location        String
-  signalStrength  Float?   // dBm
-  frequency       Float?   // MHz/GHz
-  temperature     Float?   // Celsius
-  humidity        Float?   // Percentage
-  pressure        Float?   // PSI/Bar
-  voltage         Float?   // Volts
-  current         Float?   // Amps
-  power           Float?   // Watts
-  status          String   @default("NORMAL") // NORMAL, WARNING, CRITICAL
-  imageUrl        String?
-  ocrRawText      String?
-  readingDate     DateTime @default(now())
-  notes           String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
-  @@map("transmitter_data")
-}
-
-// Dashboard Analytics Cache
 model AnalyticsCache {
-  id            String   @id @default(uuid())
-  reportType    String   // daily, weekly, monthly, custom
-  reportName    String
-  data          String   // JSON data
-  filters       String?  // JSON filters used
-  generatedAt   DateTime @default(now())
-  expiresAt     DateTime
-  createdBy     String?
+  id          String   @id @default(uuid()) @db.VarChar(36)
+  reportType  String   @db.VarChar(50)
+  reportName  String   @db.VarChar(255)
+  data        String   @db.LongText
+  filters     String?  @db.Text
+  generatedAt DateTime @default(now())
+  expiresAt   DateTime
+  createdBy   String?  @db.VarChar(36)
   
+  @@index([reportType])
+  @@index([expiresAt])
   @@map("analytics_cache")
 }

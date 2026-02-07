@@ -1,11 +1,16 @@
-// VMS API Service
+// VMS API Service - Multi-Tenant with QR Check-in Support
 import axios from 'axios'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 const VMS_API_URL = `${API_URL}/vms`
 
-// Create axios instance
+// Create axios instance for authenticated requests
 const vmsApi = axios.create({
+  baseURL: VMS_API_URL,
+})
+
+// Create public axios instance (no auth required)
+const publicApi = axios.create({
   baseURL: VMS_API_URL,
 })
 
@@ -30,12 +35,74 @@ vmsApi.interceptors.response.use(
   }
 )
 
+// ================================
+// PUBLIC API (No Auth Required)
+// ================================
+
+// Public Check-in API (for QR code flow)
+export const publicCheckInApi = {
+  // Get company info by code (for QR form)
+  getCompanyByCode: (companyCode) => publicApi.get(`/checkin/company/${companyCode}`),
+  
+  // Submit self check-in request
+  submitRequest: (data) => publicApi.post('/checkin/submit', data),
+  
+  // Get check-in request status
+  getStatus: (requestNumber) => publicApi.get(`/checkin/status/${requestNumber}`),
+}
+
+// ================================
+// PROTECTED API (Auth Required)
+// ================================
+
 // Dashboard API
 export const dashboardApi = {
   getOverview: () => vmsApi.get('/dashboard/overview'),
   getWeeklyStats: () => vmsApi.get('/dashboard/weekly-stats'),
   getTodayExpected: () => vmsApi.get('/dashboard/today-expected'),
   getAlerts: () => vmsApi.get('/dashboard/alerts'),
+}
+
+// Company Management API (Multi-tenant)
+export const companyApi = {
+  getAll: (params) => vmsApi.get('/companies', { params }),
+  getById: (id) => vmsApi.get(`/companies/${id}`),
+  getMyCompany: () => vmsApi.get('/companies/my'),
+  getQRCode: (id) => vmsApi.get(`/companies/${id}/qr-code`),
+  create: (data) => vmsApi.post('/companies', data),
+  update: (id, data) => vmsApi.put(`/companies/${id}`, data),
+  updateSettings: (id, settings) => vmsApi.patch(`/companies/${id}/settings`, settings),
+  regenerateQR: (id) => vmsApi.post(`/companies/${id}/regenerate-qr`),
+  addDepartment: (id, data) => vmsApi.post(`/companies/${id}/departments`, data),
+  updateDepartment: (companyId, deptId, data) => vmsApi.put(`/companies/${companyId}/departments/${deptId}`, data),
+  deleteDepartment: (companyId, deptId) => vmsApi.delete(`/companies/${companyId}/departments/${deptId}`),
+}
+
+// Check-in Management API (Guard/Reception)
+export const checkInApi = {
+  // Get pending requests
+  getPending: () => vmsApi.get('/checkin/requests/pending'),
+  
+  // Get all requests with filters
+  getAll: (params) => vmsApi.get('/checkin/requests', { params }),
+  
+  // Get live feed (for guard dashboard)
+  getLiveFeed: (since) => vmsApi.get('/checkin/live-feed', { params: { since } }),
+  
+  // Get single request
+  getById: (id) => vmsApi.get(`/checkin/requests/${id}`),
+  
+  // Get statistics
+  getStats: () => vmsApi.get('/checkin/stats'),
+  
+  // Actions
+  approve: (id, note) => vmsApi.post(`/checkin/requests/${id}/approve`, { note }),
+  reject: (id, reason) => vmsApi.post(`/checkin/requests/${id}/reject`, { reason }),
+  checkIn: (id) => vmsApi.post(`/checkin/requests/${id}/check-in`),
+  checkOut: (id, securityRemarks) => vmsApi.post(`/checkin/requests/${id}/check-out`, { securityRemarks }),
+  
+  // Search visitor
+  searchVisitor: (q) => vmsApi.get('/checkin/search', { params: { q } }),
 }
 
 // Visitors API

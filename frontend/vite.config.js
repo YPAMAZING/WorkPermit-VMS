@@ -30,18 +30,21 @@ export default defineConfig({
           'vendor-axios': ['axios'],
           'vendor-icons': ['lucide-react'],
           // Feature chunks
-          'mis-pages': [
-            './src/pages/mis/MISDashboard.jsx',
-            './src/pages/mis/MISAnalytics.jsx',
-            './src/pages/mis/MISExport.jsx',
-            './src/pages/mis/MISSettings.jsx',
-          ],
           'workpermit-pages': [
             './src/pages/Permits.jsx',
             './src/pages/PermitDetail.jsx',
             './src/pages/CreatePermit.jsx',
             './src/pages/Approvals.jsx',
             './src/pages/ApprovalDetail.jsx',
+          ],
+          'vms-pages': [
+            './src/pages/vms/VMSDashboard.jsx',
+            './src/pages/vms/VMSVisitors.jsx',
+            './src/pages/vms/VMSGatepasses.jsx',
+            './src/pages/vms/VMSLogin.jsx',
+            './src/pages/vms/PublicCheckIn.jsx',
+            './src/pages/vms/CheckInConfirmation.jsx',
+            './src/pages/vms/GuardDashboard.jsx',
           ],
         },
       },

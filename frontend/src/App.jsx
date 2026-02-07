@@ -17,19 +17,11 @@ const ApprovalDetail = lazy(() => import('./pages/ApprovalDetail'))
 const Users = lazy(() => import('./pages/Users'))
 const Settings = lazy(() => import('./pages/Settings'))
 const WorkerRegister = lazy(() => import('./pages/WorkerRegister'))
-const MeterReadings = lazy(() => import('./pages/MeterReadings'))
 const RoleManagement = lazy(() => import('./pages/RoleManagement'))
 const SSOCallback = lazy(() => import('./pages/SSOCallback'))
 
-// MIS pages - lazy loaded
+// System Selector - Now only Work Permit + VMS
 const SystemSelector = lazy(() => import('./pages/SystemSelector'))
-const MISOnlySelector = lazy(() => import('./pages/MISOnlySelector'))
-const MISLayout = lazy(() => import('./components/MISLayout'))
-const MISDashboard = lazy(() => import('./pages/mis/MISDashboard'))
-const MISAnalytics = lazy(() => import('./pages/mis/MISAnalytics'))
-const MISExport = lazy(() => import('./pages/mis/MISExport'))
-const MISSettings = lazy(() => import('./pages/mis/MISSettings'))
-const MISLogin = lazy(() => import('./pages/mis/MISLogin'))
 
 // VMS pages - lazy loaded
 const VMSLayout = lazy(() => import('./components/VMSLayout'))
@@ -37,6 +29,17 @@ const VMSLogin = lazy(() => import('./pages/vms/VMSLogin'))
 const VMSDashboard = lazy(() => import('./pages/vms/VMSDashboard'))
 const VMSVisitors = lazy(() => import('./pages/vms/VMSVisitors'))
 const VMSGatepasses = lazy(() => import('./pages/vms/VMSGatepasses'))
+
+// VMS QR Check-in (NEW) - Public pages
+const PublicCheckIn = lazy(() => import('./pages/vms/PublicCheckIn'))
+const SingleCheckIn = lazy(() => import('./pages/vms/SingleCheckIn'))
+const CheckInConfirmation = lazy(() => import('./pages/vms/CheckInConfirmation'))
+const GuardDashboard = lazy(() => import('./pages/vms/GuardDashboard'))
+
+// VMS Open Access (NEW) - No Login Required
+const OpenDashboard = lazy(() => import('./pages/vms/OpenDashboard'))
+const VisitorPass = lazy(() => import('./pages/vms/VisitorPass'))
+const CompanyPortal = lazy(() => import('./pages/vms/CompanyPortal'))
 
 // Page loading fallback
 const PageLoader = () => (
@@ -182,7 +185,7 @@ function App() {
       {/* SSO Callback route */}
       <Route path="/auth/sso/callback" element={<SSOCallback />} />
 
-      {/* System Selector (for Admin, Fireman, Site Engineer) */}
+      {/* System Selector (for Admin, Fireman, etc.) - Now shows Work Permit + VMS */}
       <Route
         path="/select-system"
         element={
@@ -252,60 +255,54 @@ function App() {
       </Route>
 
       {/* ======================= */}
-      {/* MIS SYSTEM ROUTES */}
-      {/* ======================= */}
-      <Route
-        path="/mis"
-        element={
-          <ProtectedRoute roles={['ADMIN', 'MIS_ADMIN', 'MIS_VERIFIER', 'MIS_VIEWER', 'FIREMAN', 'SAFETY_OFFICER', 'SITE_ENGINEER']}>
-            <MISLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<Navigate to="/mis/dashboard" replace />} />
-        <Route path="dashboard" element={<MISDashboard />} />
-        <Route path="readings" element={<MeterReadings />} />
-        <Route path="analytics" element={<MISAnalytics />} />
-        <Route path="export" element={<MISExport />} />
-        {/* MIS Settings & User Access - Admin and MIS_ADMIN only */}
-        <Route
-          path="settings"
-          element={
-            <ProtectedRoute roles={['ADMIN', 'MIS_ADMIN']} permission="mis.settings">
-              <MISSettings />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="users"
-          element={
-            <ProtectedRoute roles={['ADMIN', 'MIS_ADMIN']} permission="mis.settings">
-              <MISSettings initialTab="users" />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="roles"
-          element={
-            <ProtectedRoute roles={['ADMIN', 'MIS_ADMIN']} permission="mis.settings">
-              <MISSettings initialTab="roles" />
-            </ProtectedRoute>
-          }
-        />
-      </Route>
-
-      {/* ======================= */}
       {/* VMS SYSTEM ROUTES */}
       {/* ======================= */}
+      
+      {/* ===== OPEN VMS ROUTES (No Auth Required) ===== */}
+      {/* Open Dashboard - Shows all recent visitors without login */}
+      <Route path="/vms" element={<OpenDashboard />} />
+      
+      {/* Visitor Pass - Shows pass with QR code for guards to verify */}
+      <Route path="/vms/pass/:passId" element={<VisitorPass />} />
+      
+      {/* Company Client Portal - Unique portal for each company */}
+      <Route path="/vms/portal/:portalId" element={<CompanyPortal />} />
+      
+      {/* ===== PUBLIC VMS ROUTES (No Auth Required) ===== */}
+      {/* Single QR Check-in - One QR, select company from dropdown */}
+      <Route path="/vms/checkin" element={<SingleCheckIn />} />
+      
+      {/* Legacy: QR-based Self Check-in with company code in URL */}
+      <Route path="/vms/checkin/:companyCode" element={<PublicCheckIn />} />
+      
+      {/* Check-in Confirmation - Shows status after submission */}
+      <Route path="/vms/checkin/confirmation/:requestNumber" element={<CheckInConfirmation />} />
+      
+      {/* Status check by request number */}
+      <Route path="/vms/status/:requestNumber" element={<CheckInConfirmation />} />
+      
+      {/* ===== VMS AUTH ROUTES ===== */}
       {/* VMS Login (separate auth system) */}
       <Route path="/vms/login" element={<VMSLogin />} />
       
-      {/* VMS Protected Routes */}
-      <Route path="/vms" element={<VMSLayout />}>
-        <Route index element={<Navigate to="/vms/dashboard" replace />} />
+      {/* ===== VMS PROTECTED ROUTES (Require Login) ===== */}
+      <Route path="/vms/admin" element={<VMSLayout />}>
+        <Route index element={<Navigate to="/vms/admin/dashboard" replace />} />
         <Route path="dashboard" element={<VMSDashboard />} />
         <Route path="visitors" element={<VMSVisitors />} />
         <Route path="gatepasses" element={<VMSGatepasses />} />
+        
+        {/* Guard/Reception Live Dashboard */}
+        <Route path="guard" element={<GuardDashboard />} />
+        <Route path="security" element={<GuardDashboard />} />
+        <Route path="reception" element={<GuardDashboard />} />
+        
+        {/* Company Management (for multi-tenant) */}
+        <Route path="companies" element={<div className="p-4">Company Management - Coming Soon</div>} />
+        <Route path="company" element={<div className="p-4">Company Settings - Coming Soon</div>} />
+        <Route path="company/qr" element={<div className="p-4">Company QR Code - Coming Soon</div>} />
+        
+        {/* Other VMS routes */}
         <Route path="preapproved" element={<div className="p-4">Pre-approved Visitors - Coming Soon</div>} />
         <Route path="blacklist" element={<div className="p-4">Blacklist - Coming Soon</div>} />
         <Route path="reports" element={<div className="p-4">Reports - Coming Soon</div>} />
@@ -324,7 +321,6 @@ function App() {
       <Route path="/users" element={<Navigate to="/workpermit/users" replace />} />
       <Route path="/roles" element={<Navigate to="/workpermit/roles" replace />} />
       <Route path="/settings" element={<Navigate to="/workpermit/settings" replace />} />
-      <Route path="/meters" element={<Navigate to="/mis/dashboard" replace />} />
 
       {/* Root redirect */}
       <Route path="/" element={<Navigate to="/select-system" replace />} />

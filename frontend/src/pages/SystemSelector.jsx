@@ -48,7 +48,7 @@ const SystemSelector = () => {
         { icon: Users, text: 'Visitor Management' },
         { icon: ShieldAlert, text: 'Blacklist & Security' },
       ],
-      status: 'coming_soon',
+      status: 'active',
     },
   ]
 

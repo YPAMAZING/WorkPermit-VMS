@@ -9,9 +9,7 @@ const dashboardRoutes = require('./routes/dashboard.routes');
 const workerRoutes = require('./routes/worker.routes');
 const roleRoutes = require('./routes/role.routes');
 const ssoRoutes = require('./routes/sso.routes');
-const meterRoutes = require('./routes/meter.routes');
 const vmsRoutes = require('./routes/vms');
-const misRoutes = require('./routes/mis');
 const { errorHandler } = require('./middleware/error.middleware');
 const { initializeRolesAndPermissions } = require('./controllers/role.controller');
 const { checkPermitStatuses } = require('./controllers/approval.controller');
@@ -40,7 +38,9 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
-// Routes
+// ================================
+// WORK PERMIT SYSTEM ROUTES
+// ================================
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/permits', permitRoutes);
@@ -49,13 +49,12 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/workers', workerRoutes);
 app.use('/api/roles', roleRoutes);
 app.use('/api/sso', ssoRoutes);
-app.use('/api/meters', meterRoutes);
 
-// VMS (Visitor Management System) Routes - Separate database
+// ================================
+// VMS (Visitor Management System) ROUTES
+// Separate database for VMS
+// ================================
 app.use('/api/vms', vmsRoutes);
-
-// MIS (Meter Information System) Routes - Separate database (for Hostinger MIS-only deployment)
-app.use('/api/mis', misRoutes);
 
 // Error handling
 app.use(errorHandler);
@@ -69,6 +68,7 @@ app.use((req, res) => {
 app.listen(config.port, '0.0.0.0', async () => {
   console.log(`🚀 Server running on port ${config.port}`);
   console.log(`📝 Environment: ${config.nodeEnv}`);
+  console.log(`📦 Systems: Work Permit + VMS`);
   
   // Initialize roles and permissions
   await initializeRolesAndPermissions();

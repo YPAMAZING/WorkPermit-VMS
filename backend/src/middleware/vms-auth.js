@@ -102,26 +102,32 @@ const vmsPermissionMiddleware = (requiredPermission) => {
 };
 
 // Role check middleware
-const vmsRoleMiddleware = (...allowedRoles) => {
+const vmsRoleMiddleware = (allowedRoles) => {
+  // Handle both array and spread arguments
+  const roles = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
+  
   return (req, res, next) => {
     if (req.user.isAdmin) {
       return next();
     }
 
-    if (allowedRoles.includes(req.user.role)) {
+    if (roles.includes(req.user.role)) {
       return next();
     }
 
     return res.status(403).json({ 
       message: 'Access denied', 
-      required: allowedRoles,
+      required: roles,
       current: req.user.role,
     });
   };
 };
 
 module.exports = {
+  vmsAuth: vmsAuthMiddleware,
   vmsAuthMiddleware,
+  vmsRequirePermission: vmsPermissionMiddleware,
   vmsPermissionMiddleware,
+  vmsRequireRole: vmsRoleMiddleware,
   vmsRoleMiddleware,
 };

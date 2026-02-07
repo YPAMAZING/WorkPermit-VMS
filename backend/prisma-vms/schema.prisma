@@ -1,5 +1,6 @@
 // VMS (Visitor Management System) Database Schema
-// This is a SEPARATE database from Work Permit
+// Multi-Tenant Architecture with QR-based Self Check-in
+// Using SQLite for local development, MySQL for production
 
 generator client {
   provider = "prisma-client-js"
@@ -12,7 +13,88 @@ datasource db {
 }
 
 // ================================
-// USER & ROLE MANAGEMENT
+// COMPANY / TENANT MANAGEMENT
+// Multi-tenant support for subscription model
+// ================================
+
+model Company {
+  id              String    @id @default(uuid())
+  code            String    @unique  // Unique company code for QR
+  name            String
+  displayName     String
+  description     String?
+  logo            String?
+  address         String?
+  city            String?
+  state           String?
+  country         String?
+  pincode         String?
+  phone           String?
+  email           String?
+  website         String?
+  
+  // Subscription & Plan
+  subscriptionPlan  String    @default("FREE") // FREE, BASIC, PRO, ENTERPRISE
+  subscriptionStart DateTime?
+  subscriptionEnd   DateTime?
+  subscriptionActive Boolean  @default(true)  // On/Off toggle for admin
+  maxVisitorsPerMonth Int     @default(100)
+  maxUsers          Int       @default(5)
+  
+  // Portal access for company clients
+  portalId          String?   @unique  // Unique portal ID for company clients
+  
+  // QR Code for self check-in
+  qrCode            String?   // Base64 QR code image
+  qrCodeData        String?   // QR code data JSON
+  qrCodeUrl         String?   // Public URL for QR scanning
+  
+  // Customization
+  primaryColor      String?   // Brand color
+  secondaryColor    String?
+  welcomeMessage    String?
+  termsAndConditions String?
+  
+  // Settings
+  requireIdProof    Boolean   @default(true)
+  requirePhoto      Boolean   @default(true)
+  autoApprove       Boolean   @default(false) // Auto-approve visitors
+  notifyHost        Boolean   @default(true)
+  
+  isActive          Boolean   @default(true)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  // Relations
+  departments       Department[]
+  users             User[]
+  visitors          Visitor[]
+  gatepasses        Gatepass[]
+  preApprovedVisitors PreApprovedVisitor[]
+  blacklistEntries  BlacklistEntry[]
+  checkInRequests   CheckInRequest[]
+  
+  @@map("companies")
+}
+
+model Department {
+  id        String    @id @default(uuid())
+  companyId String
+  company   Company   @relation(fields: [companyId], references: [id])
+  name      String
+  floor     String?
+  building  String?
+  phone     String?
+  email     String?
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  
+  @@unique([companyId, name])
+  @@map("departments")
+}
+
+// ================================
+// USER MANAGEMENT
 // ================================
 
 model User {
@@ -21,41 +103,46 @@ model User {
   password        String
   firstName       String
   lastName        String
-  roleId          String?
-  department      String?
   phone           String?
   profilePicture  String?
+  
+  // Role assignment
+  roleId          String?
+  role            Role?     @relation(fields: [roleId], references: [id])
+  
+  // Company assignment (for multi-tenant)
+  companyId       String?
+  company         Company?  @relation(fields: [companyId], references: [id])
+  
+  // Account status
   isActive        Boolean   @default(true)
   isApproved      Boolean   @default(false)
-  requestedRole   String?
-  approvedBy      String?
-  approvedAt      DateTime?
-  rejectionReason String?
+  
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   
-  role            Role?     @relation(fields: [roleId], references: [id])
-  
-  // VMS Relations
-  visitorsCreated     Visitor[]           @relation("VisitorCreatedBy")
-  gatepassesIssued    Gatepass[]          @relation("GatepassIssuedBy")
-  preApprovedVisitors PreApprovedVisitor[] @relation("PreApprovedBy")
-  blacklistEntries    BlacklistEntry[]    @relation("BlacklistCreatedBy")
+  // Relations
+  visitorsCreated    Visitor[]           @relation("VisitorCreatedBy")
+  gatepassesIssued   Gatepass[]          @relation("GatepassIssuedBy")
+  gatepassesApproved Gatepass[]          @relation("GatepassApprovedBy")
+  preApprovedBy      PreApprovedVisitor[] @relation("PreApprovedBy")
+  blacklistCreated   BlacklistEntry[]    @relation("BlacklistCreatedBy")
+  checkInProcessed   CheckInRequest[]    @relation("CheckInProcessedBy")
   
   @@map("users")
 }
 
 model Role {
-  id          String   @id @default(uuid())
-  name        String   @unique
+  id          String    @id @default(uuid())
+  name        String    @unique
   displayName String
   description String?
-  permissions String   @default("[]")  // JSON array of permission keys
-  uiConfig    String   @default("{}")  // JSON for UI customization
-  isSystem    Boolean  @default(false)
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  permissions String    @default("[]") // JSON array of permission keys
+  uiConfig    String    @default("{}") // JSON for UI customization
+  isSystem    Boolean   @default(false)
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   
   users       User[]
   
@@ -63,15 +150,16 @@ model Role {
 }
 
 model Permission {
-  id          String   @id @default(uuid())
-  key         String   @unique
+  id          String    @id @default(uuid())
+  key         String    @unique
   name        String
   description String?
-  module      String   // dashboard, visitors, gatepasses, preapproved, blacklist, reports, settings
-  action      String   // view, create, edit, delete, approve, export
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
+  module      String
+  action      String
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
   
+  @@index([module])
   @@map("permissions")
 }
 
@@ -81,44 +169,45 @@ model Permission {
 
 model Visitor {
   id              String    @id @default(uuid())
-  visitorCode     String    @unique @default(uuid())  // Unique visitor identifier
+  companyId       String
+  company         Company   @relation(fields: [companyId], references: [id])
   
-  // Personal Information
+  visitorCode     String    @unique @default(uuid())
   firstName       String
   lastName        String
   email           String?
   phone           String
-  company         String?
+  visitorCompany  String?   // Visitor's company name
   designation     String?
   address         String?
   
-  // Identification
-  idProofType     String?   // AADHAR, PAN, PASSPORT, DRIVING_LICENSE, VOTER_ID, OTHER
+  // ID Proof
+  idProofType     String?   // AADHAAR, PAN, PASSPORT, DRIVING_LICENSE, etc.
   idProofNumber   String?
   idProofImage    String?   // Base64 or URL
   
   // Photo
-  photo           String?   // Base64 or URL of visitor photo
+  photo           String?   // Base64 or URL
   
-  // Visit History Stats
+  // Visit history
   totalVisits     Int       @default(0)
   lastVisitDate   DateTime?
   
-  // Status
+  // Blacklist status
   isBlacklisted   Boolean   @default(false)
   blacklistReason String?
   
-  // Metadata
   createdById     String?
+  createdBy       User?     @relation("VisitorCreatedBy", fields: [createdById], references: [id])
+  
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   
-  createdBy       User?     @relation("VisitorCreatedBy", fields: [createdById], references: [id])
+  // Relations
   gatepasses      Gatepass[]
   preApprovals    PreApprovedVisitor[]
   
-  @@index([phone])
-  @@index([email])
+  @@index([companyId, phone])
   @@index([visitorCode])
   @@map("visitors")
 }
@@ -128,58 +217,149 @@ model Visitor {
 // ================================
 
 model Gatepass {
-  id                String    @id @default(uuid())
-  gatepassNumber    String    @unique  // Format: GP-YYYYMMDD-XXXX
+  id              String    @id @default(uuid())
+  companyId       String
+  company         Company   @relation(fields: [companyId], references: [id])
   
-  // Visitor Reference
-  visitorId         String
+  gatepassNumber  String    @unique
+  visitorId       String
+  visitor         Visitor   @relation(fields: [visitorId], references: [id])
   
-  // Visit Details
-  purpose           String    // MEETING, INTERVIEW, DELIVERY, MAINTENANCE, CONTRACTOR, EVENT, PERSONAL, OTHER
-  purposeDetails    String?
-  hostName          String?   // Person being visited
-  hostDepartment    String?
-  hostPhone         String?
-  hostEmail         String?
+  // Visit details
+  purpose         String
+  purposeDetails  String?
+  hostName        String
+  hostDepartment  String?
+  hostPhone       String?
+  hostEmail       String?
+  entryGate       String?
+  visitingArea    String?
   
-  // Location & Time
-  entryGate         String?   // MAIN_GATE, SIDE_GATE, BACK_GATE
-  visitingArea      String?   // Building/Floor/Office
-  expectedDate      DateTime  // Expected visit date
-  expectedTimeIn    String?   // Expected time of arrival (HH:MM)
-  expectedTimeOut   String?   // Expected time of departure (HH:MM)
-  validFrom         DateTime
-  validUntil        DateTime
+  // Time
+  expectedDate    DateTime
+  expectedTimeIn  DateTime?
+  expectedTimeOut DateTime?
+  validFrom       DateTime  @default(now())
+  validUntil      DateTime
   
-  // Status & Tracking
-  status            String    @default("SCHEDULED")  // SCHEDULED, ACTIVE, COMPLETED, CANCELLED, EXPIRED, NO_SHOW
+  // Actual times
+  actualCheckIn   DateTime?
+  actualCheckOut  DateTime?
+  
+  // Status
+  status          String    @default("PENDING") // PENDING, ACTIVE, COMPLETED, CANCELLED, EXPIRED
   
   // QR Code
-  qrCode            String?   // Base64 encoded QR code
-  qrCodeData        String?   // Data encoded in QR
+  qrCode          String?   // Base64 QR code image
+  qrCodeData      String?   // QR code data
   
-  // Items Carried
-  vehicleNumber     String?
-  vehicleType       String?   // CAR, BIKE, TRUCK, OTHER
-  itemsCarried      String    @default("[]")  // JSON array of items
+  // Items & Vehicle
+  itemsCarried    String?   // JSON array
+  vehicleNumber   String?
+  vehicleType     String?
   
-  // Remarks
-  remarks           String?
-  securityRemarks   String?
+  // Security
+  securityRemarks String?
   
-  // Metadata
-  issuedById        String?
-  issuedAt          DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  // Link to check-in request if created from QR flow
+  checkInRequestId String?
   
-  visitor           Visitor   @relation(fields: [visitorId], references: [id])
-  issuedBy          User?     @relation("GatepassIssuedBy", fields: [issuedById], references: [id])
+  // Approval
+  issuedById      String?
+  issuedBy        User?     @relation("GatepassIssuedBy", fields: [issuedById], references: [id])
+  issuedAt        DateTime  @default(now())
+  approvedById    String?
+  approvedBy      User?     @relation("GatepassApprovedBy", fields: [approvedById], references: [id])
+  approvedAt      DateTime?
   
-  @@index([gatepassNumber])
+  updatedAt       DateTime  @updatedAt
+  
+  @@index([companyId])
   @@index([status])
-  @@index([expectedDate])
-  @@index([visitorId])
   @@map("gatepasses")
+}
+
+// ================================
+// QR-BASED SELF CHECK-IN REQUESTS
+// ================================
+
+model CheckInRequest {
+  id              String    @id @default(uuid())
+  requestNumber   String    @unique
+  
+  companyId       String
+  company         Company   @relation(fields: [companyId], references: [id])
+  
+  // Visitor info (captured from QR form)
+  visitorName     String?   // Combined name for simplified display
+  firstName       String
+  lastName        String
+  email           String?
+  phone           String
+  visitorCompany  String?
+  designation     String?
+  
+  // ID Proof
+  idProofType     String?
+  idProofNumber   String?
+  idProofImage    String?
+  
+  // Photo
+  photo           String?
+  
+  // Visit details
+  purpose         String
+  purposeDetails  String?
+  hostName        String?
+  hostDepartment  String?
+  hostPhone       String?
+  hostEmail       String?
+  
+  // Vehicle
+  hasVehicle      Boolean   @default(false)
+  vehicleNumber   String?
+  vehicleType     String?
+  
+  // Items
+  itemsCarried    String?   // JSON array
+  
+  // Status
+  status          String    @default("PENDING") // PENDING, APPROVED, REJECTED, CHECKED_IN, CHECKED_OUT, EXPIRED
+  
+  // Processing
+  processedById   String?
+  processedBy     User?     @relation("CheckInProcessedBy", fields: [processedById], references: [id])
+  processedAt     DateTime?
+  processingNote  String?
+  rejectionReason String?
+  
+  // Check-in/out times
+  checkInAt       DateTime?
+  checkOutAt      DateTime?
+  checkInTime     DateTime?  // Alias for easier access
+  checkOutTime    DateTime?  // Alias for easier access
+  
+  // Computed helper fields
+  visitorPhone    String?    // Alias for phone
+  visitorEmail    String?    // Alias for email
+  visitPurpose    String?    // Alias for purpose
+  department      String?    // Alias for hostDepartment
+  
+  // Link to gatepass if created
+  gatepassId      String?
+  
+  // Timestamps
+  submittedAt     DateTime  @default(now())
+  expiresAt       DateTime
+  updatedAt       DateTime  @updatedAt
+  
+  // Device info
+  deviceInfo      String?
+  ipAddress       String?
+  
+  @@index([companyId, status])
+  @@index([phone])
+  @@map("check_in_requests")
 }
 
 // ================================
@@ -188,28 +368,31 @@ model Gatepass {
 
 model PreApprovedVisitor {
   id              String    @id @default(uuid())
+  companyId       String
+  company         Company   @relation(fields: [companyId], references: [id])
   
-  // Visitor Reference (optional - can pre-approve without existing visitor record)
+  // Can link to existing visitor or store new details
   visitorId       String?
+  visitor         Visitor?  @relation(fields: [visitorId], references: [id])
   
-  // Visitor Details (if no existing visitor)
-  firstName       String
-  lastName        String
-  phone           String
+  // Or store visitor details directly
+  firstName       String?
+  lastName        String?
+  phone           String?
   email           String?
-  company         String?
+  visitorCompany  String?
   
-  // Approval Details
-  purpose         String
+  // Purpose & Host
+  purpose         String?
   hostName        String
   hostDepartment  String?
   hostPhone       String?
   hostEmail       String?
+  visitingArea    String?
   
   // Validity
   validFrom       DateTime
   validUntil      DateTime
-  visitingArea    String?
   
   // Multi-entry support
   isMultiEntry    Boolean   @default(false)
@@ -217,19 +400,19 @@ model PreApprovedVisitor {
   usedEntries     Int       @default(0)
   
   // Status
-  status          String    @default("ACTIVE")  // ACTIVE, USED, EXPIRED, CANCELLED
+  status          String    @default("ACTIVE") // ACTIVE, USED, EXPIRED, CANCELLED
   
-  // Metadata
+  // Approval
   approvedById    String?
-  approvedAt      DateTime  @default(now())
-  remarks         String?
-  
-  visitor         Visitor?  @relation(fields: [visitorId], references: [id])
   approvedBy      User?     @relation("PreApprovedBy", fields: [approvedById], references: [id])
+  approvedAt      DateTime  @default(now())
   
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  @@index([companyId])
   @@index([phone])
   @@index([status])
-  @@index([validFrom, validUntil])
   @@map("pre_approved_visitors")
 }
 
@@ -239,86 +422,81 @@ model PreApprovedVisitor {
 
 model BlacklistEntry {
   id              String    @id @default(uuid())
+  companyId       String?
+  company         Company?  @relation(fields: [companyId], references: [id])
   
-  // Identification (at least one required)
-  visitorId       String?   // Link to existing visitor
+  // Can link to visitor or store details
+  visitorId       String?
+  
+  // Or store visitor details directly
   firstName       String?
   lastName        String?
   phone           String?
   email           String?
   idProofType     String?
   idProofNumber   String?
-  photo           String?   // Photo for identification
+  photo           String?
   
-  // Blacklist Details
-  reason          String    // THEFT, MISBEHAVIOR, SECURITY_THREAT, FRAUD, TRESPASSING, OTHER
+  // Blacklist details
+  reason          String
   reasonDetails   String?
   incidentDate    DateTime?
   incidentLocation String?
   
-  // Status
+  // Scope
+  isGlobal        Boolean   @default(false) // If true, applies to all companies
   isActive        Boolean   @default(true)
-  expiresAt       DateTime? // Optional expiry for temporary blacklists
+  expiresAt       DateTime?
   
-  // Metadata
   createdById     String?
+  createdBy       User?     @relation("BlacklistCreatedBy", fields: [createdById], references: [id])
+  
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   
-  createdBy       User?     @relation("BlacklistCreatedBy", fields: [createdById], references: [id])
-  
+  @@index([companyId])
   @@index([phone])
-  @@index([idProofNumber])
-  @@index([isActive])
   @@map("blacklist_entries")
 }
 
 // ================================
-// AUDIT & LOGS
+// SYSTEM & ANALYTICS
 // ================================
 
 model AuditLog {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   userId      String?
-  action      String   // CREATE, UPDATE, DELETE, LOGIN, LOGOUT, GATEPASS_ISSUE, BLACKLIST_ADD, etc.
-  entity      String   // visitor, gatepass, blacklist, etc.
+  action      String
+  entity      String
   entityId    String?
-  oldValue    String?  // JSON
-  newValue    String?  // JSON
+  oldValue    String?
+  newValue    String?
   ipAddress   String?
   userAgent   String?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
   
   @@index([entity, entityId])
   @@index([createdAt])
   @@map("audit_logs")
 }
 
-// ================================
-// SYSTEM SETTINGS
-// ================================
-
 model SystemSettings {
-  id          String   @id @default(uuid())
-  key         String   @unique
+  id          String    @id @default(uuid())
+  key         String    @unique
   value       String
   description String?
-  updatedAt   DateTime @updatedAt
+  updatedAt   DateTime  @updatedAt
   
   @@map("system_settings")
 }
 
-// ================================
-// ANALYTICS CACHE
-// ================================
-
 model AnalyticsCache {
-  id          String   @id @default(uuid())
-  reportType  String   // daily, weekly, monthly
+  id          String    @id @default(uuid())
+  reportType  String
   reportName  String
-  data        String   // JSON data
-  filters     String?  // JSON filters
-  generatedAt DateTime @default(now())
+  data        String    // JSON data
+  filters     String?   // JSON filters
+  generatedAt DateTime  @default(now())
   expiresAt   DateTime
   createdBy   String?
   
