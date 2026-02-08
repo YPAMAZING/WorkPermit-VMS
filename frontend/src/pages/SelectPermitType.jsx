@@ -212,8 +212,8 @@ const SelectPermitType = () => {
 
   const handleSelectType = (type) => {
     setSelectedType(type.id)
-    // Navigate to create permit with pre-selected type
-    navigate(`/permits/create?type=${type.id}`)
+    // Navigate to create permit with pre-selected type (use full path to preserve query params)
+    navigate(`/workpermit/permits/create?type=${type.id}`)
   }
 
   return (
