@@ -1,6 +1,6 @@
 // VMS (Visitor Management System) Database Schema
 // Multi-Tenant Architecture with QR-based Self Check-in
-// Using SQLite for local development, MySQL for production
+// Using MySQL for all environments
 
 generator client {
   provider = "prisma-client-js"
@@ -8,7 +8,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "mysql"
   url      = env("VMS_DATABASE_URL")
 }
 
