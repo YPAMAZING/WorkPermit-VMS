@@ -68,7 +68,7 @@ const SystemSelector = () => {
             <span className="text-white font-bold text-lg">R</span>
           </div>
           <div>
-            <h1 className="text-white font-bold text-xl">Reliable Work Permit and VMS</h1>
+            <h1 className="text-white font-bold text-xl">Reliable Group | Work Permit and VMS</h1>
             <p className="text-purple-300 text-xs">Management Systems</p>
           </div>
         </div>
