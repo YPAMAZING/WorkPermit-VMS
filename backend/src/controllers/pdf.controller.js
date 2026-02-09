@@ -239,7 +239,7 @@ const generatePermitPDF = async (req, res) => {
     
     // LEFT SIDE: Company name and permit details
     doc.fontSize(16).font('Helvetica-Bold').fillColor('#1e293b')
-       .text(permit.companyName || 'Zat Pat Kaam Pvt. Ltd.', 40, yPos);
+       .text(permit.companyName || permit.user?.department || vendorDetails?.vendorCompany || 'Contractor', 40, yPos);
     
     // RIGHT SIDE: RELIABLE GROUP branding with logo
     // Add logo if it exists
