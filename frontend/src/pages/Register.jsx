@@ -187,7 +187,7 @@ const Register = () => {
           {/* Title */}
           <div className="text-center mb-6">
             <h2 className="text-2xl font-bold text-white leading-tight mb-2">
-              Reliable Group <span className="text-red-400">|</span> MEP
+              Reliable Work Permit and VMS
             </h2>
             <p className="text-blue-200 text-sm">
               Work Permit Management System
@@ -233,7 +233,7 @@ const Register = () => {
                 className="h-12 w-auto"
               />
             </div>
-            <h2 className="text-base font-bold text-gray-900">Reliable Group <span className="text-red-500">|</span> MEP</h2>
+            <h2 className="text-base font-bold text-gray-900">Reliable Work Permit and VMS</h2>
           </div>
 
           {/* Register card */}
@@ -378,7 +378,7 @@ const Register = () => {
                     value={formData.department}
                     onChange={handleChange}
                     className="w-full pl-9 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:bg-white focus:border-[#1e3a6e] focus:ring-2 focus:ring-[#1e3a6e]/20 transition-all duration-200 outline-none text-sm"
-                    placeholder={selectedRole?.showCompanyName ? "Enter your company name" : "Operations / MEP / Engineering"}
+                    placeholder={selectedRole?.showCompanyName ? "Enter your company name" : "Operations / Engineering"}
                     required={selectedRole?.showCompanyName}
                   />
                 </div>

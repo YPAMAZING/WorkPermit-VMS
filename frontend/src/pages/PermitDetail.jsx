@@ -327,7 +327,7 @@ const PermitDetail = () => {
                 </span>
               </div>
               <h1 className="text-2xl font-bold mb-1">{config.label}</h1>
-              <p className="text-white/80">{permit.companyName || 'Zat Pat Kaam Pvt. Ltd.'}</p>
+              <p className="text-white/80">{permit.companyName || permit.user?.department || 'Contractor'}</p>
             </div>
             
             {/* Company Branding with Logo */}

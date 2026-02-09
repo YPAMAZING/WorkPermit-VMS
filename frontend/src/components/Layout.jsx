@@ -165,7 +165,7 @@ const Layout = ({ systemType = 'workpermit' }) => {
           </div>
           <div className="flex-1 min-w-0">
             <h1 className="text-sm font-bold text-white leading-tight">Reliable Group</h1>
-            <p className="text-xs text-slate-400">MEP - Work Permit</p>
+            <p className="text-xs text-slate-400">Work Permit and VMS</p>
           </div>
           <button
             className="lg:hidden p-1 rounded-lg hover:bg-slate-700"

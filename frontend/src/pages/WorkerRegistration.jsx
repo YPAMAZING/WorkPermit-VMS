@@ -173,7 +173,7 @@ const WorkerRegistration = () => {
               <Shield className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-white">MIS</h1>
+              <h1 className="text-lg font-bold text-white">Reliable</h1>
               <p className="text-xs text-slate-400">Worker Registration</p>
             </div>
           </div>
@@ -412,7 +412,7 @@ const WorkerRegistration = () => {
       {/* Footer */}
       <footer className="bg-white/5 border-t border-white/10 py-4 mt-8">
         <p className="text-center text-sm text-slate-400">
-          MIS - Work Permit Management System
+          Reliable Work Permit and VMS
         </p>
       </footer>
     </div>
