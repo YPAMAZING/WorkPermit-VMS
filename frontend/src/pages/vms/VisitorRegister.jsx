@@ -14,7 +14,10 @@ import {
   Calendar,
   BadgeCheck,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  Upload,
+  Image,
+  RefreshCw
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { vmsAPI } from '../../services/vmsApi'
@@ -23,10 +26,13 @@ const VisitorRegister = () => {
   const navigate = useNavigate()
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
+  const fileInputRef = useRef(null)
+  const idDocInputRef = useRef(null)
   const [step, setStep] = useState(1) // 1: Form, 2: Photo, 3: Success
   const [loading, setLoading] = useState(false)
   const [cameraActive, setCameraActive] = useState(false)
   const [capturedPhoto, setCapturedPhoto] = useState(null)
+  const [idDocumentImage, setIdDocumentImage] = useState(null)
   const [gatepass, setGatepass] = useState(null)
   
   const [formData, setFormData] = useState({
@@ -132,10 +138,45 @@ const VisitorRegister = () => {
       const context = canvasRef.current.getContext('2d')
       canvasRef.current.width = videoRef.current.videoWidth
       canvasRef.current.height = videoRef.current.videoHeight
+      // Flip the image horizontally to mirror it correctly
+      context.translate(canvasRef.current.width, 0)
+      context.scale(-1, 1)
       context.drawImage(videoRef.current, 0, 0)
       const photoData = canvasRef.current.toDataURL('image/jpeg', 0.8)
       setCapturedPhoto(photoData)
       stopCamera()
+    }
+  }
+
+  const handleUploadPhoto = (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Photo size should be less than 5MB')
+        return
+      }
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setCapturedPhoto(reader.result)
+        stopCamera()
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const handleUploadIdDocument = (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Document size should be less than 5MB')
+        return
+      }
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setIdDocumentImage(reader.result)
+        toast.success('ID document uploaded!')
+      }
+      reader.readAsDataURL(file)
     }
   }
 
@@ -149,7 +190,8 @@ const VisitorRegister = () => {
     try {
       const payload = {
         ...formData,
-        photo: capturedPhoto !== 'no-photo' ? capturedPhoto : null,
+        photo: capturedPhoto,
+        idDocumentImage: idDocumentImage,
         entryType: 'WALK_IN',
         status: 'CHECKED_IN',
         checkInTime: new Date().toISOString(),
@@ -185,10 +227,7 @@ const VisitorRegister = () => {
     }
   }
 
-  const handleSkipPhoto = () => {
-    setCapturedPhoto('no-photo')
-    stopCamera()
-  }
+  // Photo is mandatory - removed skip option
 
   useEffect(() => {
     return () => {
@@ -425,6 +464,49 @@ const VisitorRegister = () => {
                   {errors.idProofNumber && <p className="text-red-500 text-xs mt-1">{errors.idProofNumber}</p>}
                 </div>
 
+                {/* Upload ID Document Image */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Upload ID Document Image
+                  </label>
+                  <input
+                    type="file"
+                    ref={idDocInputRef}
+                    onChange={handleUploadIdDocument}
+                    accept="image/*"
+                    className="hidden"
+                  />
+                  <div 
+                    onClick={() => idDocInputRef.current?.click()}
+                    className="w-full border-2 border-dashed border-gray-300 rounded-lg p-4 cursor-pointer hover:border-teal-500 hover:bg-teal-50 transition-colors"
+                  >
+                    {idDocumentImage ? (
+                      <div className="flex items-center gap-4">
+                        <img 
+                          src={idDocumentImage} 
+                          alt="ID Document" 
+                          className="w-20 h-14 object-cover rounded-lg border"
+                        />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-green-600 flex items-center gap-1">
+                            <CheckCircle className="w-4 h-4" />
+                            Document Uploaded
+                          </p>
+                          <p className="text-xs text-gray-500">Click to change</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-2 text-gray-500">
+                        <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
+                          <Image className="w-6 h-6" />
+                        </div>
+                        <p className="text-sm font-medium">Click to upload ID document</p>
+                        <p className="text-xs">Aadhaar, PAN, Driving License, etc.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 {/* Vehicle Number */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -489,6 +571,7 @@ const VisitorRegister = () => {
                       playsInline
                       muted
                       className="w-full h-full object-cover"
+                      style={{ transform: 'scaleX(-1)' }}
                     />
                     {!cameraActive && (
                       <div className="absolute inset-0 flex items-center justify-center">
@@ -498,12 +581,22 @@ const VisitorRegister = () => {
                   </div>
                   <canvas ref={canvasRef} className="hidden" />
                   
+                  {/* Hidden file input for upload */}
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleUploadPhoto}
+                    accept="image/*"
+                    className="hidden"
+                  />
+                  
                   <div className="flex gap-3">
                     <button
-                      onClick={handleSkipPhoto}
-                      className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-300 transition-colors flex items-center justify-center gap-2"
                     >
-                      Skip Photo
+                      <Upload className="w-5 h-5" />
+                      Upload Photo
                     </button>
                     <button
                       onClick={capturePhoto}
@@ -518,16 +611,7 @@ const VisitorRegister = () => {
               ) : (
                 <>
                   <div className="relative aspect-[4/3] bg-gray-100 rounded-xl overflow-hidden mb-4">
-                    {capturedPhoto === 'no-photo' ? (
-                      <div className="w-full h-full flex items-center justify-center text-gray-400">
-                        <div className="text-center">
-                          <User className="w-20 h-20 mx-auto mb-2" />
-                          <p>No Photo</p>
-                        </div>
-                      </div>
-                    ) : (
-                      <img src={capturedPhoto} alt="Captured" className="w-full h-full object-cover" />
-                    )}
+                    <img src={capturedPhoto} alt="Captured" className="w-full h-full object-cover" />
                   </div>
                   
                   <div className="flex gap-3">
