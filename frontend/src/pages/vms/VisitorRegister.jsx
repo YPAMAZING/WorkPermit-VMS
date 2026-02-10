@@ -456,9 +456,11 @@ const VisitorRegister = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     <span className="flex items-center gap-2">
                       <Camera className="w-4 h-4 text-teal-600" />
-                      Click or Upload Document Image <span className="text-red-500">*</span>
+                      Capture or Upload Document Image <span className="text-red-500">*</span>
                     </span>
                   </label>
+                  
+                  {/* Hidden inputs for capture and upload */}
                   <input
                     type="file"
                     ref={idDocInputRef}
@@ -467,16 +469,21 @@ const VisitorRegister = () => {
                     capture="environment"
                     className="hidden"
                   />
-                  <div 
-                    onClick={() => idDocInputRef.current?.click()}
-                    className={`w-full border-2 border-dashed rounded-xl p-6 cursor-pointer transition-all duration-200 ${
-                      errors.idDocument 
-                        ? 'border-red-400 bg-red-50 hover:border-red-500 hover:bg-red-100' 
-                        : idDocumentImage 
-                          ? 'border-green-400 bg-green-50 hover:border-green-500 hover:bg-green-100'
-                          : 'border-teal-300 bg-teal-50 hover:border-teal-500 hover:bg-teal-100'
-                    }`}
-                  >
+                  <input
+                    type="file"
+                    id="idDocUploadInput"
+                    onChange={handleUploadIdDocument}
+                    accept="image/*"
+                    className="hidden"
+                  />
+                  
+                  <div className={`w-full border-2 border-dashed rounded-xl p-5 transition-all duration-200 ${
+                    errors.idDocument 
+                      ? 'border-red-400 bg-red-50' 
+                      : idDocumentImage 
+                        ? 'border-green-400 bg-green-50'
+                        : 'border-teal-300 bg-teal-50'
+                  }`}>
                     {idDocumentImage ? (
                       <div className="flex items-center gap-4">
                         <img 
@@ -489,22 +496,59 @@ const VisitorRegister = () => {
                             <CheckCircle className="w-5 h-5" />
                             Document Uploaded Successfully
                           </p>
-                          <p className="text-xs text-gray-500 mt-1">Click to change or capture again</p>
+                          <div className="flex gap-2 mt-2">
+                            <button
+                              type="button"
+                              onClick={() => idDocInputRef.current?.click()}
+                              className="text-xs bg-teal-600 text-white px-3 py-1.5 rounded-lg hover:bg-teal-700 flex items-center gap-1"
+                            >
+                              <Camera className="w-3 h-3" />
+                              Recapture
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => document.getElementById('idDocUploadInput')?.click()}
+                              className="text-xs bg-gray-600 text-white px-3 py-1.5 rounded-lg hover:bg-gray-700 flex items-center gap-1"
+                            >
+                              <Image className="w-3 h-3" />
+                              Change
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ) : (
-                      <div className="flex flex-col items-center gap-3">
-                        <div className={`w-16 h-16 rounded-full flex items-center justify-center ${errors.idDocument ? 'bg-red-100' : 'bg-teal-100'}`}>
-                          <Camera className={`w-8 h-8 ${errors.idDocument ? 'text-red-500' : 'text-teal-600'}`} />
-                        </div>
-                        <div className="text-center">
-                          <p className={`text-base font-bold ${errors.idDocument ? 'text-red-600' : 'text-gray-800'}`}>
-                            Click or Upload Document Image
-                          </p>
-                          <p className="text-sm text-gray-600 mt-1">Aadhaar Card, PAN Card, Driving License, Voter ID, Passport</p>
-                          <p className="text-xs text-teal-600 font-medium mt-2 bg-teal-100 inline-block px-3 py-1 rounded-full">
-                            📷 Tap here to capture or upload from gallery
-                          </p>
+                      <div className="flex flex-col items-center gap-4">
+                        <p className={`text-sm font-medium ${errors.idDocument ? 'text-red-600' : 'text-gray-700'}`}>
+                          Aadhaar Card, PAN Card, Driving License, Voter ID, Passport
+                        </p>
+                        <div className="flex gap-3 w-full max-w-md">
+                          {/* Capture Button */}
+                          <button
+                            type="button"
+                            onClick={() => idDocInputRef.current?.click()}
+                            className={`flex-1 py-4 rounded-xl font-semibold flex flex-col items-center gap-2 transition-all ${
+                              errors.idDocument 
+                                ? 'bg-red-100 text-red-700 hover:bg-red-200 border-2 border-red-300' 
+                                : 'bg-teal-600 text-white hover:bg-teal-700 shadow-md hover:shadow-lg'
+                            }`}
+                          >
+                            <Camera className="w-7 h-7" />
+                            <span>Capture</span>
+                          </button>
+                          
+                          {/* Upload Button */}
+                          <button
+                            type="button"
+                            onClick={() => document.getElementById('idDocUploadInput')?.click()}
+                            className={`flex-1 py-4 rounded-xl font-semibold flex flex-col items-center gap-2 transition-all ${
+                              errors.idDocument 
+                                ? 'bg-red-100 text-red-700 hover:bg-red-200 border-2 border-red-300' 
+                                : 'bg-gray-600 text-white hover:bg-gray-700 shadow-md hover:shadow-lg'
+                            }`}
+                          >
+                            <Image className="w-7 h-7" />
+                            <span>Upload</span>
+                          </button>
                         </div>
                       </div>
                     )}
