@@ -133,20 +133,15 @@ const VMSLogin = () => {
               </button>
             </form>
 
-            {/* Demo Credentials */}
-            <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-              <p className="text-xs text-gray-500 mb-2">Demo Credentials:</p>
-              <div className="space-y-1 text-xs">
-                <p className="text-gray-600">
-                  <span className="font-medium">Admin:</span> vmsadmin@reliablegroup.com / Admin@123
-                </p>
-                <p className="text-gray-600">
-                  <span className="font-medium">Guard:</span> guard@reliablegroup.com / Admin@123
-                </p>
-                <p className="text-gray-600">
-                  <span className="font-medium">Reception:</span> reception@reliablegroup.com / Admin@123
-                </p>
-              </div>
+            {/* Login Info */}
+            <div className="mt-6 p-4 bg-teal-50 border border-teal-200 rounded-lg">
+              <p className="text-sm text-teal-700 font-medium mb-2">
+                📌 Use your Work Permit credentials
+              </p>
+              <p className="text-xs text-teal-600">
+                Reception and Guard staff can log in using their existing Work Permit system credentials.
+                All users have access to manage visitors and gatepasses.
+              </p>
             </div>
 
             {/* Links */}
