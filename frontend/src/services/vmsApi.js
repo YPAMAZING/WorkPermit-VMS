@@ -156,6 +156,45 @@ export const blacklistApi = {
   delete: (id) => vmsApi.delete(`/blacklist/${id}`),
 }
 
+// Company Settings API (Approval-based gatepass feature)
+export const companySettingsApi = {
+  // Get all companies with settings
+  getAll: () => vmsApi.get('/company-settings'),
+  
+  // Get companies with approval settings (admin view)
+  getApprovalSettings: () => vmsApi.get('/company-settings/approval-settings'),
+  
+  // Get company by ID
+  getById: (id) => vmsApi.get(`/company-settings/${id}`),
+  
+  // Get company settings by name (public - for visitor registration)
+  getByName: (name) => publicApi.get(`/company-settings/by-name/${encodeURIComponent(name)}`),
+  
+  // Get company settings by code (public - for QR check-in)
+  getByCode: (code) => publicApi.get(`/company-settings/by-code/${code}`),
+  
+  // Create new company
+  create: (data) => vmsApi.post('/company-settings', data),
+  
+  // Update company
+  update: (id, data) => vmsApi.put(`/company-settings/${id}`, data),
+  
+  // Toggle approval requirement (main feature)
+  toggleApproval: (id, requireGatepassApproval) => 
+    vmsApi.post(`/company-settings/${id}/toggle-approval`, { requireGatepassApproval }),
+  
+  // Bulk update approval settings
+  bulkUpdateApproval: (updates) => 
+    vmsApi.post('/company-settings/bulk-update-approval', { updates }),
+  
+  // Sync companies from frontend list
+  syncCompanies: (companies) => 
+    vmsApi.post('/company-settings/sync', { companies }),
+  
+  // Delete company
+  delete: (id) => vmsApi.delete(`/company-settings/${id}`),
+}
+
 // ================================
 // COMBINED VMS API (for convenience)
 // ================================

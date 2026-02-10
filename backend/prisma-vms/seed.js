@@ -184,6 +184,7 @@ async function main() {
 
   // ================================
   // CREATE SAMPLE COMPANIES (Multi-tenant)
+  // Including companies from frontend with approval settings
   // ================================
   const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
   
@@ -193,50 +194,177 @@ async function main() {
       name: 'reliable-group',
       displayName: 'Reliable Group MEP',
       description: 'Reliable Group - MEP Services & Security',
-      portalId: 'P-RELIABLE1',  // Unique portal ID for company clients
-      subscriptionActive: true,  // Subscription is ON
+      portalId: 'P-RELIABLE1',
+      subscriptionActive: true,
       subscriptionPlan: 'PRO',
       primaryColor: '#2563eb',
       secondaryColor: '#1e40af',
       welcomeMessage: 'Welcome to Reliable Group! Please fill in your details to proceed with the check-in.',
-      termsAndConditions: 'By proceeding, you agree to follow all security protocols and building regulations. Your visit will be logged for security purposes. Please surrender any prohibited items at the security desk.',
+      termsAndConditions: 'By proceeding, you agree to follow all security protocols and building regulations. Your visit will be logged for security purposes.',
       requireIdProof: true,
       requirePhoto: true,
       autoApprove: false,
+      requireGatepassApproval: true, // Visitors need approval before getting gatepass
       isActive: true,
     },
+    // VODAFONE IDEA - Special case: NO approval required (direct gatepass)
     {
-      code: 'TECHPARK',
-      name: 'techpark-tower',
-      displayName: 'TechPark Tower',
-      description: 'TechPark Tower - IT & Business Center',
-      portalId: 'P-TECHPARK1',  // Unique portal ID for company clients
-      subscriptionActive: true,  // Subscription is ON
-      subscriptionPlan: 'BASIC',
-      primaryColor: '#059669',
-      secondaryColor: '#047857',
-      welcomeMessage: 'Welcome to TechPark Tower! Please register your visit below.',
-      termsAndConditions: 'All visitors must wear visitor badges at all times. Photography is restricted in certain areas. Please follow COVID-19 safety guidelines.',
+      code: 'VODAFONE',
+      name: 'Vodafone Idea',
+      displayName: 'Vodafone Idea',
+      description: 'Vodafone Idea - Telecom Company',
+      portalId: 'P-VODAFONE1',
+      subscriptionActive: true,
+      subscriptionPlan: 'PRO',
+      primaryColor: '#e60000',
+      secondaryColor: '#b30000',
+      welcomeMessage: 'Welcome to Vodafone Idea! Please register for direct entry.',
+      termsAndConditions: 'All visitors must follow Vodafone security protocols.',
+      requireIdProof: true,
+      requirePhoto: true,
+      autoApprove: true,
+      requireGatepassApproval: false, // NO APPROVAL REQUIRED - Direct gatepass
+      notifyHost: true,
+      isActive: true,
+    },
+    // HCL Technologies - Approval required
+    {
+      code: 'HCL',
+      name: 'HCL Technologies',
+      displayName: 'HCL Technologies',
+      description: 'HCL Technologies - IT Services',
+      portalId: 'P-HCL1',
+      subscriptionActive: true,
+      subscriptionPlan: 'PRO',
+      primaryColor: '#0053a3',
+      secondaryColor: '#003d7a',
+      welcomeMessage: 'Welcome to HCL Technologies! Please complete registration.',
+      termsAndConditions: 'All visitors must sign NDA and follow HCL security protocols.',
+      requireIdProof: true,
+      requirePhoto: true,
+      autoApprove: false,
+      requireGatepassApproval: true, // Approval required
+      notifyHost: true,
+      isActive: true,
+    },
+    // Godrej - Approval required
+    {
+      code: 'GODREJ',
+      name: 'Godrej',
+      displayName: 'Godrej Industries',
+      description: 'Godrej Industries - Diversified Conglomerate',
+      portalId: 'P-GODREJ1',
+      subscriptionActive: true,
+      subscriptionPlan: 'PRO',
+      primaryColor: '#1a472a',
+      secondaryColor: '#0d2615',
+      welcomeMessage: 'Welcome to Godrej! Please register your visit.',
+      termsAndConditions: 'All visitors must follow Godrej campus security guidelines.',
+      requireIdProof: true,
+      requirePhoto: true,
+      autoApprove: false,
+      requireGatepassApproval: true, // Approval required
+      notifyHost: true,
+      isActive: true,
+    },
+    // Yes Bank - NO approval required (direct entry)
+    {
+      code: 'YESBANK',
+      name: 'Yes Bank',
+      displayName: 'Yes Bank',
+      description: 'Yes Bank - Banking & Financial Services',
+      portalId: 'P-YESBANK1',
+      subscriptionActive: true,
+      subscriptionPlan: 'PRO',
+      primaryColor: '#003087',
+      secondaryColor: '#002060',
+      welcomeMessage: 'Welcome to Yes Bank! Register for direct entry.',
+      termsAndConditions: 'All visitors must follow bank security protocols.',
+      requireIdProof: true,
+      requirePhoto: true,
+      autoApprove: true,
+      requireGatepassApproval: false, // NO APPROVAL REQUIRED - Direct gatepass
+      notifyHost: true,
+      isActive: true,
+    },
+    // Tata Consulting Engineering - Approval required
+    {
+      code: 'TCE',
+      name: 'Tata Consulting Engineering',
+      displayName: 'Tata Consulting Engineering',
+      description: 'Tata Consulting Engineering - Engineering Services',
+      portalId: 'P-TCE1',
+      subscriptionActive: true,
+      subscriptionPlan: 'PRO',
+      primaryColor: '#2c3e50',
+      secondaryColor: '#1a252f',
+      welcomeMessage: 'Welcome to Tata Consulting Engineering! Please register your visit.',
+      termsAndConditions: 'All visitors must follow TCE security protocols.',
+      requireIdProof: true,
+      requirePhoto: true,
+      autoApprove: false,
+      requireGatepassApproval: true, // Approval required
+      notifyHost: true,
+      isActive: true,
+    },
+    // Adani Enterprises - Approval required
+    {
+      code: 'ADANI',
+      name: 'Adani Enterprises',
+      displayName: 'Adani Enterprises',
+      description: 'Adani Enterprises - Infrastructure & Energy',
+      portalId: 'P-ADANI1',
+      subscriptionActive: true,
+      subscriptionPlan: 'PRO',
+      primaryColor: '#003366',
+      secondaryColor: '#00264d',
+      welcomeMessage: 'Welcome to Adani Enterprises! Please register your visit.',
+      termsAndConditions: 'All visitors must follow Adani security guidelines.',
+      requireIdProof: true,
+      requirePhoto: true,
+      autoApprove: false,
+      requireGatepassApproval: true, // Approval required
+      notifyHost: true,
+      isActive: true,
+    },
+    // Lupin - Approval required
+    {
+      code: 'LUPIN',
+      name: 'Lupin',
+      displayName: 'Lupin Pharmaceuticals',
+      description: 'Lupin - Pharmaceutical Company',
+      portalId: 'P-LUPIN1',
+      subscriptionActive: true,
+      subscriptionPlan: 'PRO',
+      primaryColor: '#e31e24',
+      secondaryColor: '#b81820',
+      welcomeMessage: 'Welcome to Lupin! Please register for your visit.',
+      termsAndConditions: 'All visitors must follow GMP and pharma safety protocols.',
+      requireIdProof: true,
+      requirePhoto: true,
+      autoApprove: false,
+      requireGatepassApproval: true, // Approval required
+      notifyHost: true,
+      isActive: true,
+    },
+    // AWFIS - NO approval required (co-working space - direct entry)
+    {
+      code: 'AWFIS',
+      name: 'AWFIS Solutions Spaces',
+      displayName: 'AWFIS Co-working',
+      description: 'AWFIS Solutions Spaces - Co-working & Managed Offices',
+      portalId: 'P-AWFIS1',
+      subscriptionActive: true,
+      subscriptionPlan: 'PRO',
+      primaryColor: '#f7931e',
+      secondaryColor: '#c77418',
+      welcomeMessage: 'Welcome to AWFIS! Register for quick entry.',
+      termsAndConditions: 'All visitors must follow AWFIS community guidelines.',
       requireIdProof: true,
       requirePhoto: false,
-      autoApprove: false,
-      isActive: true,
-    },
-    {
-      code: 'BIZCENTRE',
-      name: 'business-centre',
-      displayName: 'Business Centre Plaza',
-      description: 'Business Centre Plaza - Corporate Offices',
-      portalId: 'P-BIZCENTRE1',  // Unique portal ID for company clients  
-      subscriptionActive: false,  // Subscription is OFF - will show "Contact Admin" message
-      subscriptionPlan: 'FREE',
-      primaryColor: '#7c3aed',
-      secondaryColor: '#6d28d9',
-      welcomeMessage: 'Welcome to Business Centre Plaza. Please complete your registration to proceed.',
-      termsAndConditions: 'Visitors must be accompanied by their host at all times. All items are subject to security inspection.',
-      requireIdProof: false,
-      requirePhoto: false,
       autoApprove: true,
+      requireGatepassApproval: false, // NO APPROVAL REQUIRED - Direct gatepass (co-working)
+      notifyHost: true,
       isActive: true,
     },
   ];
@@ -283,14 +411,25 @@ async function main() {
     }
   }
   console.log('✅ Created sample companies with QR codes');
-  console.log(`   - RELIABLE: ${baseUrl}/vms/checkin/RELIABLE`);
-  console.log(`   - TECHPARK: ${baseUrl}/vms/checkin/TECHPARK`);
-  console.log(`   - BIZCENTRE: ${baseUrl}/vms/checkin/BIZCENTRE (Auto-approve enabled)`);
   console.log('');
-  console.log('📱 Company Portal URLs (for clients to view their visitors):');
-  console.log(`   - RELIABLE Portal: ${baseUrl}/vms/portal/P-RELIABLE1 (Subscription: ON)`);
-  console.log(`   - TECHPARK Portal: ${baseUrl}/vms/portal/P-TECHPARK1 (Subscription: ON)`);
-  console.log(`   - BIZCENTRE Portal: ${baseUrl}/vms/portal/P-BIZCENTRE1 (Subscription: OFF - shows "Contact Admin")`);
+  console.log('📋 Company Approval Settings:');
+  console.log('   🔒 APPROVAL REQUIRED (visitors must wait for approval):');
+  console.log(`      - RELIABLE: Reliable Group`);
+  console.log(`      - HCL: HCL Technologies`);
+  console.log(`      - GODREJ: Godrej Industries`);
+  console.log(`      - TCE: Tata Consulting Engineering`);
+  console.log(`      - ADANI: Adani Enterprises`);
+  console.log(`      - LUPIN: Lupin Pharmaceuticals`);
+  console.log('');
+  console.log('   🟢 DIRECT ENTRY (visitors get gatepass immediately):');
+  console.log(`      - VODAFONE: Vodafone Idea (NO approval required)`);
+  console.log(`      - YESBANK: Yes Bank (NO approval required)`);
+  console.log(`      - AWFIS: AWFIS Co-working (NO approval required)`);
+  console.log('');
+  console.log('📱 QR Check-in URLs:');
+  for (const company of companies) {
+    console.log(`   ${baseUrl}/vms/checkin/${company.code} - ${company.displayName}`);
+  };
 
   // ================================
   // CREATE USERS WITH COMPANY ASSIGNMENT
@@ -372,57 +511,57 @@ async function main() {
   });
   console.log('✅ Created Reliable Group receptionist (reception@reliablegroup.com / Admin@123)');
 
-  // Create users for TechPark
+  // Create users for Vodafone Idea (No approval required company)
   await prisma.user.upsert({
-    where: { email: 'guard@techpark.com' },
+    where: { email: 'guard@vodafone.com' },
     update: {
       password: hashedPassword,
-      firstName: 'TechPark',
+      firstName: 'Vodafone',
       lastName: 'Security',
       roleId: createdRoles['SECURITY_GUARD'].id,
-      companyId: createdCompanies['TECHPARK'].id,
+      companyId: createdCompanies['VODAFONE'].id,
       isActive: true,
       isApproved: true,
     },
     create: {
       id: uuidv4(),
-      email: 'guard@techpark.com',
+      email: 'guard@vodafone.com',
       password: hashedPassword,
-      firstName: 'TechPark',
+      firstName: 'Vodafone',
       lastName: 'Security',
       roleId: createdRoles['SECURITY_GUARD'].id,
-      companyId: createdCompanies['TECHPARK'].id,
+      companyId: createdCompanies['VODAFONE'].id,
       isActive: true,
       isApproved: true,
     },
   });
-  console.log('✅ Created TechPark guard (guard@techpark.com / Admin@123)');
+  console.log('✅ Created Vodafone guard (guard@vodafone.com / Admin@123) - NO APPROVAL REQUIRED');
 
-  // Create users for Business Centre
+  // Create users for HCL Technologies (Approval required company)
   await prisma.user.upsert({
-    where: { email: 'guard@bizcentre.com' },
+    where: { email: 'guard@hcl.com' },
     update: {
       password: hashedPassword,
-      firstName: 'BizCentre',
+      firstName: 'HCL',
       lastName: 'Security',
       roleId: createdRoles['SECURITY_GUARD'].id,
-      companyId: createdCompanies['BIZCENTRE'].id,
+      companyId: createdCompanies['HCL'].id,
       isActive: true,
       isApproved: true,
     },
     create: {
       id: uuidv4(),
-      email: 'guard@bizcentre.com',
+      email: 'guard@hcl.com',
       password: hashedPassword,
-      firstName: 'BizCentre',
+      firstName: 'HCL',
       lastName: 'Security',
       roleId: createdRoles['SECURITY_GUARD'].id,
-      companyId: createdCompanies['BIZCENTRE'].id,
+      companyId: createdCompanies['HCL'].id,
       isActive: true,
       isApproved: true,
     },
   });
-  console.log('✅ Created BizCentre guard (guard@bizcentre.com / Admin@123)');
+  console.log('✅ Created HCL guard (guard@hcl.com / Admin@123) - APPROVAL REQUIRED');
 
   // Create default system settings
   const settings = [
@@ -453,16 +592,13 @@ async function main() {
   console.log('      guard@reliablegroup.com / Admin@123 (Security Guard)');
   console.log('      reception@reliablegroup.com / Admin@123 (Receptionist)');
   console.log('');
-  console.log('   🏢 TechPark Tower:');
-  console.log('      guard@techpark.com / Admin@123 (Security Guard)');
+  console.log('📋 Approval-Based Gatepass Feature:');
+  console.log('   Companies can be configured to require approval or allow direct entry.');
+  console.log('   - Approval Required: Visitors submit request → Company approves → Gatepass generated');
+  console.log('   - Direct Entry: Visitors submit request → Gatepass generated immediately');
   console.log('');
-  console.log('   🏢 Business Centre (Auto-approve enabled):');
-  console.log('      guard@bizcentre.com / Admin@123 (Security Guard)');
-  console.log('');
-  console.log('📱 QR Check-in URLs:');
-  console.log(`   ${baseUrl}/vms/checkin/RELIABLE`);
-  console.log(`   ${baseUrl}/vms/checkin/TECHPARK`);
-  console.log(`   ${baseUrl}/vms/checkin/BIZCENTRE`);
+  console.log('   Example: Vodafone Idea has approval DISABLED - visitors get direct gatepass');
+  console.log('   Example: HCL Technologies has approval ENABLED - visitors must wait for approval');
 }
 
 main()

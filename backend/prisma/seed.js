@@ -109,6 +109,85 @@ async function main() {
   });
   console.log('✅ Site Engineer role created');
 
+  // VMS Roles
+  const vmsReceptionRole = await prisma.role.upsert({
+    where: { name: 'VMS_RECEPTION' },
+    update: {},
+    create: {
+      name: 'VMS_RECEPTION',
+      displayName: 'VMS Reception',
+      description: 'Reception staff - can view all visitors, approve/reject gatepasses, manage check-ins',
+      isSystem: true,
+      permissions: JSON.stringify([
+        'dashboard.view',
+        'vms.dashboard.view',
+        'vms.visitors.view', 'vms.visitors.view_all', 'vms.visitors.create', 'vms.visitors.edit',
+        'vms.gatepasses.view', 'vms.gatepasses.view_all', 'vms.gatepasses.create', 'vms.gatepasses.approve', 'vms.gatepasses.reject',
+        'vms.checkin.view', 'vms.checkin.manage',
+        'vms.preapproved.view',
+        'vms.reports.view',
+      ]),
+      uiConfig: JSON.stringify({
+        theme: 'default',
+        sidebarColor: 'teal',
+        accentColor: 'teal',
+        showVMSModule: true,
+      }),
+    },
+  });
+  console.log('✅ VMS Reception role created');
+
+  const vmsGuardRole = await prisma.role.upsert({
+    where: { name: 'VMS_GUARD' },
+    update: {},
+    create: {
+      name: 'VMS_GUARD',
+      displayName: 'VMS Guard',
+      description: 'Security guard - can view visitors, verify gatepasses, manage check-ins/outs',
+      isSystem: true,
+      permissions: JSON.stringify([
+        'dashboard.view',
+        'vms.dashboard.view',
+        'vms.visitors.view', 'vms.visitors.view_all',
+        'vms.gatepasses.view', 'vms.gatepasses.view_all', 'vms.gatepasses.verify',
+        'vms.checkin.view', 'vms.checkin.manage',
+        'vms.preapproved.view',
+      ]),
+      uiConfig: JSON.stringify({
+        theme: 'default',
+        sidebarColor: 'slate',
+        accentColor: 'blue',
+        showVMSModule: true,
+      }),
+    },
+  });
+  console.log('✅ VMS Guard role created');
+
+  const vmsCompanyUserRole = await prisma.role.upsert({
+    where: { name: 'VMS_COMPANY_USER' },
+    update: {},
+    create: {
+      name: 'VMS_COMPANY_USER',
+      displayName: 'VMS Company User',
+      description: 'Company staff - can view only their company visitors, create pre-approvals',
+      isSystem: true,
+      permissions: JSON.stringify([
+        'dashboard.view',
+        'vms.dashboard.view',
+        'vms.visitors.view', 'vms.visitors.view_own_company',
+        'vms.gatepasses.view', 'vms.gatepasses.view_own_company', 'vms.gatepasses.approve_own_company',
+        'vms.preapproved.view', 'vms.preapproved.create',
+      ]),
+      uiConfig: JSON.stringify({
+        theme: 'default',
+        sidebarColor: 'purple',
+        accentColor: 'purple',
+        showVMSModule: true,
+      }),
+    },
+  });
+  console.log('✅ VMS Company User role created');
+
   // Create users with roles
   console.log('Creating users...');
 
@@ -362,6 +441,105 @@ async function main() {
   }
   console.log('✅ Sample meter readings created');
 
+  // ==========================================
+  // VMS Companies and Users
+  // ==========================================
+  console.log('Creating VMS companies...');
+
+  // Create VMS Companies with different approval settings
+  const vmsCompanies = [
+    {
+      name: 'Vodafone Idea',
+      displayName: 'Vodafone Idea',
+      description: 'Telecom company - Direct entry without approval',
+      requireApproval: false,  // Direct entry - no approval needed
+      autoApproveVisitors: true,
+      notifyOnVisitor: true,
+      isActive: true,
+    },
+    {
+      name: 'HCL Technologies',
+      displayName: 'HCL Technologies',
+      description: 'IT Services - Approval required for visitors',
+      requireApproval: true,  // Approval required
+      autoApproveVisitors: false,
+      notifyOnVisitor: true,
+      isActive: true,
+    },
+    {
+      name: 'Godrej',
+      displayName: 'Godrej',
+      description: 'Conglomerate - Approval required',
+      requireApproval: true,
+      autoApproveVisitors: false,
+      notifyOnVisitor: true,
+      isActive: true,
+    },
+    {
+      name: 'Yes Bank',
+      displayName: 'Yes Bank',
+      description: 'Banking - Strict approval process',
+      requireApproval: true,
+      autoApproveVisitors: false,
+      notifyOnVisitor: true,
+      isActive: true,
+    },
+    {
+      name: 'Reliance General Insurance',
+      displayName: 'Reliance General Insurance',
+      description: 'Insurance - Direct entry allowed',
+      requireApproval: false,
+      autoApproveVisitors: true,
+      notifyOnVisitor: false,
+      isActive: true,
+    },
+  ];
+
+  for (const company of vmsCompanies) {
+    await prisma.vMSCompany.upsert({
+      where: { name: company.name },
+      update: company,
+      create: company,
+    });
+  }
+  console.log('✅ VMS companies created');
+
+  // Create VMS Reception user
+  const receptionPassword = await bcrypt.hash('reception123', 10);
+  const receptionUser = await prisma.user.upsert({
+    where: { email: 'reception@reliablegroup.com' },
+    update: { roleId: vmsReceptionRole.id, isApproved: true, approvedAt: new Date() },
+    create: {
+      email: 'reception@reliablegroup.com',
+      password: receptionPassword,
+      firstName: 'Reception',
+      lastName: 'Desk',
+      roleId: vmsReceptionRole.id,
+      department: 'Front Desk',
+      isApproved: true,
+      approvedAt: new Date(),
+    },
+  });
+  console.log('✅ VMS Reception user created:', receptionUser.email);
+
+  // Create VMS Guard user
+  const guardPassword = await bcrypt.hash('guard123', 10);
+  const guardUser = await prisma.user.upsert({
+    where: { email: 'guard@reliablegroup.com' },
+    update: { roleId: vmsGuardRole.id, isApproved: true, approvedAt: new Date() },
+    create: {
+      email: 'guard@reliablegroup.com',
+      password: guardPassword,
+      firstName: 'Security',
+      lastName: 'Guard',
+      roleId: vmsGuardRole.id,
+      department: 'Security',
+      isApproved: true,
+      approvedAt: new Date(),
+    },
+  });
+  console.log('✅ VMS Guard user created:', guardUser.email);
+
   console.log('');
   console.log('🎉 Database seeding completed!');
   console.log('');
@@ -370,6 +548,17 @@ async function main() {
   console.log('   Fireman:        fireman@permitmanager.com / fireman123');
   console.log('   Requestor:      requestor@permitmanager.com / user123');
   console.log('   Site Engineer:  engineer@permitmanager.com / engineer123');
+  console.log('');
+  console.log('📋 VMS Credentials:');
+  console.log('   Reception:      reception@reliablegroup.com / reception123');
+  console.log('   Guard:          guard@reliablegroup.com / guard123');
+  console.log('');
+  console.log('🏢 VMS Companies (Approval Settings):');
+  console.log('   Vodafone Idea - Direct entry (no approval needed)');
+  console.log('   HCL Technologies - Approval required');
+  console.log('   Godrej - Approval required');
+  console.log('   Yes Bank - Approval required');
+  console.log('   Reliance General Insurance - Direct entry (no approval needed)');
   console.log('');
 }
 

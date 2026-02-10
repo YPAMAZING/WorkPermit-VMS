@@ -6,6 +6,7 @@ const router = express.Router();
 // Import route modules
 const authRoutes = require('./auth.routes');
 const companyRoutes = require('./company.routes');
+const companySettingsRoutes = require('./company-settings.routes');
 const checkinRoutes = require('./checkin.routes');
 const visitorRoutes = require('./visitor.routes');
 const gatepassRoutes = require('./gatepass.routes');
@@ -33,6 +34,9 @@ router.use('/auth', authRoutes);
 
 // Company management (multi-tenant)
 router.use('/companies', companyRoutes);
+
+// Company settings (approval settings, etc.)
+router.use('/company-settings', companySettingsRoutes);
 
 // Visitor management
 router.use('/visitors', visitorRoutes);

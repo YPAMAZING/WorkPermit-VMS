@@ -226,3 +226,159 @@ model AnalyticsCache {
   @@index([expiresAt])
   @@map("analytics_cache")
 }
+
+// ==========================================
+// VMS (Visitor Management System) Models
+// ==========================================
+
+model VMSCompany {
+  id                  String   @id @default(uuid()) @db.VarChar(36)
+  name                String   @unique @db.VarChar(255)
+  displayName         String   @db.VarChar(255)
+  description         String?  @db.Text
+  logo                String?  @db.LongText
+  contactPerson       String?  @db.VarChar(255)
+  contactEmail        String?  @db.VarChar(255)
+  contactPhone        String?  @db.VarChar(20)
+  address             String?  @db.Text
+  
+  // Approval Settings
+  requireApproval     Boolean  @default(true)  // If false, visitors can directly get gatepass without approval
+  autoApproveVisitors Boolean  @default(false) // If true, visitors are auto-approved
+  
+  // Notification Settings
+  notifyOnVisitor     Boolean  @default(true)
+  notificationEmails  String?  @db.Text  // JSON array of emails
+  
+  isActive            Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  
+  visitors            VMSVisitor[]
+  gatepasses          VMSGatepass[]
+  companyUsers        VMSCompanyUser[]
+  
+  @@index([name])
+  @@map("vms_companies")
+}
+
+model VMSCompanyUser {
+  id          String   @id @default(uuid()) @db.VarChar(36)
+  userId      String   @db.VarChar(36)  // Reference to main User table
+  companyId   String   @db.VarChar(36)
+  role        String   @default("VIEWER") @db.VarChar(50)  // ADMIN, APPROVER, VIEWER
+  canApprove  Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  company     VMSCompany @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, companyId])
+  @@index([userId])
+  @@index([companyId])
+  @@map("vms_company_users")
+}
+
+model VMSVisitor {
+  id              String   @id @default(uuid()) @db.VarChar(36)
+  visitorName     String   @db.VarChar(255)
+  phone           String   @db.VarChar(20)
+  email           String?  @db.VarChar(255)
+  companyFrom     String?  @db.VarChar(255)
+  companyToVisit  String   @db.VarChar(255)  // Company name from dropdown
+  companyId       String?  @db.VarChar(36)   // Reference to VMSCompany if exists
+  personToMeet    String?  @db.VarChar(255)
+  purpose         String   @db.VarChar(100)
+  idProofType     String   @db.VarChar(50)
+  idProofNumber   String   @db.VarChar(100)
+  idDocumentImage String?  @db.LongText
+  photo           String?  @db.LongText
+  vehicleNumber   String?  @db.VarChar(50)
+  numberOfVisitors Int     @default(1)
+  
+  // Status
+  status          String   @default("PENDING") @db.VarChar(20)  // PENDING, APPROVED, REJECTED, CHECKED_IN, CHECKED_OUT
+  approvedBy      String?  @db.VarChar(36)
+  approvedAt      DateTime?
+  rejectionReason String?  @db.Text
+  
+  // Check-in/out
+  checkInTime     DateTime?
+  checkOutTime    DateTime?
+  
+  // Entry type
+  entryType       String   @default("WALK_IN") @db.VarChar(20)  // WALK_IN, PRE_APPROVED
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  company         VMSCompany? @relation(fields: [companyId], references: [id])
+  gatepass        VMSGatepass?
+  
+  @@index([phone])
+  @@index([companyId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("vms_visitors")
+}
+
+model VMSGatepass {
+  id              String   @id @default(uuid()) @db.VarChar(36)
+  gatepassNumber  String   @unique @db.VarChar(50)
+  visitorId       String   @unique @db.VarChar(36)
+  companyId       String?  @db.VarChar(36)
+  
+  validFrom       DateTime @default(now())
+  validUntil      DateTime
+  
+  // Status
+  status          String   @default("ACTIVE") @db.VarChar(20)  // ACTIVE, USED, EXPIRED, CANCELLED
+  usedAt          DateTime?
+  cancelledAt     DateTime?
+  cancelledBy     String?  @db.VarChar(36)
+  cancellationReason String? @db.Text
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  visitor         VMSVisitor @relation(fields: [visitorId], references: [id], onDelete: Cascade)
+  company         VMSCompany? @relation(fields: [companyId], references: [id])
+  
+  @@index([gatepassNumber])
+  @@index([companyId])
+  @@index([status])
+  @@map("vms_gatepasses")
+}
+
+model VMSPreApproval {
+  id              String   @id @default(uuid()) @db.VarChar(36)
+  visitorName     String   @db.VarChar(255)
+  phone           String   @db.VarChar(20)
+  email           String?  @db.VarChar(255)
+  companyFrom     String?  @db.VarChar(255)
+  companyId       String   @db.VarChar(36)
+  purpose         String   @db.VarChar(100)
+  
+  validFrom       DateTime
+  validUntil      DateTime
+  
+  // Created by company user
+  createdBy       String   @db.VarChar(36)
+  
+  // Status
+  status          String   @default("ACTIVE") @db.VarChar(20)  // ACTIVE, USED, EXPIRED, CANCELLED
+  usedAt          DateTime?
+  
+  // Sharing
+  sharedVia       String?  @db.VarChar(50)  // WHATSAPP, EMAIL, SMS
+  sharedAt        DateTime?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([companyId])
+  @@index([phone])
+  @@index([status])
+  @@map("vms_pre_approvals")
+}

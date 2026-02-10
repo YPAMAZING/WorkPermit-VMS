@@ -20,7 +20,7 @@ import {
   X
 } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { vmsAPI } from '../../services/vmsApi'
+import { vmsAPI, companySettingsApi } from '../../services/vmsApi'
 
 const VisitorRegister = () => {
   const navigate = useNavigate()
@@ -40,6 +40,10 @@ const VisitorRegister = () => {
   // ID Document camera modal state
   const [showIdDocCamera, setShowIdDocCamera] = useState(false)
   const [idDocCameraActive, setIdDocCameraActive] = useState(false)
+  
+  // Company settings for approval-based flow
+  const [companySettings, setCompanySettings] = useState(null)
+  const [loadingCompanySettings, setLoadingCompanySettings] = useState(false)
   
   const [formData, setFormData] = useState({
     visitorName: '',
@@ -133,11 +137,37 @@ const VisitorRegister = () => {
     { value: 'passport', label: 'Passport' },
   ]
 
-  const handleChange = (e) => {
+  const handleChange = async (e) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }))
+    }
+    
+    // When company is selected, fetch company settings
+    if (name === 'companyToVisit' && value && value !== 'Other') {
+      fetchCompanySettings(value)
+    }
+  }
+  
+  // Fetch company settings to check if approval is required
+  const fetchCompanySettings = async (companyName) => {
+    setLoadingCompanySettings(true)
+    try {
+      const response = await companySettingsApi.getByName(companyName)
+      if (response.data.success) {
+        setCompanySettings(response.data.settings)
+        console.log('Company settings:', response.data.settings)
+      }
+    } catch (error) {
+      console.error('Error fetching company settings:', error)
+      // Use default settings if API fails
+      setCompanySettings({
+        requireGatepassApproval: true,
+        autoApprove: false
+      })
+    } finally {
+      setLoadingCompanySettings(false)
     }
   }
 
@@ -271,40 +301,84 @@ const VisitorRegister = () => {
   const handleGenerateGatepass = async () => {
     setLoading(true)
     try {
+      // Check if company requires approval
+      const requiresApproval = companySettings?.requireGatepassApproval !== false
+      
       const payload = {
         ...formData,
         photo: capturedPhoto,
         idDocumentImage: idDocumentImage,
         entryType: 'WALK_IN',
-        status: 'CHECKED_IN',
+        // If approval required, status is PENDING; otherwise, CHECKED_IN
+        status: requiresApproval ? 'PENDING_APPROVAL' : 'CHECKED_IN',
         checkInTime: new Date().toISOString(),
+        requiresApproval: requiresApproval,
       }
 
       // Call API to create visitor entry
       const response = await vmsAPI.createVisitor(payload)
       
       if (response.data.success) {
-        setGatepass(response.data.gatepass)
-        setStep(3)
-        toast.success('Gatepass generated successfully!')
+        if (requiresApproval && !response.data.gatepass) {
+          // Approval required - show pending screen
+          setGatepass({
+            status: 'PENDING_APPROVAL',
+            requestNumber: response.data.requestNumber || `REQ-${Date.now().toString().slice(-8)}`,
+            visitorName: formData.visitorName,
+            phone: formData.phone,
+            companyToVisit: formData.companyToVisit,
+            personToMeet: formData.personToMeet,
+            purpose: formData.purpose,
+            submittedAt: new Date().toISOString(),
+            photo: capturedPhoto,
+          })
+          setStep(3)
+          toast.success('Request submitted! Please wait for approval.')
+        } else {
+          setGatepass(response.data.gatepass)
+          setStep(3)
+          toast.success('Gatepass generated successfully!')
+        }
       }
     } catch (error) {
       console.error('Error generating gatepass:', error)
-      // For demo, create mock gatepass
-      const mockGatepass = {
-        gatepassNumber: `GP-${Date.now().toString().slice(-8)}`,
-        visitorName: formData.visitorName,
-        phone: formData.phone,
-        companyToVisit: formData.companyToVisit,
-        personToMeet: formData.personToMeet,
-        purpose: formData.purpose,
-        checkInTime: new Date().toISOString(),
-        validUntil: new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString(), // 8 hours
-        photo: capturedPhoto,
+      
+      // Check if company requires approval for mock data
+      const requiresApproval = companySettings?.requireGatepassApproval !== false
+      
+      if (requiresApproval) {
+        // Show pending approval screen
+        setGatepass({
+          status: 'PENDING_APPROVAL',
+          requestNumber: `REQ-${Date.now().toString().slice(-8)}`,
+          visitorName: formData.visitorName,
+          phone: formData.phone,
+          companyToVisit: formData.companyToVisit,
+          personToMeet: formData.personToMeet,
+          purpose: formData.purpose,
+          submittedAt: new Date().toISOString(),
+          photo: capturedPhoto,
+        })
+        setStep(3)
+        toast.success('Request submitted! Please wait for approval.')
+      } else {
+        // Direct gatepass (like Vodafone)
+        const mockGatepass = {
+          gatepassNumber: `GP-${Date.now().toString().slice(-8)}`,
+          visitorName: formData.visitorName,
+          phone: formData.phone,
+          companyToVisit: formData.companyToVisit,
+          personToMeet: formData.personToMeet,
+          purpose: formData.purpose,
+          checkInTime: new Date().toISOString(),
+          validUntil: new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString(), // 8 hours
+          photo: capturedPhoto,
+          status: 'CHECKED_IN',
+        }
+        setGatepass(mockGatepass)
+        setStep(3)
+        toast.success('Gatepass generated successfully!')
       }
-      setGatepass(mockGatepass)
-      setStep(3)
-      toast.success('Gatepass generated successfully!')
     } finally {
       setLoading(false)
     }
@@ -835,95 +909,192 @@ const VisitorRegister = () => {
           </div>
         )}
 
-        {/* Step 3: Success / Gatepass */}
+        {/* Step 3: Success / Gatepass or Pending Approval */}
         {step === 3 && gatepass && (
           <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-            {/* Success Header */}
-            <div className="bg-gradient-to-r from-emerald-500 to-teal-600 p-6 text-center text-white">
-              <CheckCircle className="w-16 h-16 mx-auto mb-3" />
-              <h2 className="text-2xl font-bold">Gatepass Generated!</h2>
-              <p className="opacity-90 mt-1">Please show this to security</p>
-            </div>
+            {/* Conditional Header based on status */}
+            {gatepass.status === 'PENDING_APPROVAL' ? (
+              // PENDING APPROVAL HEADER
+              <div className="bg-gradient-to-r from-amber-500 to-orange-500 p-6 text-center text-white">
+                <Clock className="w-16 h-16 mx-auto mb-3" />
+                <h2 className="text-2xl font-bold">Request Submitted!</h2>
+                <p className="opacity-90 mt-1">Your request is pending approval</p>
+              </div>
+            ) : (
+              // GATEPASS GENERATED HEADER
+              <div className="bg-gradient-to-r from-emerald-500 to-teal-600 p-6 text-center text-white">
+                <CheckCircle className="w-16 h-16 mx-auto mb-3" />
+                <h2 className="text-2xl font-bold">Gatepass Generated!</h2>
+                <p className="opacity-90 mt-1">Please show this to security</p>
+              </div>
+            )}
 
-            {/* Gatepass Card */}
+            {/* Card Content */}
             <div className="p-6">
-              <div className="border-2 border-dashed border-teal-200 rounded-xl p-6">
-                {/* Header */}
-                <div className="flex items-center justify-between mb-4 pb-4 border-b">
-                  <div className="flex items-center gap-3">
-                    <img src="/logo.png" alt="Logo" className="w-10 h-10" />
-                    <div>
-                      <h3 className="font-bold text-gray-800">Reliable Group</h3>
-                      <p className="text-xs text-gray-500">Visitor Gatepass</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs text-gray-500">Gatepass No.</p>
-                    <p className="font-mono font-bold text-teal-600">{gatepass.gatepassNumber}</p>
-                  </div>
-                </div>
-
-                {/* Photo & Details */}
-                <div className="flex gap-4 mb-4">
-                  <div className="w-24 h-24 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
-                    {gatepass.photo && gatepass.photo !== 'no-photo' ? (
-                      <img src={gatepass.photo} alt="Visitor" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-400">
-                        <User className="w-12 h-12" />
+              {gatepass.status === 'PENDING_APPROVAL' ? (
+                // PENDING APPROVAL CONTENT
+                <div className="border-2 border-dashed border-amber-200 rounded-xl p-6">
+                  {/* Header */}
+                  <div className="flex items-center justify-between mb-4 pb-4 border-b">
+                    <div className="flex items-center gap-3">
+                      <img src="/logo.png" alt="Logo" className="w-10 h-10" />
+                      <div>
+                        <h3 className="font-bold text-gray-800">Reliable Group</h3>
+                        <p className="text-xs text-gray-500">Visitor Request</p>
                       </div>
-                    )}
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-gray-500">Request No.</p>
+                      <p className="font-mono font-bold text-amber-600">{gatepass.requestNumber}</p>
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <h4 className="font-bold text-lg text-gray-800">{gatepass.visitorName}</h4>
-                    <p className="text-sm text-gray-600">{gatepass.phone}</p>
-                    <div className="mt-2 inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 px-2 py-1 rounded text-xs font-medium">
-                      <BadgeCheck className="w-3 h-3" />
-                      CHECKED IN
+
+                  {/* Photo & Details */}
+                  <div className="flex gap-4 mb-4">
+                    <div className="w-24 h-24 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+                      {gatepass.photo && gatepass.photo !== 'no-photo' ? (
+                        <img src={gatepass.photo} alt="Visitor" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-gray-400">
+                          <User className="w-12 h-12" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-bold text-lg text-gray-800">{gatepass.visitorName}</h4>
+                      <p className="text-sm text-gray-600">{gatepass.phone}</p>
+                      <div className="mt-2 inline-flex items-center gap-1 bg-amber-100 text-amber-700 px-2 py-1 rounded text-xs font-medium">
+                        <Clock className="w-3 h-3" />
+                        PENDING APPROVAL
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Visit Details */}
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <p className="text-xs text-gray-500 mb-1">Visiting</p>
+                      <p className="font-medium text-gray-800">{gatepass.companyToVisit}</p>
+                    </div>
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <p className="text-xs text-gray-500 mb-1">Meeting</p>
+                      <p className="font-medium text-gray-800">{gatepass.personToMeet || 'Not specified'}</p>
+                    </div>
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <p className="text-xs text-gray-500 mb-1">Purpose</p>
+                      <p className="font-medium text-gray-800">{gatepass.purpose}</p>
+                    </div>
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <p className="text-xs text-gray-500 mb-1">Submitted At</p>
+                      <p className="font-medium text-gray-800">
+                        {new Date(gatepass.submittedAt).toLocaleTimeString('en-IN', {
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Waiting for Approval Notice */}
+                  <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <Clock className="w-5 h-5 text-amber-600" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-amber-800">Waiting for Approval</p>
+                        <p className="text-sm text-amber-700 mt-1">
+                          Your request has been submitted to {gatepass.companyToVisit}. 
+                          Please wait for their approval. You will be notified once approved.
+                        </p>
+                        <p className="text-xs text-amber-600 mt-2">
+                          Note: Please keep this request number for reference.
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
+              ) : (
+                // GATEPASS CONTENT (Direct Entry - like Vodafone)
+                <div className="border-2 border-dashed border-teal-200 rounded-xl p-6">
+                  {/* Header */}
+                  <div className="flex items-center justify-between mb-4 pb-4 border-b">
+                    <div className="flex items-center gap-3">
+                      <img src="/logo.png" alt="Logo" className="w-10 h-10" />
+                      <div>
+                        <h3 className="font-bold text-gray-800">Reliable Group</h3>
+                        <p className="text-xs text-gray-500">Visitor Gatepass</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-gray-500">Gatepass No.</p>
+                      <p className="font-mono font-bold text-teal-600">{gatepass.gatepassNumber}</p>
+                    </div>
+                  </div>
 
-                {/* Visit Details */}
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div className="bg-gray-50 p-3 rounded-lg">
-                    <p className="text-xs text-gray-500 mb-1">Visiting</p>
-                    <p className="font-medium text-gray-800">{gatepass.companyToVisit}</p>
+                  {/* Photo & Details */}
+                  <div className="flex gap-4 mb-4">
+                    <div className="w-24 h-24 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+                      {gatepass.photo && gatepass.photo !== 'no-photo' ? (
+                        <img src={gatepass.photo} alt="Visitor" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-gray-400">
+                          <User className="w-12 h-12" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-bold text-lg text-gray-800">{gatepass.visitorName}</h4>
+                      <p className="text-sm text-gray-600">{gatepass.phone}</p>
+                      <div className="mt-2 inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 px-2 py-1 rounded text-xs font-medium">
+                        <BadgeCheck className="w-3 h-3" />
+                        CHECKED IN
+                      </div>
+                    </div>
                   </div>
-                  <div className="bg-gray-50 p-3 rounded-lg">
-                    <p className="text-xs text-gray-500 mb-1">Meeting</p>
-                    <p className="font-medium text-gray-800">{gatepass.personToMeet}</p>
+
+                  {/* Visit Details */}
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <p className="text-xs text-gray-500 mb-1">Visiting</p>
+                      <p className="font-medium text-gray-800">{gatepass.companyToVisit}</p>
+                    </div>
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <p className="text-xs text-gray-500 mb-1">Meeting</p>
+                      <p className="font-medium text-gray-800">{gatepass.personToMeet || 'Not specified'}</p>
+                    </div>
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <p className="text-xs text-gray-500 mb-1">Purpose</p>
+                      <p className="font-medium text-gray-800">{gatepass.purpose}</p>
+                    </div>
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <p className="text-xs text-gray-500 mb-1">Check-in Time</p>
+                      <p className="font-medium text-gray-800">
+                        {new Date(gatepass.checkInTime).toLocaleTimeString('en-IN', {
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </p>
+                    </div>
                   </div>
-                  <div className="bg-gray-50 p-3 rounded-lg">
-                    <p className="text-xs text-gray-500 mb-1">Purpose</p>
-                    <p className="font-medium text-gray-800">{gatepass.purpose}</p>
-                  </div>
-                  <div className="bg-gray-50 p-3 rounded-lg">
-                    <p className="text-xs text-gray-500 mb-1">Check-in Time</p>
-                    <p className="font-medium text-gray-800">
-                      {new Date(gatepass.checkInTime).toLocaleTimeString('en-IN', {
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </p>
+
+                  {/* Valid Until */}
+                  <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-2">
+                    <Clock className="w-5 h-5 text-amber-600" />
+                    <div>
+                      <p className="text-xs text-amber-700">Valid Until</p>
+                      <p className="font-medium text-amber-800">
+                        {new Date(gatepass.validUntil).toLocaleString('en-IN', {
+                          day: 'numeric',
+                          month: 'short',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </p>
+                    </div>
                   </div>
                 </div>
-
-                {/* Valid Until */}
-                <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-2">
-                  <Clock className="w-5 h-5 text-amber-600" />
-                  <div>
-                    <p className="text-xs text-amber-700">Valid Until</p>
-                    <p className="font-medium text-amber-800">
-                      {new Date(gatepass.validUntil).toLocaleString('en-IN', {
-                        day: 'numeric',
-                        month: 'short',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </p>
-                  </div>
-                </div>
+              )}
               </div>
 
               {/* Actions */}
