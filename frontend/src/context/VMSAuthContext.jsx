@@ -80,56 +80,9 @@ export const VMSAuthProvider = ({ children }) => {
       }
 
       try {
-        // Try VMS auth first, then fallback to main auth
-        try {
-          const response = await vmsApi.get('/auth/me')
-          setUser(response.data)
-        } catch (vmsErr) {
-          // Fallback to main Work Permit auth
-          const response = await mainApi.get('/auth/me')
-          const userData = response.data.user || response.data
-          // Add VMS permissions for Work Permit users
-          setUser({
-            ...userData,
-            permissions: [
-              'vms.dashboard.view',
-              'vms.visitors.view', 'vms.visitors.create', 'vms.visitors.edit',
-              'vms.gatepasses.view', 'vms.gatepasses.create', 'vms.gatepasses.edit',
-              'vms.checkin.view', 'vms.checkin.approve', 'vms.checkin.manage',
-              'vms.preapproved.view', 'vms.preapproved.create',
-              'vms.blacklist.view',
-              'vms.reports.view',
-            ]
-          })
-        }
-      } catch (err) {
-        console.error('Failed to load VMS user:', err)
-        removeToken()
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadUser()
-  }, [])
-
-  // Login - Try VMS auth first, then fallback to main Work Permit auth
-  const login = async (email, password) => {
-    try {
-      setError(null)
-      
-      // Try VMS login first
-      try {
-        const response = await vmsApi.post('/auth/login', { email, password })
-        const { token, user: userData } = response.data
-        setToken(token)
-        setUser(userData)
-        return { success: true }
-      } catch (vmsErr) {
-        // Fallback to main Work Permit auth
-        const response = await mainApi.post('/auth/login', { email, password })
-        const { token, user: userData } = response.data
-        setToken(token)
+        // Use main Work Permit auth
+        const response = await mainApi.get('/auth/me')
+        const userData = response.data.user || response.data
         // Add VMS permissions for Work Permit users
         setUser({
           ...userData,
@@ -143,10 +96,42 @@ export const VMSAuthProvider = ({ children }) => {
             'vms.reports.view',
           ]
         })
-        return { success: true }
+      } catch (err) {
+        console.error('Failed to load VMS user:', err)
+        removeToken()
+      } finally {
+        setLoading(false)
       }
+    }
+
+    loadUser()
+  }, [])
+
+  // Login - Use main Work Permit auth directly
+  const login = async (email, password) => {
+    try {
+      setError(null)
+      
+      // Use main Work Permit authentication
+      const response = await mainApi.post('/auth/login', { email, password })
+      const { token, user: userData } = response.data
+      setToken(token)
+      // Add VMS permissions for Work Permit users
+      setUser({
+        ...userData,
+        permissions: [
+          'vms.dashboard.view',
+          'vms.visitors.view', 'vms.visitors.create', 'vms.visitors.edit',
+          'vms.gatepasses.view', 'vms.gatepasses.create', 'vms.gatepasses.edit',
+          'vms.checkin.view', 'vms.checkin.approve', 'vms.checkin.manage',
+          'vms.preapproved.view', 'vms.preapproved.create',
+          'vms.blacklist.view',
+          'vms.reports.view',
+        ]
+      })
+      return { success: true }
     } catch (err) {
-      const message = err.response?.data?.message || 'Login failed'
+      const message = err.response?.data?.message || 'Login failed. Please check your credentials.'
       setError(message)
       return { success: false, error: message }
     }
