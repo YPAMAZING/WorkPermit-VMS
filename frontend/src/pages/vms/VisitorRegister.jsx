@@ -15,9 +15,9 @@ import {
   BadgeCheck,
   Loader2,
   AlertCircle,
-
   Image,
-  RefreshCw
+  RefreshCw,
+  X
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { vmsAPI } from '../../services/vmsApi'
@@ -26,6 +26,8 @@ const VisitorRegister = () => {
   const navigate = useNavigate()
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
+  const idDocVideoRef = useRef(null)
+  const idDocCanvasRef = useRef(null)
 
   const idDocInputRef = useRef(null)
   const [step, setStep] = useState(1) // 1: Form, 2: Photo, 3: Success
@@ -34,6 +36,10 @@ const VisitorRegister = () => {
   const [capturedPhoto, setCapturedPhoto] = useState(null)
   const [idDocumentImage, setIdDocumentImage] = useState(null)
   const [gatepass, setGatepass] = useState(null)
+  
+  // ID Document camera modal state
+  const [showIdDocCamera, setShowIdDocCamera] = useState(false)
+  const [idDocCameraActive, setIdDocCameraActive] = useState(false)
   
   const [formData, setFormData] = useState({
     visitorName: '',
@@ -161,9 +167,50 @@ const VisitorRegister = () => {
       const reader = new FileReader()
       reader.onloadend = () => {
         setIdDocumentImage(reader.result)
+        setErrors(prev => ({ ...prev, idDocument: '' }))
         toast.success('ID document uploaded!')
       }
       reader.readAsDataURL(file)
+    }
+  }
+
+  // ID Document Camera Functions
+  const startIdDocCamera = async () => {
+    setShowIdDocCamera(true)
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: 'environment', width: 1280, height: 720 } 
+      })
+      if (idDocVideoRef.current) {
+        idDocVideoRef.current.srcObject = stream
+        setIdDocCameraActive(true)
+      }
+    } catch (err) {
+      console.error('Camera error:', err)
+      toast.error('Unable to access camera. Please allow camera permission or use Upload option.')
+      setShowIdDocCamera(false)
+    }
+  }
+
+  const stopIdDocCamera = () => {
+    if (idDocVideoRef.current && idDocVideoRef.current.srcObject) {
+      idDocVideoRef.current.srcObject.getTracks().forEach(track => track.stop())
+      setIdDocCameraActive(false)
+    }
+    setShowIdDocCamera(false)
+  }
+
+  const captureIdDocument = () => {
+    if (idDocVideoRef.current && idDocCanvasRef.current) {
+      const context = idDocCanvasRef.current.getContext('2d')
+      idDocCanvasRef.current.width = idDocVideoRef.current.videoWidth
+      idDocCanvasRef.current.height = idDocVideoRef.current.videoHeight
+      context.drawImage(idDocVideoRef.current, 0, 0)
+      const photoData = idDocCanvasRef.current.toDataURL('image/jpeg', 0.9)
+      setIdDocumentImage(photoData)
+      setErrors(prev => ({ ...prev, idDocument: '' }))
+      stopIdDocCamera()
+      toast.success('ID document captured!')
     }
   }
 
@@ -219,11 +266,69 @@ const VisitorRegister = () => {
   useEffect(() => {
     return () => {
       stopCamera()
+      stopIdDocCamera()
     }
   }, [])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-teal-900 to-slate-900">
+      {/* ID Document Camera Modal */}
+      {showIdDocCamera && (
+        <div className="fixed inset-0 bg-black/90 z-50 flex flex-col">
+          {/* Header */}
+          <div className="flex items-center justify-between p-4 bg-black/50">
+            <div className="text-white">
+              <h3 className="font-bold text-lg">Capture ID Document</h3>
+              <p className="text-sm text-gray-300">Position your ID card within the frame</p>
+            </div>
+            <button
+              onClick={stopIdDocCamera}
+              className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-white hover:bg-white/30"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+          
+          {/* Camera View */}
+          <div className="flex-1 flex items-center justify-center p-4">
+            <div className="relative w-full max-w-2xl aspect-[4/3] bg-gray-900 rounded-xl overflow-hidden">
+              <video
+                ref={idDocVideoRef}
+                autoPlay
+                playsInline
+                muted
+                className="w-full h-full object-cover"
+              />
+              {!idDocCameraActive && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Loader2 className="w-12 h-12 text-white animate-spin" />
+                </div>
+              )}
+              {/* Guide Frame */}
+              <div className="absolute inset-4 border-2 border-dashed border-white/50 rounded-lg pointer-events-none">
+                <div className="absolute top-2 left-2 w-8 h-8 border-t-4 border-l-4 border-teal-400 rounded-tl-lg" />
+                <div className="absolute top-2 right-2 w-8 h-8 border-t-4 border-r-4 border-teal-400 rounded-tr-lg" />
+                <div className="absolute bottom-2 left-2 w-8 h-8 border-b-4 border-l-4 border-teal-400 rounded-bl-lg" />
+                <div className="absolute bottom-2 right-2 w-8 h-8 border-b-4 border-r-4 border-teal-400 rounded-br-lg" />
+              </div>
+            </div>
+            <canvas ref={idDocCanvasRef} className="hidden" />
+          </div>
+          
+          {/* Capture Button */}
+          <div className="p-6 bg-black/50">
+            <button
+              onClick={captureIdDocument}
+              disabled={!idDocCameraActive}
+              className="w-full max-w-md mx-auto block bg-teal-600 text-white py-4 rounded-xl font-bold text-lg hover:bg-teal-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-3"
+            >
+              <Camera className="w-6 h-6" />
+              Capture Document
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <header className="p-4 md:p-6">
         <div className="flex items-center justify-between max-w-4xl mx-auto">
@@ -499,7 +604,7 @@ const VisitorRegister = () => {
                           <div className="flex gap-2 mt-2">
                             <button
                               type="button"
-                              onClick={() => idDocInputRef.current?.click()}
+                              onClick={startIdDocCamera}
                               className="text-xs bg-teal-600 text-white px-3 py-1.5 rounded-lg hover:bg-teal-700 flex items-center gap-1"
                             >
                               <Camera className="w-3 h-3" />
@@ -522,10 +627,10 @@ const VisitorRegister = () => {
                           Aadhaar Card, PAN Card, Driving License, Voter ID, Passport
                         </p>
                         <div className="flex gap-3 w-full max-w-md">
-                          {/* Capture Button */}
+                          {/* Capture Button - Opens Real Camera */}
                           <button
                             type="button"
-                            onClick={() => idDocInputRef.current?.click()}
+                            onClick={startIdDocCamera}
                             className={`flex-1 py-4 rounded-xl font-semibold flex flex-col items-center gap-2 transition-all ${
                               errors.idDocument 
                                 ? 'bg-red-100 text-red-700 hover:bg-red-200 border-2 border-red-300' 
@@ -536,7 +641,7 @@ const VisitorRegister = () => {
                             <span>Capture</span>
                           </button>
                           
-                          {/* Upload Button */}
+                          {/* Upload Button - Opens File Picker */}
                           <button
                             type="button"
                             onClick={() => document.getElementById('idDocUploadInput')?.click()}
