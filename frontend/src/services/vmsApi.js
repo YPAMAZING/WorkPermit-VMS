@@ -156,4 +156,34 @@ export const blacklistApi = {
   delete: (id) => vmsApi.delete(`/blacklist/${id}`),
 }
 
+// ================================
+// COMBINED VMS API (for convenience)
+// ================================
+export const vmsAPI = {
+  // Visitor Registration (Public - for QR scan flow)
+  createVisitor: (data) => publicApi.post('/visitors/register', data),
+  
+  // Pre-Approval (Company creates pre-approved passes)
+  createPreApproval: (data) => vmsApi.post('/preapproved', data),
+  
+  // Get all visitors for a company (role-based)
+  getVisitors: (params) => vmsApi.get('/visitors', { params }),
+  
+  // Get visitor by ID
+  getVisitorById: (id) => vmsApi.get(`/visitors/${id}`),
+  
+  // Check-in/Check-out
+  checkInVisitor: (id) => vmsApi.post(`/visitors/${id}/checkin`),
+  checkOutVisitor: (id) => vmsApi.post(`/visitors/${id}/checkout`),
+  
+  // Dashboard stats
+  getDashboardStats: () => vmsApi.get('/dashboard/stats'),
+  
+  // Get today's entries (daily + pre-approved tabs)
+  getTodayEntries: (type) => vmsApi.get('/entries/today', { params: { type } }),
+  
+  // Get pre-approved visitors
+  getPreApproved: (params) => vmsApi.get('/preapproved', { params }),
+}
+
 export default vmsApi

@@ -41,6 +41,11 @@ const OpenDashboard = lazy(() => import('./pages/vms/OpenDashboard'))
 const VisitorPass = lazy(() => import('./pages/vms/VisitorPass'))
 const CompanyPortal = lazy(() => import('./pages/vms/CompanyPortal'))
 
+// VMS Landing & New Pages (3 blocks system)
+const VMSLanding = lazy(() => import('./pages/vms/VMSLanding'))
+const VisitorRegister = lazy(() => import('./pages/vms/VisitorRegister'))
+const PreApproval = lazy(() => import('./pages/vms/PreApproval'))
+
 // Page loading fallback
 const PageLoader = () => (
   <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -258,9 +263,19 @@ function App() {
       {/* VMS SYSTEM ROUTES */}
       {/* ======================= */}
       
+      {/* ===== VMS LANDING PAGE (Main Entry - 3 Blocks) ===== */}
+      {/* VMS Home - Shows 3 blocks: Visitor QR, Staff Login, Pre-Approval */}
+      <Route path="/vms" element={<VMSLanding />} />
+      
+      {/* Visitor Self-Registration (QR Scan Flow) */}
+      <Route path="/vms/visitor-register" element={<VisitorRegister />} />
+      
+      {/* Pre-Approval Gatepass Generation with WhatsApp Share */}
+      <Route path="/vms/pre-approval" element={<PreApproval />} />
+      
       {/* ===== OPEN VMS ROUTES (No Auth Required) ===== */}
       {/* Open Dashboard - Shows all recent visitors without login */}
-      <Route path="/vms" element={<OpenDashboard />} />
+      <Route path="/vms/open-dashboard" element={<OpenDashboard />} />
       
       {/* Visitor Pass - Shows pass with QR code for guards to verify */}
       <Route path="/vms/pass/:passId" element={<VisitorPass />} />
