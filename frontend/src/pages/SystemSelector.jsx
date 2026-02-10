@@ -36,7 +36,7 @@ const SystemSelector = () => {
     },
     {
       id: 'vms',
-      title: 'VMS (Gatepass)',
+      title: 'Visitor Management System',
       description: 'Visitor Management System for gatepasses, visitor tracking, and security',
       icon: UserCheck,
       path: '/vms/login',
