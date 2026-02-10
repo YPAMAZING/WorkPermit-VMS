@@ -39,7 +39,7 @@ const SystemSelector = () => {
       title: 'Visitor Management System',
       description: 'Visitor Management System for gatepasses, visitor tracking, and security',
       icon: UserCheck,
-      path: '/vms/login',
+      path: '/vms',
       color: 'from-teal-500 to-cyan-600',
       hoverColor: 'from-teal-600 to-cyan-700',
       shadowColor: 'shadow-teal-500/30',
