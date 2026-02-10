@@ -15,7 +15,7 @@ import {
   BadgeCheck,
   Loader2,
   AlertCircle,
-  Upload,
+
   Image,
   RefreshCw
 } from 'lucide-react'
@@ -26,7 +26,7 @@ const VisitorRegister = () => {
   const navigate = useNavigate()
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
-  const fileInputRef = useRef(null)
+
   const idDocInputRef = useRef(null)
   const [step, setStep] = useState(1) // 1: Form, 2: Photo, 3: Success
   const [loading, setLoading] = useState(false)
@@ -96,6 +96,7 @@ const VisitorRegister = () => {
     if (!formData.personToMeet.trim()) newErrors.personToMeet = 'Person to meet is required'
     if (!formData.purpose) newErrors.purpose = 'Select purpose'
     if (!formData.idProofNumber.trim()) newErrors.idProofNumber = 'ID proof number is required'
+    if (!idDocumentImage) newErrors.idDocument = 'ID document image is required'
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -148,21 +149,7 @@ const VisitorRegister = () => {
     }
   }
 
-  const handleUploadPhoto = (e) => {
-    const file = e.target.files[0]
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error('Photo size should be less than 5MB')
-        return
-      }
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setCapturedPhoto(reader.result)
-        stopCamera()
-      }
-      reader.readAsDataURL(file)
-    }
-  }
+
 
   const handleUploadIdDocument = (e) => {
     const file = e.target.files[0]
@@ -464,47 +451,70 @@ const VisitorRegister = () => {
                   {errors.idProofNumber && <p className="text-red-500 text-xs mt-1">{errors.idProofNumber}</p>}
                 </div>
 
-                {/* Upload ID Document Image */}
+                {/* Upload ID Document Image - COMPULSORY */}
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Upload ID Document Image
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <span className="flex items-center gap-2">
+                      <Camera className="w-4 h-4 text-teal-600" />
+                      Click or Upload Document Image <span className="text-red-500">*</span>
+                    </span>
                   </label>
                   <input
                     type="file"
                     ref={idDocInputRef}
                     onChange={handleUploadIdDocument}
                     accept="image/*"
+                    capture="environment"
                     className="hidden"
                   />
                   <div 
                     onClick={() => idDocInputRef.current?.click()}
-                    className="w-full border-2 border-dashed border-gray-300 rounded-lg p-4 cursor-pointer hover:border-teal-500 hover:bg-teal-50 transition-colors"
+                    className={`w-full border-2 border-dashed rounded-xl p-6 cursor-pointer transition-all duration-200 ${
+                      errors.idDocument 
+                        ? 'border-red-400 bg-red-50 hover:border-red-500 hover:bg-red-100' 
+                        : idDocumentImage 
+                          ? 'border-green-400 bg-green-50 hover:border-green-500 hover:bg-green-100'
+                          : 'border-teal-300 bg-teal-50 hover:border-teal-500 hover:bg-teal-100'
+                    }`}
                   >
                     {idDocumentImage ? (
                       <div className="flex items-center gap-4">
                         <img 
                           src={idDocumentImage} 
                           alt="ID Document" 
-                          className="w-20 h-14 object-cover rounded-lg border"
+                          className="w-28 h-20 object-cover rounded-lg border-2 border-green-400 shadow-sm"
                         />
                         <div className="flex-1">
-                          <p className="text-sm font-medium text-green-600 flex items-center gap-1">
-                            <CheckCircle className="w-4 h-4" />
-                            Document Uploaded
+                          <p className="text-sm font-semibold text-green-600 flex items-center gap-2">
+                            <CheckCircle className="w-5 h-5" />
+                            Document Uploaded Successfully
                           </p>
-                          <p className="text-xs text-gray-500">Click to change</p>
+                          <p className="text-xs text-gray-500 mt-1">Click to change or capture again</p>
                         </div>
                       </div>
                     ) : (
-                      <div className="flex flex-col items-center gap-2 text-gray-500">
-                        <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
-                          <Image className="w-6 h-6" />
+                      <div className="flex flex-col items-center gap-3">
+                        <div className={`w-16 h-16 rounded-full flex items-center justify-center ${errors.idDocument ? 'bg-red-100' : 'bg-teal-100'}`}>
+                          <Camera className={`w-8 h-8 ${errors.idDocument ? 'text-red-500' : 'text-teal-600'}`} />
                         </div>
-                        <p className="text-sm font-medium">Click to upload ID document</p>
-                        <p className="text-xs">Aadhaar, PAN, Driving License, etc.</p>
+                        <div className="text-center">
+                          <p className={`text-base font-bold ${errors.idDocument ? 'text-red-600' : 'text-gray-800'}`}>
+                            Click or Upload Document Image
+                          </p>
+                          <p className="text-sm text-gray-600 mt-1">Aadhaar Card, PAN Card, Driving License, Voter ID, Passport</p>
+                          <p className="text-xs text-teal-600 font-medium mt-2 bg-teal-100 inline-block px-3 py-1 rounded-full">
+                            📷 Tap here to capture or upload from gallery
+                          </p>
+                        </div>
                       </div>
                     )}
                   </div>
+                  {errors.idDocument && (
+                    <p className="text-red-500 text-sm mt-2 flex items-center gap-1 font-medium">
+                      <AlertCircle className="w-4 h-4" />
+                      {errors.idDocument}
+                    </p>
+                  )}
                 </div>
 
                 {/* Vehicle Number */}
@@ -581,32 +591,15 @@ const VisitorRegister = () => {
                   </div>
                   <canvas ref={canvasRef} className="hidden" />
                   
-                  {/* Hidden file input for upload */}
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleUploadPhoto}
-                    accept="image/*"
-                    className="hidden"
-                  />
-                  
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-300 transition-colors flex items-center justify-center gap-2"
-                    >
-                      <Upload className="w-5 h-5" />
-                      Upload Photo
-                    </button>
-                    <button
-                      onClick={capturePhoto}
-                      disabled={!cameraActive}
-                      className="flex-1 bg-teal-600 text-white py-3 rounded-lg font-semibold hover:bg-teal-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                    >
-                      <Camera className="w-5 h-5" />
-                      Capture
-                    </button>
-                  </div>
+                  <button
+                    onClick={capturePhoto}
+                    disabled={!cameraActive}
+                    className="w-full bg-teal-600 text-white py-4 rounded-xl font-bold text-lg hover:bg-teal-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-3 shadow-lg"
+                  >
+                    <Camera className="w-6 h-6" />
+                    Capture Photo
+                  </button>
+                  <p className="text-center text-sm text-gray-500 mt-2">Position your face in the camera and click capture</p>
                 </>
               ) : (
                 <>
