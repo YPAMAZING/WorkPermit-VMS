@@ -58,10 +58,63 @@ const VisitorRegister = () => {
   const [errors, setErrors] = useState({})
 
   const companies = [
-    'Reliable Group - Head Office',
-    'Reliable Tech Solutions',
-    'Reliable Properties',
-    'Reliable Infrastructure',
+    'Adani Enterprises',
+    'Advantage Healthcare Solutions',
+    'AWFIS Solutions Spaces',
+    'Baker Huges Oilfield Services',
+    'Bharat Serums & Vaccines',
+    'Birla Management Centre',
+    'Brueckner Group India',
+    'Clariant Chemicals',
+    'Clotilda Sequeira',
+    'Clover Infotech',
+    'Covestro',
+    'Creative IT',
+    'DSP Integrated Services',
+    'ECI Telecom',
+    'EFC',
+    'EFC Tech Spaces',
+    'EFC Office Infra',
+    'EFC Office Spaces',
+    'Empire Business Centre',
+    'ESDS',
+    'Godrej',
+    'Greenshift Initiatives',
+    'Hansa Direct',
+    'HCL Technologies',
+    'Hindustan Fields Services',
+    'Holcim Services',
+    'Home Credit',
+    'Indian Commodity Exchange',
+    'Invenio Business Solution',
+    'Icra',
+    'ISSGF',
+    'Jacobs Solutions',
+    'Kyndryl Solutions',
+    'Lionbridge Technologies',
+    'Lupin',
+    'Maersk Global Service Centre',
+    'NMDC Data Centre',
+    'Nouryon Chemicals',
+    'Quess Corp',
+    'RBL Bank',
+    'Reliable Clothing',
+    'Reliable Exports Common Utility',
+    'Reliable Food Services',
+    'Reliable Spaces',
+    'Rise Food Hospitality',
+    'Rohila Garments',
+    'Rubicon Maritime India',
+    'Sai Star Hospitality-RTP',
+    'SES Energy Services',
+    'Spocto Business Solutions',
+    'Suki Solution',
+    'Taldar Hotels & Resorts',
+    'Tata Consulting Engineering',
+    'Technics Reunidas',
+    'Universal Sompo',
+    'Vodafone Idea',
+    'Yes Bank',
     'Other'
   ]
 
@@ -99,7 +152,7 @@ const VisitorRegister = () => {
     if (!formData.phone.trim()) newErrors.phone = 'Phone is required'
     else if (!/^[6-9]\d{9}$/.test(formData.phone)) newErrors.phone = 'Invalid phone number'
     if (!formData.companyToVisit) newErrors.companyToVisit = 'Select company to visit'
-    if (!formData.personToMeet.trim()) newErrors.personToMeet = 'Person to meet is required'
+    // Person to meet is now optional
     if (!formData.purpose) newErrors.purpose = 'Select purpose'
     if (!formData.idProofNumber.trim()) newErrors.idProofNumber = 'ID proof number is required'
     if (!idDocumentImage) newErrors.idDocument = 'ID document image is required'
@@ -488,20 +541,19 @@ const VisitorRegister = () => {
                   {errors.companyToVisit && <p className="text-red-500 text-xs mt-1">{errors.companyToVisit}</p>}
                 </div>
 
-                {/* Person to Meet */}
+                {/* Person to Meet - Optional */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Person to Meet <span className="text-red-500">*</span>
+                    Person to Meet <span className="text-gray-400 text-xs">(Optional)</span>
                   </label>
                   <input
                     type="text"
                     name="personToMeet"
                     value={formData.personToMeet}
                     onChange={handleChange}
-                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-teal-500 ${errors.personToMeet ? 'border-red-500' : 'border-gray-200'}`}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500"
                     placeholder="Name of person to meet"
                   />
-                  {errors.personToMeet && <p className="text-red-500 text-xs mt-1">{errors.personToMeet}</p>}
                 </div>
 
                 {/* Purpose */}
