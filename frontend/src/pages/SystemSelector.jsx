@@ -64,9 +64,11 @@ const SystemSelector = () => {
       {/* Header */}
       <header className="p-6">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-purple-400 to-pink-500 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-lg">R</span>
-          </div>
+          <img 
+            src="/logo.png" 
+            alt="Reliable Group Logo" 
+            className="w-10 h-10 object-contain"
+          />
           <div>
             <h1 className="text-white font-bold text-xl">Reliable Group | Work Permit and VMS</h1>
             <p className="text-purple-300 text-xs">Management Systems</p>

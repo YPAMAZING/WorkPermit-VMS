@@ -107,13 +107,15 @@ const VMSLayout = () => {
         {/* Logo */}
         <div className="flex items-center justify-between h-16 px-4 border-b border-teal-600">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
-              <span className="text-teal-700 font-bold text-lg">V</span>
-            </div>
+            <img 
+              src="/logo.png" 
+              alt="Reliable Group Logo" 
+              className="w-10 h-10 object-contain bg-white rounded-lg p-1"
+            />
             {sidebarOpen && (
               <div>
-                <h1 className="font-bold text-lg">VMS</h1>
-                <p className="text-xs text-teal-200">Visitor Management</p>
+                <h1 className="font-bold text-lg">Reliable Group</h1>
+                <p className="text-xs text-teal-200">Visitor Management System</p>
               </div>
             )}
           </div>

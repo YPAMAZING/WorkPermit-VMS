@@ -40,11 +40,13 @@ const VMSLogin = () => {
       {/* Header */}
       <header className="p-6">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
-            <span className="text-teal-700 font-bold text-lg">V</span>
-          </div>
+          <img 
+            src="/logo.png" 
+            alt="Reliable Group Logo" 
+            className="w-10 h-10 object-contain bg-white rounded-lg p-1"
+          />
           <div>
-            <h1 className="text-white font-bold text-xl">VMS</h1>
+            <h1 className="text-white font-bold text-xl">Reliable Group | VMS</h1>
             <p className="text-teal-200 text-xs">Visitor Management System</p>
           </div>
         </div>
