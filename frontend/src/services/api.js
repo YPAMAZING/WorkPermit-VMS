@@ -111,7 +111,7 @@ export const usersAPI = {
   getStats: () => api.get('/users/stats'),
   // VMS Integration
   toggleVMSAccess: (id, data) => api.post(`/users/${id}/vms-access`, data),
-  getVMSUsers: () => api.get('/users/vms/access'),
+  getVMSUsers: () => api.get('/users/vms-users'),
 }
 
 // Dashboard API

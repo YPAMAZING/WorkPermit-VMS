@@ -21,11 +21,51 @@ const router = express.Router();
 // All routes require authentication
 router.use(authenticate);
 
+// ============================================
+// IMPORTANT: Static routes MUST come before dynamic :id routes
+// ============================================
+
 // Get user stats (Admin only)
 router.get('/stats', isAdmin, getUserStats);
 
 // Get pending approval users (Admin only)
 router.get('/pending', isAdmin, getPendingUsers);
+
+// Get all users with VMS access (Admin only) - MUST be before /:id
+router.get('/vms-users', isAdmin, getVMSUsers);
+
+// Get all users (Admin only)
+router.get('/', isAdmin, getAllUsers);
+
+// Create user (Admin or users with user management permission)
+router.post(
+  '/',
+  isAdmin,
+  [
+    body('email').isEmail().normalizeEmail().withMessage('Valid email is required'),
+    body('password')
+      .isLength({ min: 6 })
+      .withMessage('Password must be at least 6 characters'),
+    body('firstName').notEmpty().trim().withMessage('First name is required'),
+    body('lastName').notEmpty().trim().withMessage('Last name is required'),
+    body('role').optional().trim(),
+  ],
+  validate,
+  createUser
+);
+
+// ============================================
+// Dynamic :id routes come AFTER static routes
+// ============================================
+
+// Get user by ID (Admin only)
+router.get(
+  '/:id',
+  isAdmin,
+  [param('id').isUUID().withMessage('Invalid user ID')],
+  validate,
+  getUserById
+);
 
 // Approve user registration (Admin only)
 router.post(
@@ -48,34 +88,17 @@ router.post(
   rejectUser
 );
 
-// Get all users (Admin only)
-router.get('/', isAdmin, getAllUsers);
-
-// Get user by ID (Admin only)
-router.get(
-  '/:id',
-  isAdmin,
-  [param('id').isUUID().withMessage('Invalid user ID')],
-  validate,
-  getUserById
-);
-
-// Create user (Admin or users with user management permission)
+// Toggle VMS access for a user (Admin only)
 router.post(
-  '/',
+  '/:id/vms-access',
   isAdmin,
   [
-    body('email').isEmail().normalizeEmail().withMessage('Valid email is required'),
-    body('password')
-      .isLength({ min: 6 })
-      .withMessage('Password must be at least 6 characters'),
-    body('firstName').notEmpty().trim().withMessage('First name is required'),
-    body('lastName').notEmpty().trim().withMessage('Last name is required'),
-    // Role can now be any custom role name, validation happens in controller
-    body('role').optional().trim(),
+    param('id').isUUID().withMessage('Invalid user ID'),
+    body('hasVMSAccess').optional().isBoolean().withMessage('hasVMSAccess must be boolean'),
+    body('companyName').optional().trim(),
   ],
   validate,
-  createUser
+  toggleVMSAccess
 );
 
 // Update user
@@ -85,7 +108,6 @@ router.put(
     param('id').isUUID().withMessage('Invalid user ID'),
     body('firstName').optional().trim(),
     body('lastName').optional().trim(),
-    // Role can now be any custom role name, validation happens in controller
     body('role').optional().trim(),
   ],
   validate,
@@ -99,24 +121,6 @@ router.delete(
   [param('id').isUUID().withMessage('Invalid user ID')],
   validate,
   deleteUser
-);
-
-// VMS Integration Routes
-
-// Get all users with VMS access (Admin only)
-router.get('/vms/access', isAdmin, getVMSUsers);
-
-// Toggle VMS access for a user (Admin only)
-router.post(
-  '/:id/vms-access',
-  isAdmin,
-  [
-    param('id').isUUID().withMessage('Invalid user ID'),
-    body('hasVMSAccess').optional().isBoolean().withMessage('hasVMSAccess must be boolean'),
-    body('companyName').optional().trim(),
-  ],
-  validate,
-  toggleVMSAccess
 );
 
 module.exports = router;

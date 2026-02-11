@@ -11,10 +11,21 @@ const getAllUsers = async (req, res) => {
     const { page = 1, limit = 10, search, role, status } = req.query;
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
+    console.log('📋 getAllUsers called with:', { page, limit, search, role, status });
+
     const where = {
-      isApproved: true, // Only show approved users by default
       isActive: true,   // Only show active users (not deleted)
     };
+    
+    // Handle status filter
+    if (status === 'pending') {
+      where.isApproved = false;
+    } else if (status === 'all') {
+      // Show all users regardless of approval status
+    } else {
+      // Default: show only approved users (status === 'approved' or undefined)
+      where.isApproved = true;
+    }
     
     if (search) {
       where.OR = [
@@ -25,17 +36,13 @@ const getAllUsers = async (req, res) => {
     }
     
     // Filter by role name
-    if (role) {
+    if (role && role !== 'All Roles' && role !== '') {
       where.role = {
         name: role,
       };
     }
-    
-    if (status === 'pending') {
-      where.isApproved = false;
-    } else if (status === 'all') {
-      delete where.isApproved;
-    }
+
+    console.log('📋 Query where clause:', JSON.stringify(where, null, 2));
 
     const [users, total] = await Promise.all([
       prisma.user.findMany({
@@ -72,6 +79,8 @@ const getAllUsers = async (req, res) => {
       prisma.user.count({ where }),
     ]);
 
+    console.log(`📋 Found ${users.length} users out of ${total} total`);
+
     res.json({
       users,
       pagination: {
@@ -82,8 +91,8 @@ const getAllUsers = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Get users error:', error);
-    res.status(500).json({ message: 'Error fetching users' });
+    console.error('❌ Get users error:', error);
+    res.status(500).json({ message: 'Error fetching users', error: error.message });
   }
 };
 
