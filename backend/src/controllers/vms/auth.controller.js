@@ -8,12 +8,11 @@ exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Find user with role and company
+    // Find user with role
     const user = await vmsPrisma.user.findUnique({
       where: { email },
       include: { 
         role: true,
-        company: true,
       },
     });
 
@@ -84,7 +83,7 @@ exports.login = async (req, res) => {
         phone: user.phone,
         profilePicture: user.profilePicture,
         companyId: user.companyId,
-        companyName: user.company?.name || user.company?.displayName || null,
+        companyName: user.companyName || null,
       },
     });
   } catch (error) {
@@ -190,7 +189,6 @@ exports.me = async (req, res) => {
       where: { id: req.user.userId },
       include: { 
         role: true,
-        company: true,
       },
     });
 
@@ -219,7 +217,7 @@ exports.me = async (req, res) => {
       phone: user.phone,
       profilePicture: user.profilePicture,
       companyId: user.companyId,
-      companyName: user.company?.name || user.company?.displayName || null,
+      companyName: user.companyName || null,
     });
   } catch (error) {
     console.error('VMS Get user error:', error);
