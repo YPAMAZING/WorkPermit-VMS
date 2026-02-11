@@ -7,18 +7,61 @@
  * 3. Adds VMS permissions to database
  * 4. Updates ADMIN role to include VMS permissions
  * 5. Ensures all users have valid roles
+ * 6. Ensures admin user exists and is properly configured
  * 
  * Run with: node scripts/cleanup-mis-roles.js
  */
 
 const { PrismaClient } = require('@prisma/client');
+const bcrypt = require('bcryptjs');
 const prisma = new PrismaClient();
 
 // MIS roles to delete
 const MIS_ROLES = ['MIS_ADMIN', 'MIS_VERIFIER', 'MIS_VIEWER', 'SITE_ENGINEER'];
 
 // MIS permissions to delete (anything with mis, meters, transmitters, reports prefix that's MIS-related)
-const MIS_PERMISSION_PREFIXES = ['mis.', 'mis_', 'meters.', 'transmitters.', 'reports.'];
+const MIS_PERMISSION_PREFIXES = ['mis.', 'mis_', 'meters.', 'transmitters.'];
+
+// Work Permit permissions (keep reports.view and reports.export for permits)
+const WORK_PERMIT_PERMISSIONS = [
+  { key: 'dashboard.view', name: 'View Dashboard', module: 'dashboard', action: 'view' },
+  { key: 'dashboard.stats', name: 'View Statistics', module: 'dashboard', action: 'view' },
+  { key: 'permits.view', name: 'View Permits', module: 'permits', action: 'view' },
+  { key: 'permits.view_all', name: 'View All Permits', module: 'permits', action: 'view' },
+  { key: 'permits.view_own', name: 'View Own Permits', module: 'permits', action: 'view' },
+  { key: 'permits.create', name: 'Create Permits', module: 'permits', action: 'create' },
+  { key: 'permits.edit', name: 'Edit Permits', module: 'permits', action: 'edit' },
+  { key: 'permits.edit_own', name: 'Edit Own Permits', module: 'permits', action: 'edit' },
+  { key: 'permits.delete', name: 'Delete Permits', module: 'permits', action: 'delete' },
+  { key: 'permits.export', name: 'Export Permits PDF', module: 'permits', action: 'export' },
+  { key: 'permits.extend', name: 'Extend Permits', module: 'permits', action: 'edit' },
+  { key: 'permits.revoke', name: 'Revoke Permits', module: 'permits', action: 'edit' },
+  { key: 'permits.close', name: 'Close Permits', module: 'permits', action: 'edit' },
+  { key: 'permits.reapprove', name: 'Re-Approve Revoked Permits', module: 'permits', action: 'edit' },
+  { key: 'permits.transfer', name: 'Transfer Permits', module: 'permits', action: 'edit' },
+  { key: 'approvals.view', name: 'View Approvals', module: 'approvals', action: 'view' },
+  { key: 'approvals.approve', name: 'Approve/Reject Permits', module: 'approvals', action: 'approve' },
+  { key: 'approvals.sign', name: 'Sign Approvals', module: 'approvals', action: 'approve' },
+  { key: 'approvals.reapprove', name: 'Re-Approve Revoked Permits', module: 'approvals', action: 'approve' },
+  { key: 'workers.view', name: 'View Workers', module: 'workers', action: 'view' },
+  { key: 'workers.create', name: 'Create Workers', module: 'workers', action: 'create' },
+  { key: 'workers.edit', name: 'Edit Workers', module: 'workers', action: 'edit' },
+  { key: 'workers.delete', name: 'Delete Workers', module: 'workers', action: 'delete' },
+  { key: 'workers.qr', name: 'Generate Worker QR', module: 'workers', action: 'view' },
+  { key: 'users.view', name: 'View Users', module: 'users', action: 'view' },
+  { key: 'users.create', name: 'Create Users', module: 'users', action: 'create' },
+  { key: 'users.edit', name: 'Edit Users', module: 'users', action: 'edit' },
+  { key: 'users.delete', name: 'Delete Users', module: 'users', action: 'delete' },
+  { key: 'users.assign_role', name: 'Assign Roles to Users', module: 'users', action: 'edit' },
+  { key: 'roles.view', name: 'View Roles', module: 'roles', action: 'view' },
+  { key: 'roles.create', name: 'Create Roles', module: 'roles', action: 'create' },
+  { key: 'roles.edit', name: 'Edit Roles', module: 'roles', action: 'edit' },
+  { key: 'roles.delete', name: 'Delete Roles', module: 'roles', action: 'delete' },
+  { key: 'settings.view', name: 'View Settings', module: 'settings', action: 'view' },
+  { key: 'settings.edit', name: 'Edit Settings', module: 'settings', action: 'edit' },
+  { key: 'settings.system', name: 'System Settings', module: 'settings', action: 'edit' },
+  { key: 'audit.view', name: 'View Audit Logs', module: 'audit', action: 'view' },
+];
 
 // VMS permissions to add
 const VMS_PERMISSIONS = [
@@ -50,6 +93,8 @@ const VMS_PERMISSIONS = [
   { key: 'vms.settings.edit', name: 'Edit VMS Settings', module: 'vms', action: 'edit' },
 ];
 
+const ALL_PERMISSIONS = [...WORK_PERMIT_PERMISSIONS, ...VMS_PERMISSIONS];
+
 async function runCleanup() {
   console.log('🧹 Starting Complete Database Cleanup & Fix...\n');
 
@@ -59,7 +104,7 @@ async function runCleanup() {
     // ============================================
     console.log('📋 STEP 1: Removing MIS roles...');
     
-    const requestorRole = await prisma.role.findUnique({
+    let requestorRole = await prisma.role.findUnique({
       where: { name: 'REQUESTOR' }
     });
 
@@ -86,110 +131,178 @@ async function runCleanup() {
     }
 
     // ============================================
-    // STEP 2: Delete MIS permissions from database
+    // STEP 2: Delete ALL permissions and recreate clean ones
     // ============================================
-    console.log('\n📋 STEP 2: Removing MIS permissions from database...');
+    console.log('\n📋 STEP 2: Cleaning and recreating permissions...');
     
-    // Get all permissions
-    const allPermissions = await prisma.permission.findMany();
-    let deletedCount = 0;
-    
-    for (const perm of allPermissions) {
-      const isMIS = MIS_PERMISSION_PREFIXES.some(prefix => perm.key.startsWith(prefix));
-      if (isMIS) {
-        await prisma.permission.delete({ where: { id: perm.id } });
-        deletedCount++;
-        console.log(`   🗑️  Deleted: ${perm.key}`);
-      }
+    // Delete all existing permissions
+    await prisma.permission.deleteMany({});
+    console.log('   🗑️  Deleted all existing permissions');
+
+    // Create all clean permissions
+    for (const perm of ALL_PERMISSIONS) {
+      await prisma.permission.create({ data: perm });
     }
-    console.log(`   ✅ Deleted ${deletedCount} MIS permissions`);
+    console.log(`   ✅ Created ${ALL_PERMISSIONS.length} clean permissions`);
 
     // ============================================
-    // STEP 3: Clean MIS permissions from all roles
+    // STEP 3: Clean permissions from all roles and update ADMIN
     // ============================================
-    console.log('\n📋 STEP 3: Cleaning MIS permissions from existing roles...');
+    console.log('\n📋 STEP 3: Updating roles with clean permissions...');
     
     const allRoles = await prisma.role.findMany();
+    const allPermKeys = ALL_PERMISSIONS.map(p => p.key);
     
     for (const role of allRoles) {
       try {
-        const permissions = JSON.parse(role.permissions || '[]');
-        const cleanedPermissions = permissions.filter(p => {
-          return !MIS_PERMISSION_PREFIXES.some(prefix => p.startsWith(prefix));
-        });
+        const oldPerms = JSON.parse(role.permissions || '[]');
+        // Filter to only keep valid permissions
+        const cleanedPerms = oldPerms.filter(p => allPermKeys.includes(p));
         
-        if (permissions.length !== cleanedPermissions.length) {
+        // For ADMIN, give all permissions including VMS
+        if (role.name === 'ADMIN') {
           await prisma.role.update({
             where: { id: role.id },
-            data: { permissions: JSON.stringify(cleanedPermissions) }
+            data: { permissions: JSON.stringify(allPermKeys) }
           });
-          console.log(`   ✅ Cleaned ${permissions.length - cleanedPermissions.length} MIS permissions from ${role.name}`);
+          console.log(`   ✅ ADMIN role updated with ${allPermKeys.length} permissions (including VMS)`);
+        } else if (cleanedPerms.length !== oldPerms.length) {
+          await prisma.role.update({
+            where: { id: role.id },
+            data: { permissions: JSON.stringify(cleanedPerms) }
+          });
+          console.log(`   ✅ Cleaned ${role.name}: ${oldPerms.length} → ${cleanedPerms.length} permissions`);
         }
       } catch (e) {
-        console.log(`   ⚠️  Could not parse permissions for ${role.name}`);
+        console.log(`   ⚠️  Could not update permissions for ${role.name}:`, e.message);
       }
     }
 
     // ============================================
-    // STEP 4: Add VMS permissions to database
+    // STEP 4: Ensure ADMIN role exists with all permissions
     // ============================================
-    console.log('\n📋 STEP 4: Adding VMS permissions to database...');
+    console.log('\n📋 STEP 4: Ensuring ADMIN role exists...');
     
-    for (const perm of VMS_PERMISSIONS) {
-      await prisma.permission.upsert({
-        where: { key: perm.key },
-        update: perm,
-        create: perm,
-      });
-    }
-    console.log(`   ✅ Added/updated ${VMS_PERMISSIONS.length} VMS permissions`);
-
-    // ============================================
-    // STEP 5: Update ADMIN role with VMS permissions
-    // ============================================
-    console.log('\n📋 STEP 5: Updating ADMIN role with VMS permissions...');
-    
-    const adminRole = await prisma.role.findUnique({
+    let adminRole = await prisma.role.findUnique({
       where: { name: 'ADMIN' }
     });
 
-    if (adminRole) {
-      const currentPerms = JSON.parse(adminRole.permissions || '[]');
-      const vmsPermKeys = VMS_PERMISSIONS.map(p => p.key);
-      const allPerms = [...new Set([...currentPerms, ...vmsPermKeys])];
-      
-      await prisma.role.update({
-        where: { id: adminRole.id },
-        data: { permissions: JSON.stringify(allPerms) }
+    if (!adminRole) {
+      adminRole = await prisma.role.create({
+        data: {
+          name: 'ADMIN',
+          displayName: 'Administrator',
+          description: 'Full system access with all permissions',
+          isSystem: true,
+          permissions: JSON.stringify(allPermKeys),
+          uiConfig: JSON.stringify({
+            theme: 'default',
+            sidebarColor: 'slate',
+            accentColor: 'emerald',
+            showAllMenus: true,
+          }),
+        }
       });
-      console.log(`   ✅ ADMIN role now has ${allPerms.length} permissions (including VMS)`);
+      console.log('   ✅ Created ADMIN role');
+    } else {
+      console.log('   ✅ ADMIN role exists');
     }
 
     // ============================================
-    // STEP 6: Ensure users without roles get REQUESTOR
+    // STEP 5: Ensure admin user exists
+    // ============================================
+    console.log('\n📋 STEP 5: Ensuring admin user exists...');
+    
+    let adminUser = await prisma.user.findUnique({
+      where: { email: 'admin@permitmanager.com' }
+    });
+
+    const adminPassword = await bcrypt.hash('admin123', 10);
+
+    if (!adminUser) {
+      adminUser = await prisma.user.create({
+        data: {
+          email: 'admin@permitmanager.com',
+          password: adminPassword,
+          firstName: 'System',
+          lastName: 'Administrator',
+          roleId: adminRole.id,
+          department: 'IT',
+          isApproved: true,
+          isActive: true,
+          approvedAt: new Date(),
+          hasVMSAccess: true, // Admin has VMS access
+        }
+      });
+      console.log('   ✅ Created admin user: admin@permitmanager.com / admin123');
+    } else {
+      // Update admin user to ensure proper configuration
+      await prisma.user.update({
+        where: { id: adminUser.id },
+        data: {
+          roleId: adminRole.id,
+          isApproved: true,
+          isActive: true,
+          hasVMSAccess: true,
+          password: adminPassword, // Reset password to admin123
+        }
+      });
+      console.log('   ✅ Updated admin user: admin@permitmanager.com / admin123');
+    }
+
+    // ============================================
+    // STEP 6: Ensure all users have valid roles
     // ============================================
     console.log('\n📋 STEP 6: Fixing users without valid roles...');
     
+    // Refresh requestorRole reference
+    requestorRole = await prisma.role.findUnique({
+      where: { name: 'REQUESTOR' }
+    });
+
+    if (!requestorRole) {
+      requestorRole = await prisma.role.create({
+        data: {
+          name: 'REQUESTOR',
+          displayName: 'Requestor',
+          description: 'Can create and view own permits',
+          isSystem: true,
+          permissions: JSON.stringify([
+            'dashboard.view',
+            'permits.view', 'permits.view_own', 'permits.create', 'permits.edit_own', 'permits.export',
+            'workers.view', 'workers.qr',
+            'settings.view',
+          ]),
+          uiConfig: JSON.stringify({
+            theme: 'default',
+            sidebarColor: 'slate',
+            accentColor: 'primary',
+          }),
+        }
+      });
+      console.log('   ✅ Created REQUESTOR role');
+    }
+
     const usersWithoutRole = await prisma.user.findMany({
       where: { roleId: null }
     });
 
-    if (usersWithoutRole.length > 0 && requestorRole) {
+    if (usersWithoutRole.length > 0) {
       await prisma.user.updateMany({
         where: { roleId: null },
         data: { roleId: requestorRole.id }
       });
       console.log(`   ✅ Assigned REQUESTOR role to ${usersWithoutRole.length} users`);
     } else {
-      console.log(`   ✅ All users have valid roles`);
+      console.log('   ✅ All users have valid roles');
     }
 
     // ============================================
     // SUMMARY
     // ============================================
-    console.log('\n' + '='.repeat(50));
+    console.log('\n' + '='.repeat(60));
     console.log('✅ CLEANUP COMPLETE!');
-    console.log('='.repeat(50));
+    console.log('='.repeat(60));
     
     const remainingRoles = await prisma.role.findMany({
       include: { _count: { select: { users: true } } },
@@ -203,19 +316,21 @@ async function runCleanup() {
     }
 
     const remainingPermissions = await prisma.permission.findMany();
-    console.log(`\n📊 Total Permissions in Database: ${remainingPermissions.length}`);
+    console.log(`\n📊 Total Permissions: ${remainingPermissions.length}`);
     
-    const vmsPermsCount = remainingPermissions.filter(p => p.key.startsWith('vms.')).length;
-    console.log(`   - VMS Permissions: ${vmsPermsCount}`);
-    
-    const misPermsCount = remainingPermissions.filter(p => 
-      MIS_PERMISSION_PREFIXES.some(prefix => p.key.startsWith(prefix))
-    ).length;
-    console.log(`   - MIS Permissions: ${misPermsCount} (should be 0)`);
+    const wpPerms = remainingPermissions.filter(p => !p.key.startsWith('vms.')).length;
+    const vmsPerms = remainingPermissions.filter(p => p.key.startsWith('vms.')).length;
+    console.log(`   - Work Permit: ${wpPerms}`);
+    console.log(`   - VMS: ${vmsPerms}`);
 
     const totalUsers = await prisma.user.count();
     const approvedUsers = await prisma.user.count({ where: { isApproved: true, isActive: true } });
     console.log(`\n📊 Users: ${approvedUsers} active / ${totalUsers} total`);
+
+    console.log('\n🔑 Admin Credentials:');
+    console.log('   Email: admin@permitmanager.com');
+    console.log('   Password: admin123');
+    console.log('\n✅ Admin can now login to both Work Permit and VMS systems!');
 
   } catch (error) {
     console.error('\n❌ Error during cleanup:', error);

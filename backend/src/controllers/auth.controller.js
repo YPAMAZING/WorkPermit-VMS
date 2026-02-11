@@ -8,7 +8,7 @@ const { sendOTP, verifyRegistrationOTP, sendPasswordChangeOTP, verifyPasswordCha
 const prisma = new PrismaClient();
 
 // Roles that require admin approval (all roles now require approval)
-const ROLES_REQUIRING_APPROVAL = ['REQUESTOR', 'FIREMAN', 'SAFETY_OFFICER', 'SITE_ENGINEER', 'ADMIN'];
+const ROLES_REQUIRING_APPROVAL = ['REQUESTOR', 'FIREMAN', 'SAFETY_OFFICER', 'ADMIN'];
 
 // Temporary store for pending registrations (use Redis in production)
 const pendingRegistrations = new Map();
