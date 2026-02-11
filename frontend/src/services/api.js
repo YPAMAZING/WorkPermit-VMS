@@ -109,6 +109,9 @@ export const usersAPI = {
   approve: (id) => api.post(`/users/${id}/approve`),
   reject: (id, reason) => api.post(`/users/${id}/reject`, { reason }),
   getStats: () => api.get('/users/stats'),
+  // VMS Integration
+  toggleVMSAccess: (id, data) => api.post(`/users/${id}/vms-access`, data),
+  getVMSUsers: () => api.get('/users/vms/access'),
 }
 
 // Dashboard API

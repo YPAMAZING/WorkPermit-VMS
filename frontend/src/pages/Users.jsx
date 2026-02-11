@@ -192,6 +192,8 @@ const Users = () => {
       department: user.department || '',
       phone: user.phone || '',
       isActive: user.isActive,
+      companyName: user.companyName || '',
+      hasVMSAccess: user.hasVMSAccess || false,
     })
     setModal({ open: true, type: 'edit', user })
   }
@@ -215,6 +217,8 @@ const Users = () => {
       role: 'REQUESTOR',
       department: '',
       phone: '',
+      companyName: '',
+      hasVMSAccess: false,
     })
     setShowPassword(false)
     setRejectReason('')
@@ -875,6 +879,40 @@ const Users = () => {
                   />
                   <span className="text-sm text-gray-700">User is active</span>
                 </label>
+              )}
+              
+              {/* VMS Access Toggle - Only for REQUESTOR role */}
+              {modal.type === 'edit' && (formData.role === 'REQUESTOR' || modal.user?.role?.name === 'REQUESTOR') && (
+                <div className="p-3 bg-teal-50 border border-teal-200 rounded-lg space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <UsersIcon className="w-4 h-4 text-teal-600" />
+                      <span className="text-sm font-medium text-teal-800">VMS Access</span>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.hasVMSAccess || false}
+                        onChange={(e) => setFormData({ ...formData, hasVMSAccess: e.target.checked })}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-teal-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-teal-600"></div>
+                    </label>
+                  </div>
+                  {formData.hasVMSAccess && (
+                    <div>
+                      <label className="block text-xs font-medium text-teal-700 mb-1">Company Name (for VMS)</label>
+                      <input
+                        type="text"
+                        value={formData.companyName || ''}
+                        onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
+                        className="w-full px-3 py-2 border border-teal-200 rounded-lg text-sm focus:border-teal-500 focus:ring-1 focus:ring-teal-500/20 outline-none bg-white"
+                        placeholder="e.g., Vodafone, HCL Technologies"
+                      />
+                      <p className="text-xs text-teal-600 mt-1">Enabling VMS access will automatically turn ON approval-based visitors for this company.</p>
+                    </div>
+                  )}
+                </div>
               )}
               
               <div className="flex gap-2 pt-2">

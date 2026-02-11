@@ -10,6 +10,8 @@ const {
   updateUser,
   deleteUser,
   getUserStats,
+  toggleVMSAccess,
+  getVMSUsers,
 } = require('../controllers/user.controller');
 const { authenticate, isAdmin } = require('../middleware/auth.middleware');
 const { validate } = require('../middleware/validate.middleware');
@@ -97,6 +99,24 @@ router.delete(
   [param('id').isUUID().withMessage('Invalid user ID')],
   validate,
   deleteUser
+);
+
+// VMS Integration Routes
+
+// Get all users with VMS access (Admin only)
+router.get('/vms/access', isAdmin, getVMSUsers);
+
+// Toggle VMS access for a user (Admin only)
+router.post(
+  '/:id/vms-access',
+  isAdmin,
+  [
+    param('id').isUUID().withMessage('Invalid user ID'),
+    body('hasVMSAccess').optional().isBoolean().withMessage('hasVMSAccess must be boolean'),
+    body('companyName').optional().trim(),
+  ],
+  validate,
+  toggleVMSAccess
 );
 
 module.exports = router;
