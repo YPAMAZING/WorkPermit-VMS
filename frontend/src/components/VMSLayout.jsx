@@ -114,7 +114,9 @@ const VMSLayout = () => {
             />
             {sidebarOpen && (
               <div>
-                <h1 className="font-bold text-lg">Reliable Group | Work Permit and VMS</h1>
+                <h1 className="font-bold text-lg">
+                  {user?.companyName || 'Reliable Group'} | Work Permit and VMS
+                </h1>
                 <p className="text-xs text-teal-200">Visitor Management System</p>
               </div>
             )}

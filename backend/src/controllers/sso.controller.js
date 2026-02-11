@@ -7,13 +7,13 @@ const config = require('../config');
 const prisma = new PrismaClient();
 
 /**
- * SSO Controller - Handles Single Sign-On integration with external MIS system
+ * SSO Controller - Handles Single Sign-On integration
  */
 
 // Generate SSO token for external system to authenticate
 const generateSSOToken = async (req, res) => {
   try {
-    const { externalUserId, email, firstName, lastName, role, externalSystem = 'MIS' } = req.body;
+    const { externalUserId, email, firstName, lastName, role, externalSystem = 'EXTERNAL' } = req.body;
 
     // Validate required fields
     if (!email) {
@@ -255,7 +255,7 @@ const getSSOConfig = async (req, res) => {
   try {
     res.json({
       ssoEnabled: true,
-      supportedSystems: ['MIS', 'EXTERNAL'],
+      supportedSystems: ['EXTERNAL'],
       tokenEndpoint: '/api/sso/generate',
       verifyEndpoint: '/api/sso/verify',
       validateEndpoint: '/api/sso/validate-external',

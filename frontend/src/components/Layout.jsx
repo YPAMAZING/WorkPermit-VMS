@@ -58,7 +58,7 @@ const Layout = ({ systemType = 'workpermit' }) => {
   }
 
   // Base path for current system
-  const basePath = systemType === 'workpermit' ? '/workpermit' : '/mis'
+  const basePath = '/workpermit'
 
   const navItems = [
     {
@@ -119,7 +119,6 @@ const Layout = ({ systemType = 'workpermit' }) => {
       FIREMAN: { bg: 'bg-green-100', text: 'text-green-700', label: 'Fireman' },
       SAFETY_OFFICER: { bg: 'bg-green-100', text: 'text-green-700', label: 'Fireman' }, // Backward compatibility
       REQUESTOR: { bg: 'bg-blue-100', text: 'text-blue-700', label: 'Requestor' },
-      SITE_ENGINEER: { bg: 'bg-orange-100', text: 'text-orange-700', label: 'Site Engineer' },
     }
     // For custom roles, use roleName from user object or format the role name
     if (badges[role]) {
@@ -164,7 +163,9 @@ const Layout = ({ systemType = 'workpermit' }) => {
             />
           </div>
           <div className="flex-1 min-w-0">
-            <h1 className="text-sm font-bold text-white leading-tight">Reliable Group</h1>
+            <h1 className="text-sm font-bold text-white leading-tight">
+              {user?.companyName || 'Reliable Group'}
+            </h1>
             <p className="text-xs text-slate-400">Work Permit and VMS</p>
           </div>
           <button

@@ -23,7 +23,6 @@ import {
   UserPlus,
   HardHat,
   ClipboardCheck,
-  Wrench,
   Phone,
   Calendar,
   UserCheck,
@@ -275,7 +274,6 @@ const Users = () => {
       FIREMAN: { bg: 'bg-blue-100', text: 'text-blue-700', label: 'Fireman', icon: HardHat },
       SAFETY_OFFICER: { bg: 'bg-blue-100', text: 'text-blue-700', label: 'Fireman', icon: HardHat }, // Backward compatibility
       REQUESTOR: { bg: 'bg-emerald-100', text: 'text-emerald-700', label: 'Requestor', icon: ClipboardCheck },
-      SITE_ENGINEER: { bg: 'bg-orange-100', text: 'text-orange-700', label: 'Site Engineer', icon: Wrench },
     }
     // Check if role exists in predefined badges, otherwise create a custom badge
     if (badges[role]) {
@@ -505,7 +503,6 @@ const Users = () => {
                 <>
                   <option value="ADMIN">Admin</option>
                   <option value="FIREMAN">Fireman</option>
-                  <option value="SITE_ENGINEER">Site Engineer</option>
                   <option value="REQUESTOR">Requestor</option>
                 </>
               )}
@@ -852,7 +849,6 @@ const Users = () => {
                       <>
                         <option value="REQUESTOR">Requestor</option>
                         <option value="FIREMAN">Fireman</option>
-                        <option value="SITE_ENGINEER">Site Engineer</option>
                         <option value="ADMIN">Admin</option>
                       </>
                     )}

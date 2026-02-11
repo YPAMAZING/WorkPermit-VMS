@@ -50,53 +50,6 @@ const defaultPermissions = [
   { key: 'roles.edit', name: 'Edit Roles', module: 'roles', action: 'edit' },
   { key: 'roles.delete', name: 'Delete Roles', module: 'roles', action: 'delete' },
   
-  // ============ MIS SYSTEM PERMISSIONS ============
-  // MIS Access Control
-  { key: 'mis.access', name: 'Access MIS System', module: 'mis', action: 'view' },
-  { key: 'mis.dashboard', name: 'View MIS Dashboard', module: 'mis', action: 'view' },
-  { key: 'mis.settings', name: 'Manage MIS Settings', module: 'mis', action: 'edit' },
-  
-  // Meter Readings (Site Engineer)
-  { key: 'meters.view', name: 'View Meter Readings', module: 'meters', action: 'view' },
-  { key: 'meters.view_all', name: 'View All Meter Readings', module: 'meters', action: 'view' },
-  { key: 'meters.view_own', name: 'View Own Meter Readings', module: 'meters', action: 'view' },
-  { key: 'meters.create', name: 'Create Meter Readings', module: 'meters', action: 'create' },
-  { key: 'meters.edit', name: 'Edit Meter Readings', module: 'meters', action: 'edit' },
-  { key: 'meters.edit_own', name: 'Edit Own Meter Readings', module: 'meters', action: 'edit' },
-  { key: 'meters.delete', name: 'Delete Meter Readings', module: 'meters', action: 'delete' },
-  { key: 'meters.delete_own', name: 'Delete Own Meter Readings', module: 'meters', action: 'delete' },
-  { key: 'meters.verify', name: 'Verify Meter Readings', module: 'meters', action: 'approve' },
-  { key: 'meters.export', name: 'Export Meter Data', module: 'meters', action: 'export' },
-  { key: 'meters.import', name: 'Bulk Import Readings', module: 'meters', action: 'create' },
-  { key: 'meters.analytics', name: 'View Meter Analytics', module: 'meters', action: 'view' },
-  { key: 'meters.ocr', name: 'Use OCR Image Upload', module: 'meters', action: 'create' },
-  
-  // Transmitter Data
-  { key: 'transmitters.view', name: 'View Transmitter Data', module: 'transmitters', action: 'view' },
-  { key: 'transmitters.view_all', name: 'View All Transmitter Data', module: 'transmitters', action: 'view' },
-  { key: 'transmitters.create', name: 'Create Transmitter Readings', module: 'transmitters', action: 'create' },
-  { key: 'transmitters.edit', name: 'Edit Transmitter Data', module: 'transmitters', action: 'edit' },
-  { key: 'transmitters.delete', name: 'Delete Transmitter Data', module: 'transmitters', action: 'delete' },
-  
-  // MIS Reports & Analytics
-  { key: 'reports.view', name: 'View Reports', module: 'reports', action: 'view' },
-  { key: 'reports.create', name: 'Generate Reports', module: 'reports', action: 'create' },
-  { key: 'reports.export', name: 'Export Reports', module: 'reports', action: 'export' },
-  { key: 'reports.schedule', name: 'Schedule Reports', module: 'reports', action: 'edit' },
-  
-  // MIS User Management (separate from Work Permit)
-  { key: 'mis_users.view', name: 'View MIS Users', module: 'mis_users', action: 'view' },
-  { key: 'mis_users.create', name: 'Create MIS Users', module: 'mis_users', action: 'create' },
-  { key: 'mis_users.edit', name: 'Edit MIS Users', module: 'mis_users', action: 'edit' },
-  { key: 'mis_users.delete', name: 'Delete MIS Users', module: 'mis_users', action: 'delete' },
-  { key: 'mis_users.assign_role', name: 'Assign MIS Roles', module: 'mis_users', action: 'edit' },
-  
-  // MIS Role Management
-  { key: 'mis_roles.view', name: 'View MIS Roles', module: 'mis_roles', action: 'view' },
-  { key: 'mis_roles.create', name: 'Create MIS Roles', module: 'mis_roles', action: 'create' },
-  { key: 'mis_roles.edit', name: 'Edit MIS Roles', module: 'mis_roles', action: 'edit' },
-  { key: 'mis_roles.delete', name: 'Delete MIS Roles', module: 'mis_roles', action: 'delete' },
-  
   // Settings
   { key: 'settings.view', name: 'View Settings', module: 'settings', action: 'view' },
   { key: 'settings.edit', name: 'Edit Settings', module: 'settings', action: 'edit' },
@@ -125,18 +78,13 @@ const defaultRoles = [
   {
     name: 'FIREMAN',
     displayName: 'Fireman',
-    description: 'Can approve/reject permits, re-approve revoked permits, and manage workers. Can also verify MIS readings.',
+    description: 'Can approve/reject permits, re-approve revoked permits, and manage workers.',
     isSystem: true,
     permissions: [
       'dashboard.view', 'dashboard.stats',
       'permits.view', 'permits.view_all', 'permits.export', 'permits.extend', 'permits.revoke', 'permits.close', 'permits.reapprove',
       'approvals.view', 'approvals.approve', 'approvals.sign', 'approvals.reapprove',
       'workers.view', 'workers.create', 'workers.edit', 'workers.qr',
-      // MIS permissions for Fireman
-      'mis.access', 'mis.dashboard',
-      'meters.view', 'meters.view_all', 'meters.verify', 'meters.export', 'meters.analytics',
-      'transmitters.view', 'transmitters.view_all',
-      'reports.view', 'reports.export',
       'settings.view',
     ],
     uiConfig: {
@@ -164,99 +112,6 @@ const defaultRoles = [
       accentColor: 'primary',
       showAllMenus: false,
       dashboardWidgets: ['stats', 'activity'],
-    },
-  },
-  {
-    name: 'SITE_ENGINEER',
-    displayName: 'Site Engineer',
-    description: 'Can upload meter readings, use OCR, and view analytics dashboard',
-    isSystem: true,
-    permissions: [
-      'dashboard.view', 'dashboard.stats',
-      'mis.access', 'mis.dashboard',
-      'meters.view', 'meters.view_own', 'meters.create', 'meters.edit_own', 'meters.delete_own', 'meters.export', 'meters.ocr', 'meters.analytics',
-      'transmitters.view', 'transmitters.create', 'transmitters.edit',
-      'reports.view', 'reports.export',
-      'settings.view',
-    ],
-    uiConfig: {
-      theme: 'default',
-      sidebarColor: 'slate',
-      accentColor: 'orange',
-      showAllMenus: false,
-      dashboardWidgets: ['stats', 'charts', 'meters'],
-      showMeterModule: true,
-      showMIS: true,
-    },
-  },
-  {
-    name: 'MIS_ADMIN',
-    displayName: 'MIS Administrator',
-    description: 'Full access to MIS system including user and role management',
-    isSystem: true,
-    permissions: [
-      'dashboard.view', 'dashboard.stats',
-      'mis.access', 'mis.dashboard', 'mis.settings',
-      'meters.view', 'meters.view_all', 'meters.create', 'meters.edit', 'meters.delete', 'meters.verify', 'meters.export', 'meters.import', 'meters.ocr', 'meters.analytics',
-      'transmitters.view', 'transmitters.view_all', 'transmitters.create', 'transmitters.edit', 'transmitters.delete',
-      'reports.view', 'reports.create', 'reports.export', 'reports.schedule',
-      'mis_users.view', 'mis_users.create', 'mis_users.edit', 'mis_users.delete', 'mis_users.assign_role',
-      'mis_roles.view', 'mis_roles.create', 'mis_roles.edit', 'mis_roles.delete',
-      'settings.view', 'settings.edit',
-      'audit.view',
-    ],
-    uiConfig: {
-      theme: 'default',
-      sidebarColor: 'purple',
-      accentColor: 'purple',
-      showAllMenus: true,
-      dashboardWidgets: ['stats', 'charts', 'meters', 'activity'],
-      showMIS: true,
-      showMISAdmin: true,
-    },
-  },
-  {
-    name: 'MIS_VERIFIER',
-    displayName: 'MIS Verifier',
-    description: 'Can view and verify meter readings submitted by Site Engineers',
-    isSystem: true,
-    permissions: [
-      'dashboard.view', 'dashboard.stats',
-      'mis.access', 'mis.dashboard',
-      'meters.view', 'meters.view_all', 'meters.verify', 'meters.export', 'meters.analytics',
-      'transmitters.view', 'transmitters.view_all',
-      'reports.view', 'reports.export',
-      'settings.view',
-    ],
-    uiConfig: {
-      theme: 'default',
-      sidebarColor: 'slate',
-      accentColor: 'green',
-      showAllMenus: false,
-      dashboardWidgets: ['stats', 'charts', 'pending'],
-      showMIS: true,
-    },
-  },
-  {
-    name: 'MIS_VIEWER',
-    displayName: 'MIS Viewer',
-    description: 'Read-only access to MIS data and reports',
-    isSystem: true,
-    permissions: [
-      'dashboard.view',
-      'mis.access', 'mis.dashboard',
-      'meters.view', 'meters.view_all', 'meters.analytics',
-      'transmitters.view', 'transmitters.view_all',
-      'reports.view',
-      'settings.view',
-    ],
-    uiConfig: {
-      theme: 'default',
-      sidebarColor: 'slate',
-      accentColor: 'blue',
-      showAllMenus: false,
-      dashboardWidgets: ['stats', 'charts'],
-      showMIS: true,
     },
   },
 ];

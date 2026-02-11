@@ -317,144 +317,6 @@ export const AuthProvider = ({ children }) => {
     return hasPermission('dashboard.stats')
   }
 
-  // ============ MIS SYSTEM PERMISSIONS ============
-  // Check if user can access MIS system
-  const canAccessMIS = () => {
-    if (!user) return false
-    if (user.role === 'ADMIN' || user.role === 'MIS_ADMIN') return true
-    if (user.role === 'FIREMAN' || user.role === 'SAFETY_OFFICER' || user.role === 'SITE_ENGINEER') return true
-    if (user.role === 'MIS_VERIFIER' || user.role === 'MIS_VIEWER') return true
-    return hasPermission('mis.access')
-  }
-
-  // Check if user can view MIS dashboard
-  const canViewMISDashboard = () => {
-    if (!user) return false
-    if (user.role === 'ADMIN' || user.role === 'MIS_ADMIN') return true
-    return hasPermission('mis.dashboard') || hasPermission('mis.access')
-  }
-
-  // Check if user can manage MIS settings
-  const canManageMISSettings = () => {
-    if (!user) return false
-    if (user.role === 'ADMIN' || user.role === 'MIS_ADMIN') return true
-    return hasPermission('mis.settings')
-  }
-
-  // ============ METER READING PERMISSIONS ============
-  const canViewMeterReadings = () => {
-    if (!user) return false
-    if (user.role === 'ADMIN' || user.role === 'MIS_ADMIN') return true
-    return hasAnyPermission(['meters.view', 'meters.view_all', 'meters.view_own'])
-  }
-
-  const canViewAllMeterReadings = () => {
-    if (!user) return false
-    if (user.role === 'ADMIN' || user.role === 'MIS_ADMIN' || user.role === 'MIS_VERIFIER') return true
-    if (user.role === 'FIREMAN' || user.role === 'SAFETY_OFFICER') return true
-    return hasPermission('meters.view_all')
-  }
-
-  const canCreateMeterReadings = () => {
-    if (!user) return false
-    if (user.role === 'ADMIN' || user.role === 'MIS_ADMIN' || user.role === 'SITE_ENGINEER') return true
-    return hasPermission('meters.create')
-  }
-
-  const canEditMeterReadings = () => {
-    if (!user) return false
-    if (user.role === 'ADMIN' || user.role === 'MIS_ADMIN') return true
-    return hasAnyPermission(['meters.edit', 'meters.edit_own'])
-  }
-
-  const canDeleteMeterReadings = () => {
-    if (!user) return false
-    if (user.role === 'ADMIN' || user.role === 'MIS_ADMIN') return true
-    return hasAnyPermission(['meters.delete', 'meters.delete_own'])
-  }
-
-  const canVerifyMeterReadings = () => {
-    if (!user) return false
-    if (user.role === 'ADMIN' || user.role === 'MIS_ADMIN' || user.role === 'MIS_VERIFIER') return true
-    if (user.role === 'FIREMAN' || user.role === 'SAFETY_OFFICER') return true
-    return hasPermission('meters.verify')
-  }
-
-  const canExportMeterData = () => {
-    if (!user) return false
-    if (user.role === 'ADMIN' || user.role === 'MIS_ADMIN') return true
-    return hasPermission('meters.export')
-  }
-
-  const canImportMeterData = () => {
-    if (!user) return false
-    if (user.role === 'ADMIN' || user.role === 'MIS_ADMIN') return true
-    return hasPermission('meters.import')
-  }
-
-  const canUseOCR = () => {
-    if (!user) return false
-    if (user.role === 'ADMIN' || user.role === 'MIS_ADMIN' || user.role === 'SITE_ENGINEER') return true
-    return hasPermission('meters.ocr')
-  }
-
-  const canViewMeterAnalytics = () => {
-    if (!user) return false
-    if (user.role === 'ADMIN' || user.role === 'MIS_ADMIN') return true
-    return hasPermission('meters.analytics')
-  }
-
-  // ============ MIS REPORTS PERMISSIONS ============
-  const canViewReports = () => {
-    if (!user) return false
-    if (user.role === 'ADMIN' || user.role === 'MIS_ADMIN') return true
-    return hasPermission('reports.view')
-  }
-
-  const canCreateReports = () => {
-    if (!user) return false
-    if (user.role === 'ADMIN' || user.role === 'MIS_ADMIN') return true
-    return hasPermission('reports.create')
-  }
-
-  const canExportReports = () => {
-    if (!user) return false
-    if (user.role === 'ADMIN' || user.role === 'MIS_ADMIN') return true
-    return hasPermission('reports.export')
-  }
-
-  // ============ MIS USER MANAGEMENT PERMISSIONS ============
-  const canViewMISUsers = () => {
-    if (!user) return false
-    if (user.role === 'ADMIN' || user.role === 'MIS_ADMIN') return true
-    return hasPermission('mis_users.view')
-  }
-
-  const canManageMISUsers = () => {
-    if (!user) return false
-    if (user.role === 'ADMIN' || user.role === 'MIS_ADMIN') return true
-    return hasAnyPermission(['mis_users.create', 'mis_users.edit', 'mis_users.delete'])
-  }
-
-  const canAssignMISRoles = () => {
-    if (!user) return false
-    if (user.role === 'ADMIN' || user.role === 'MIS_ADMIN') return true
-    return hasPermission('mis_users.assign_role')
-  }
-
-  // ============ MIS ROLE MANAGEMENT PERMISSIONS ============
-  const canViewMISRoles = () => {
-    if (!user) return false
-    if (user.role === 'ADMIN' || user.role === 'MIS_ADMIN') return true
-    return hasPermission('mis_roles.view')
-  }
-
-  const canManageMISRoles = () => {
-    if (!user) return false
-    if (user.role === 'ADMIN' || user.role === 'MIS_ADMIN') return true
-    return hasAnyPermission(['mis_roles.create', 'mis_roles.edit', 'mis_roles.delete'])
-  }
-
   const value = {
     user,
     loading,
@@ -463,15 +325,10 @@ export const AuthProvider = ({ children }) => {
     logout,
     updateUser,
     // Role checks (for backward compatibility with system roles)
-    // isAdmin now includes MIS_ADMIN for administrative privileges across the system
-    isAdmin: user?.role === 'ADMIN' || user?.role === 'MIS_ADMIN',
+    isAdmin: user?.role === 'ADMIN',
     isFireman: user?.role === 'FIREMAN' || user?.role === 'SAFETY_OFFICER',
     isSafetyOfficer: user?.role === 'FIREMAN' || user?.role === 'SAFETY_OFFICER', // Alias for backward compatibility
     isRequestor: user?.role === 'REQUESTOR',
-    isSiteEngineer: user?.role === 'SITE_ENGINEER',
-    isMISAdmin: user?.role === 'MIS_ADMIN',
-    isMISVerifier: user?.role === 'MIS_VERIFIER',
-    isMISViewer: user?.role === 'MIS_VIEWER',
     // Permission-based checks (works with custom roles too)
     hasPermission,
     hasAnyPermission,
@@ -516,33 +373,6 @@ export const AuthProvider = ({ children }) => {
     // Dashboard permissions
     canViewDashboard,
     canViewStatistics,
-    // ============ MIS PERMISSIONS ============
-    // MIS Access
-    canAccessMIS,
-    canViewMISDashboard,
-    canManageMISSettings,
-    // Meter Reading permissions
-    canViewMeterReadings,
-    canViewAllMeterReadings,
-    canCreateMeterReadings,
-    canEditMeterReadings,
-    canDeleteMeterReadings,
-    canVerifyMeterReadings,
-    canExportMeterData,
-    canImportMeterData,
-    canUseOCR,
-    canViewMeterAnalytics,
-    // MIS Reports permissions
-    canViewReports,
-    canCreateReports,
-    canExportReports,
-    // MIS User Management
-    canViewMISUsers,
-    canManageMISUsers,
-    canAssignMISRoles,
-    // MIS Role Management
-    canViewMISRoles,
-    canManageMISRoles,
     // User permissions array
     permissions: user?.permissions || [],
   }
