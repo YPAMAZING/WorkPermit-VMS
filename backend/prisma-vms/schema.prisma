@@ -63,8 +63,9 @@ model Company {
   
   // Approval-based gatepass feature
   // If true: visitors must be approved before gatepass is generated
-  // If false: visitors can directly get gatepass (like Vodafone)
-  requireGatepassApproval Boolean @default(true)
+  // If false: visitors can directly get gatepass (DEFAULT - direct entry)
+  // When a company gets VMS access, this is automatically turned ON
+  requireGatepassApproval Boolean @default(false)
   
   isActive          Boolean   @default(true)
   createdAt         DateTime  @default(now())

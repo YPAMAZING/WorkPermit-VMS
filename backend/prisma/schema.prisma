@@ -26,6 +26,11 @@ model User {
   approvedBy      String?         @db.VarChar(36)
   approvedAt      DateTime?
   rejectionReason String?         @db.Text
+  
+  // VMS Integration fields
+  companyName     String?         @db.VarChar(255)  // Company name for tenant users (REQUESTOR)
+  hasVMSAccess    Boolean         @default(false)   // Can access VMS dashboard
+  
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
   
@@ -34,6 +39,7 @@ model User {
   
   @@index([email])
   @@index([roleId])
+  @@index([companyName])
   @@map("users")
 }
 

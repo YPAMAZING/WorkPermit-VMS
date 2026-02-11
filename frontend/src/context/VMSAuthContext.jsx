@@ -10,19 +10,24 @@ export const VMSAuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  // Get VMS token from localStorage
+  // Get token from localStorage (shared with Work Permit)
   const getToken = () => localStorage.getItem('vms_token') || localStorage.getItem('token')
-  const setToken = (token) => localStorage.setItem('vms_token', token)
-  const removeToken = () => localStorage.removeItem('vms_token')
+  const setToken = (token) => {
+    localStorage.setItem('vms_token', token)
+    localStorage.setItem('token', token) // Also set main token for shared auth
+  }
+  const removeToken = () => {
+    localStorage.removeItem('vms_token')
+  }
+
+  // Create axios instance for Work Permit API (main auth)
+  const mainApi = axios.create({
+    baseURL: API_URL,
+  })
 
   // Create axios instance for VMS API
   const vmsApi = axios.create({
     baseURL: `${API_URL}/vms`,
-  })
-
-  // Create axios instance for main Work Permit API (fallback)
-  const mainApi = axios.create({
-    baseURL: API_URL,
   })
 
   // Add auth header to requests
@@ -34,8 +39,8 @@ export const VMSAuthProvider = ({ children }) => {
     return config
   }
 
-  vmsApi.interceptors.request.use(addAuthHeader)
   mainApi.interceptors.request.use(addAuthHeader)
+  vmsApi.interceptors.request.use(addAuthHeader)
 
   // Handle auth errors
   const handleAuthError = (error) => {
@@ -46,29 +51,8 @@ export const VMSAuthProvider = ({ children }) => {
     return Promise.reject(error)
   }
 
-  vmsApi.interceptors.response.use((response) => response, handleAuthError)
   mainApi.interceptors.response.use((response) => response, handleAuthError)
-
-  // Check if user has permission
-  const hasPermission = useCallback((permission) => {
-    if (!user) return false
-    if (user.role === 'ADMIN' || user.role === 'VMS_ADMIN' || user.role === 'admin') return true
-    return user.permissions?.includes(permission) || false
-  }, [user])
-
-  // Check if user has any of the permissions
-  const hasAnyPermission = useCallback((permissions) => {
-    if (!user) return false
-    if (user.role === 'ADMIN' || user.role === 'VMS_ADMIN' || user.role === 'admin') return true
-    return permissions.some(p => user.permissions?.includes(p))
-  }, [user])
-
-  // Role checks - support both VMS roles and Work Permit roles
-  const isAdmin = user?.role === 'ADMIN' || user?.role === 'VMS_ADMIN' || user?.role === 'admin'
-  const isSecuritySupervisor = user?.role === 'SECURITY_SUPERVISOR'
-  const isSecurityGuard = user?.role === 'SECURITY_GUARD' || user?.role === 'guard'
-  const isReceptionist = user?.role === 'RECEPTIONIST' || user?.role === 'reception'
-  const isHost = user?.role === 'HOST'
+  vmsApi.interceptors.response.use((response) => response, handleAuthError)
 
   // Default VMS permissions for all logged-in users
   const DEFAULT_VMS_PERMISSIONS = [
@@ -81,6 +65,33 @@ export const VMSAuthProvider = ({ children }) => {
     'vms.reports.view',
   ]
 
+  // Check if user has permission
+  const hasPermission = useCallback((permission) => {
+    if (!user) return false
+    // Admin roles have all permissions
+    if (['ADMIN', 'VMS_ADMIN', 'admin', 'FIREMAN'].includes(user.role)) return true
+    return user.permissions?.includes(permission) || false
+  }, [user])
+
+  // Check if user has any of the permissions
+  const hasAnyPermission = useCallback((permissions) => {
+    if (!user) return false
+    if (['ADMIN', 'VMS_ADMIN', 'admin', 'FIREMAN'].includes(user.role)) return true
+    return permissions.some(p => user.permissions?.includes(p))
+  }, [user])
+
+  // Role checks
+  const isAdmin = user?.role === 'ADMIN' || user?.role === 'VMS_ADMIN' || user?.role === 'admin' || user?.role === 'FIREMAN'
+  const isSecuritySupervisor = user?.role === 'SECURITY_SUPERVISOR'
+  const isSecurityGuard = user?.role === 'SECURITY_GUARD'
+  const isReceptionist = user?.role === 'RECEPTIONIST'
+  const isHost = user?.role === 'HOST'
+  const isRequestor = user?.role === 'REQUESTOR' // Company tenant user
+  
+  // Check if user can access VMS (Admin, Guard, Reception, or REQUESTOR with VMS access)
+  const canAccessVMS = isAdmin || isSecuritySupervisor || isSecurityGuard || isReceptionist || 
+                       (isRequestor && user?.hasVMSAccess)
+
   // Load user on mount
   useEffect(() => {
     const loadUser = async () => {
@@ -91,27 +102,18 @@ export const VMSAuthProvider = ({ children }) => {
       }
 
       try {
-        // Try VMS auth first
-        const response = await vmsApi.get('/auth/me')
+        // Use Work Permit auth (single source of truth)
+        const response = await mainApi.get('/auth/me')
         const userData = response.data.user || response.data
+        
+        // Add VMS permissions
         setUser({
           ...userData,
           permissions: userData.permissions || DEFAULT_VMS_PERMISSIONS
         })
-      } catch (vmsErr) {
-        console.log('VMS auth failed, trying Work Permit auth...')
-        try {
-          // Fallback to Work Permit auth
-          const response = await mainApi.get('/auth/me')
-          const userData = response.data.user || response.data
-          setUser({
-            ...userData,
-            permissions: DEFAULT_VMS_PERMISSIONS
-          })
-        } catch (mainErr) {
-          console.error('All auth failed:', mainErr)
-          removeToken()
-        }
+      } catch (err) {
+        console.error('Auth load failed:', err)
+        removeToken()
       } finally {
         setLoading(false)
       }
@@ -120,60 +122,24 @@ export const VMSAuthProvider = ({ children }) => {
     loadUser()
   }, [])
 
-  // Login - Try VMS auth first, then Work Permit
+  // Login - Use Work Permit authentication (single login system)
   const login = async (email, password) => {
     try {
       setError(null)
       
-      // Try VMS authentication first
-      try {
-        const response = await vmsApi.post('/auth/login', { email, password })
-        const { token, user: userData } = response.data
-        setToken(token)
-        setUser({
-          ...userData,
-          permissions: userData.permissions || DEFAULT_VMS_PERMISSIONS
-        })
-        return { success: true }
-      } catch (vmsErr) {
-        console.log('VMS login failed, trying Work Permit auth...')
-        
-        // Fallback to Work Permit authentication
-        const response = await mainApi.post('/auth/login', { email, password })
-        const { token, user: userData } = response.data
-        setToken(token)
-        setUser({
-          ...userData,
-          permissions: DEFAULT_VMS_PERMISSIONS
-        })
-        return { success: true }
-      }
+      // Use Work Permit authentication
+      const response = await mainApi.post('/auth/login', { email, password })
+      const { token, user: userData } = response.data
+      
+      setToken(token)
+      setUser({
+        ...userData,
+        permissions: userData.permissions || DEFAULT_VMS_PERMISSIONS
+      })
+      
+      return { success: true }
     } catch (err) {
       const message = err.response?.data?.message || 'Login failed. Please check your credentials.'
-      setError(message)
-      return { success: false, error: message }
-    }
-  }
-
-  // Register
-  const register = async (data) => {
-    try {
-      setError(null)
-      const response = await vmsApi.post('/auth/register', data)
-      
-      if (response.data.token) {
-        setToken(response.data.token)
-        setUser(response.data.user)
-        return { success: true, autoApproved: true }
-      }
-      
-      return { 
-        success: true, 
-        autoApproved: false, 
-        message: response.data.message 
-      }
-    } catch (err) {
-      const message = err.response?.data?.message || 'Registration failed'
       setError(message)
       return { success: false, error: message }
     }
@@ -188,22 +154,11 @@ export const VMSAuthProvider = ({ children }) => {
   // Update profile
   const updateProfile = async (data) => {
     try {
-      const response = await vmsApi.put('/auth/profile', data)
-      setUser(response.data.user)
+      const response = await mainApi.put('/auth/profile', data)
+      setUser(prev => ({ ...prev, ...response.data.user }))
       return { success: true }
     } catch (err) {
       const message = err.response?.data?.message || 'Update failed'
-      return { success: false, error: message }
-    }
-  }
-
-  // Change password
-  const changePassword = async (currentPassword, newPassword) => {
-    try {
-      await vmsApi.put('/auth/password', { currentPassword, newPassword })
-      return { success: true }
-    } catch (err) {
-      const message = err.response?.data?.message || 'Password change failed'
       return { success: false, error: message }
     }
   }
@@ -213,10 +168,8 @@ export const VMSAuthProvider = ({ children }) => {
     loading,
     error,
     login,
-    register,
     logout,
     updateProfile,
-    changePassword,
     hasPermission,
     hasAnyPermission,
     isAdmin,
@@ -224,7 +177,10 @@ export const VMSAuthProvider = ({ children }) => {
     isSecurityGuard,
     isReceptionist,
     isHost,
+    isRequestor,
+    canAccessVMS,
     vmsApi,
+    mainApi,
     // Permission shortcuts
     canViewDashboard: hasPermission('vms.dashboard.view'),
     canViewVisitors: hasPermission('vms.visitors.view'),

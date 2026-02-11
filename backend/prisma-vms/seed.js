@@ -184,189 +184,78 @@ async function main() {
 
   // ================================
   // CREATE SAMPLE COMPANIES (Multi-tenant)
-  // Including companies from frontend with approval settings
+  // All companies start with requireGatepassApproval = false (direct entry by default)
+  // When a company gets VMS access in Work Permit, approval is auto-enabled
   // ================================
   const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
   
+  // All companies from the frontend list - DEFAULT: Direct entry (no approval required)
   const companies = [
     {
       code: 'RELIABLE',
-      name: 'reliable-group',
-      displayName: 'Reliable Group MEP',
-      description: 'Reliable Group - MEP Services & Security',
+      name: 'Reliable Group',
+      displayName: 'Reliable Group (Campus Owner)',
+      description: 'Reliable Group - Campus Owner & MEP Services',
       portalId: 'P-RELIABLE1',
       subscriptionActive: true,
       subscriptionPlan: 'PRO',
       primaryColor: '#2563eb',
-      secondaryColor: '#1e40af',
-      welcomeMessage: 'Welcome to Reliable Group! Please fill in your details to proceed with the check-in.',
-      termsAndConditions: 'By proceeding, you agree to follow all security protocols and building regulations. Your visit will be logged for security purposes.',
-      requireIdProof: true,
-      requirePhoto: true,
-      autoApprove: false,
-      requireGatepassApproval: true, // Visitors need approval before getting gatepass
+      requireGatepassApproval: false, // Direct entry by default
       isActive: true,
     },
-    // VODAFONE IDEA - Special case: NO approval required (direct gatepass)
-    {
-      code: 'VODAFONE',
-      name: 'Vodafone Idea',
-      displayName: 'Vodafone Idea',
-      description: 'Vodafone Idea - Telecom Company',
-      portalId: 'P-VODAFONE1',
-      subscriptionActive: true,
-      subscriptionPlan: 'PRO',
-      primaryColor: '#e60000',
-      secondaryColor: '#b30000',
-      welcomeMessage: 'Welcome to Vodafone Idea! Please register for direct entry.',
-      termsAndConditions: 'All visitors must follow Vodafone security protocols.',
-      requireIdProof: true,
-      requirePhoto: true,
-      autoApprove: true,
-      requireGatepassApproval: false, // NO APPROVAL REQUIRED - Direct gatepass
-      notifyHost: true,
-      isActive: true,
-    },
-    // HCL Technologies - Approval required
-    {
-      code: 'HCL',
-      name: 'HCL Technologies',
-      displayName: 'HCL Technologies',
-      description: 'HCL Technologies - IT Services',
-      portalId: 'P-HCL1',
-      subscriptionActive: true,
-      subscriptionPlan: 'PRO',
-      primaryColor: '#0053a3',
-      secondaryColor: '#003d7a',
-      welcomeMessage: 'Welcome to HCL Technologies! Please complete registration.',
-      termsAndConditions: 'All visitors must sign NDA and follow HCL security protocols.',
-      requireIdProof: true,
-      requirePhoto: true,
-      autoApprove: false,
-      requireGatepassApproval: true, // Approval required
-      notifyHost: true,
-      isActive: true,
-    },
-    // Godrej - Approval required
-    {
-      code: 'GODREJ',
-      name: 'Godrej',
-      displayName: 'Godrej Industries',
-      description: 'Godrej Industries - Diversified Conglomerate',
-      portalId: 'P-GODREJ1',
-      subscriptionActive: true,
-      subscriptionPlan: 'PRO',
-      primaryColor: '#1a472a',
-      secondaryColor: '#0d2615',
-      welcomeMessage: 'Welcome to Godrej! Please register your visit.',
-      termsAndConditions: 'All visitors must follow Godrej campus security guidelines.',
-      requireIdProof: true,
-      requirePhoto: true,
-      autoApprove: false,
-      requireGatepassApproval: true, // Approval required
-      notifyHost: true,
-      isActive: true,
-    },
-    // Yes Bank - NO approval required (direct entry)
-    {
-      code: 'YESBANK',
-      name: 'Yes Bank',
-      displayName: 'Yes Bank',
-      description: 'Yes Bank - Banking & Financial Services',
-      portalId: 'P-YESBANK1',
-      subscriptionActive: true,
-      subscriptionPlan: 'PRO',
-      primaryColor: '#003087',
-      secondaryColor: '#002060',
-      welcomeMessage: 'Welcome to Yes Bank! Register for direct entry.',
-      termsAndConditions: 'All visitors must follow bank security protocols.',
-      requireIdProof: true,
-      requirePhoto: true,
-      autoApprove: true,
-      requireGatepassApproval: false, // NO APPROVAL REQUIRED - Direct gatepass
-      notifyHost: true,
-      isActive: true,
-    },
-    // Tata Consulting Engineering - Approval required
-    {
-      code: 'TCE',
-      name: 'Tata Consulting Engineering',
-      displayName: 'Tata Consulting Engineering',
-      description: 'Tata Consulting Engineering - Engineering Services',
-      portalId: 'P-TCE1',
-      subscriptionActive: true,
-      subscriptionPlan: 'PRO',
-      primaryColor: '#2c3e50',
-      secondaryColor: '#1a252f',
-      welcomeMessage: 'Welcome to Tata Consulting Engineering! Please register your visit.',
-      termsAndConditions: 'All visitors must follow TCE security protocols.',
-      requireIdProof: true,
-      requirePhoto: true,
-      autoApprove: false,
-      requireGatepassApproval: true, // Approval required
-      notifyHost: true,
-      isActive: true,
-    },
-    // Adani Enterprises - Approval required
-    {
-      code: 'ADANI',
-      name: 'Adani Enterprises',
-      displayName: 'Adani Enterprises',
-      description: 'Adani Enterprises - Infrastructure & Energy',
-      portalId: 'P-ADANI1',
-      subscriptionActive: true,
-      subscriptionPlan: 'PRO',
-      primaryColor: '#003366',
-      secondaryColor: '#00264d',
-      welcomeMessage: 'Welcome to Adani Enterprises! Please register your visit.',
-      termsAndConditions: 'All visitors must follow Adani security guidelines.',
-      requireIdProof: true,
-      requirePhoto: true,
-      autoApprove: false,
-      requireGatepassApproval: true, // Approval required
-      notifyHost: true,
-      isActive: true,
-    },
-    // Lupin - Approval required
-    {
-      code: 'LUPIN',
-      name: 'Lupin',
-      displayName: 'Lupin Pharmaceuticals',
-      description: 'Lupin - Pharmaceutical Company',
-      portalId: 'P-LUPIN1',
-      subscriptionActive: true,
-      subscriptionPlan: 'PRO',
-      primaryColor: '#e31e24',
-      secondaryColor: '#b81820',
-      welcomeMessage: 'Welcome to Lupin! Please register for your visit.',
-      termsAndConditions: 'All visitors must follow GMP and pharma safety protocols.',
-      requireIdProof: true,
-      requirePhoto: true,
-      autoApprove: false,
-      requireGatepassApproval: true, // Approval required
-      notifyHost: true,
-      isActive: true,
-    },
-    // AWFIS - NO approval required (co-working space - direct entry)
-    {
-      code: 'AWFIS',
-      name: 'AWFIS Solutions Spaces',
-      displayName: 'AWFIS Co-working',
-      description: 'AWFIS Solutions Spaces - Co-working & Managed Offices',
-      portalId: 'P-AWFIS1',
-      subscriptionActive: true,
-      subscriptionPlan: 'PRO',
-      primaryColor: '#f7931e',
-      secondaryColor: '#c77418',
-      welcomeMessage: 'Welcome to AWFIS! Register for quick entry.',
-      termsAndConditions: 'All visitors must follow AWFIS community guidelines.',
-      requireIdProof: true,
-      requirePhoto: false,
-      autoApprove: true,
-      requireGatepassApproval: false, // NO APPROVAL REQUIRED - Direct gatepass (co-working)
-      notifyHost: true,
-      isActive: true,
-    },
+    { code: 'ADANI', name: 'Adani Enterprises', displayName: 'Adani Enterprises', requireGatepassApproval: false, isActive: true },
+    { code: 'AQUITY', name: 'Aquity Solutions', displayName: 'Aquity Solutions', requireGatepassApproval: false, isActive: true },
+    { code: 'AWFIS', name: 'AWFIS Solutions Spaces', displayName: 'AWFIS Solutions Spaces', requireGatepassApproval: false, isActive: true },
+    { code: 'AZELIS', name: 'Azelis', displayName: 'Azelis', requireGatepassApproval: false, isActive: true },
+    { code: 'BAKER', name: 'Baker Huges Oilfield Services', displayName: 'Baker Huges Oilfield Services', requireGatepassApproval: false, isActive: true },
+    { code: 'BHARAT', name: 'Bharat Serum & Vaccines', displayName: 'Bharat Serum & Vaccines', requireGatepassApproval: false, isActive: true },
+    { code: 'BIRLA', name: 'Birla Management Centre', displayName: 'Birla Management Centre', requireGatepassApproval: false, isActive: true },
+    { code: 'BRUECKNER', name: 'Brueckner Group India', displayName: 'Brueckner Group India', requireGatepassApproval: false, isActive: true },
+    { code: 'CLARIANT', name: 'Clariant Chemicals', displayName: 'Clariant Chemicals', requireGatepassApproval: false, isActive: true },
+    { code: 'CLOVER', name: 'Clover Infotech', displayName: 'Clover Infotech', requireGatepassApproval: false, isActive: true },
+    { code: 'COVESTRO', name: 'Covestro', displayName: 'Covestro', requireGatepassApproval: false, isActive: true },
+    { code: 'CREATIVE', name: 'Creative IT', displayName: 'Creative IT', requireGatepassApproval: false, isActive: true },
+    { code: 'DSP', name: 'DSP Integrated Services', displayName: 'DSP Integrated Services', requireGatepassApproval: false, isActive: true },
+    { code: 'ECI', name: 'ECI Telecom', displayName: 'ECI Telecom', requireGatepassApproval: false, isActive: true },
+    { code: 'EFC', name: 'EFC', displayName: 'EFC', requireGatepassApproval: false, isActive: true },
+    { code: 'EFCINFRA', name: 'EFC Office Infra', displayName: 'EFC Office Infra', requireGatepassApproval: false, isActive: true },
+    { code: 'EFCSPACE', name: 'EFC Office Spaces', displayName: 'EFC Office Spaces', requireGatepassApproval: false, isActive: true },
+    { code: 'EFCTECH', name: 'EFC Tech Spaces', displayName: 'EFC Tech Spaces', requireGatepassApproval: false, isActive: true },
+    { code: 'ESDS', name: 'ESDS', displayName: 'ESDS', requireGatepassApproval: false, isActive: true },
+    { code: 'GARMERCY', name: 'Garmercy Tech Park', displayName: 'Garmercy Tech Park', requireGatepassApproval: false, isActive: true },
+    { code: 'GODREJ', name: 'Godrej', displayName: 'Godrej', requireGatepassApproval: false, isActive: true },
+    { code: 'HANSA', name: 'Hansa Direct', displayName: 'Hansa Direct', requireGatepassApproval: false, isActive: true },
+    { code: 'HCL', name: 'HCL Technologies', displayName: 'HCL Technologies', requireGatepassApproval: false, isActive: true },
+    { code: 'HINDUSTAN', name: 'Hindustan Fields Services', displayName: 'Hindustan Fields Services', requireGatepassApproval: false, isActive: true },
+    { code: 'HOLCIM', name: 'Holcim Services', displayName: 'Holcim Services', requireGatepassApproval: false, isActive: true },
+    { code: 'HOMECREDIT', name: 'Home Credit', displayName: 'Home Credit', requireGatepassApproval: false, isActive: true },
+    { code: 'ICRA', name: 'Icra', displayName: 'Icra', requireGatepassApproval: false, isActive: true },
+    { code: 'INCHCAP', name: 'Inchcap Shipping Services', displayName: 'Inchcap Shipping Services', requireGatepassApproval: false, isActive: true },
+    { code: 'ICEX', name: 'Indian Commodity Exchange', displayName: 'Indian Commodity Exchange', requireGatepassApproval: false, isActive: true },
+    { code: 'INVENIO', name: 'Invenio Business Solution', displayName: 'Invenio Business Solution', requireGatepassApproval: false, isActive: true },
+    { code: 'ISSGF', name: 'ISSGF', displayName: 'ISSGF', requireGatepassApproval: false, isActive: true },
+    { code: 'JACOBS', name: 'Jacobs Solutions', displayName: 'Jacobs Solutions', requireGatepassApproval: false, isActive: true },
+    { code: 'KYNDRYL', name: 'Kyndryl Solutions', displayName: 'Kyndryl Solutions', requireGatepassApproval: false, isActive: true },
+    { code: 'LUPIN', name: 'Lupin', displayName: 'Lupin', requireGatepassApproval: false, isActive: true },
+    { code: 'MAERSK', name: 'Maersk Global Service Centre', displayName: 'Maersk Global Service Centre', requireGatepassApproval: false, isActive: true },
+    { code: 'MAGICBUS', name: 'Magic Bus', displayName: 'Magic Bus', requireGatepassApproval: false, isActive: true },
+    { code: 'NMDC', name: 'NMDC Data Centre', displayName: 'NMDC Data Centre', requireGatepassApproval: false, isActive: true },
+    { code: 'NOURYON', name: 'Nouryon Chemicals', displayName: 'Nouryon Chemicals', requireGatepassApproval: false, isActive: true },
+    { code: 'QUESS', name: 'Quess Corp', displayName: 'Quess Corp', requireGatepassApproval: false, isActive: true },
+    { code: 'RBL', name: 'RBL Bank', displayName: 'RBL Bank', requireGatepassApproval: false, isActive: true },
+    { code: 'RELIANCE', name: 'Reliance General Insurance', displayName: 'Reliance General Insurance', requireGatepassApproval: false, isActive: true },
+    { code: 'RUBICON', name: 'Rubicon Maritime India', displayName: 'Rubicon Maritime India', requireGatepassApproval: false, isActive: true },
+    { code: 'SIFY', name: 'Sify Infinity Spaces', displayName: 'Sify Infinity Spaces', requireGatepassApproval: false, isActive: true },
+    { code: 'SPOCTO', name: 'Spocto Business Solutions', displayName: 'Spocto Business Solutions', requireGatepassApproval: false, isActive: true },
+    { code: 'SUKI', name: 'Suki Solution', displayName: 'Suki Solution', requireGatepassApproval: false, isActive: true },
+    { code: 'SULZER', name: 'Sulzer Tech', displayName: 'Sulzer Tech', requireGatepassApproval: false, isActive: true },
+    { code: 'SUTHERLAND', name: 'Sutherland Global Services', displayName: 'Sutherland Global Services', requireGatepassApproval: false, isActive: true },
+    { code: 'TALDAR', name: 'Taldar Hotels & Resorts', displayName: 'Taldar Hotels & Resorts', requireGatepassApproval: false, isActive: true },
+    { code: 'TCE', name: 'Tata Consulting Engineering', displayName: 'Tata Consulting Engineering', requireGatepassApproval: false, isActive: true },
+    { code: 'TECHNICS', name: 'Technics Reunidas', displayName: 'Technics Reunidas', requireGatepassApproval: false, isActive: true },
+    { code: 'UNIVERSAL', name: 'Universal Sompo', displayName: 'Universal Sompo', requireGatepassApproval: false, isActive: true },
+    { code: 'VODAFONE', name: 'Vodafone Idea', displayName: 'Vodafone Idea', requireGatepassApproval: false, isActive: true },
+    { code: 'YESBANK', name: 'Yes Bank', displayName: 'Yes Bank', requireGatepassApproval: false, isActive: true },
   ];
 
   const createdCompanies = {};
@@ -412,24 +301,14 @@ async function main() {
   }
   console.log('✅ Created sample companies with QR codes');
   console.log('');
-  console.log('📋 Company Approval Settings:');
-  console.log('   🔒 APPROVAL REQUIRED (visitors must wait for approval):');
-  console.log(`      - RELIABLE: Reliable Group`);
-  console.log(`      - HCL: HCL Technologies`);
-  console.log(`      - GODREJ: Godrej Industries`);
-  console.log(`      - TCE: Tata Consulting Engineering`);
-  console.log(`      - ADANI: Adani Enterprises`);
-  console.log(`      - LUPIN: Lupin Pharmaceuticals`);
-  console.log('');
-  console.log('   🟢 DIRECT ENTRY (visitors get gatepass immediately):');
-  console.log(`      - VODAFONE: Vodafone Idea (NO approval required)`);
-  console.log(`      - YESBANK: Yes Bank (NO approval required)`);
-  console.log(`      - AWFIS: AWFIS Co-working (NO approval required)`);
+  console.log('📋 Default Approval Setting: OFF (Direct Entry)');
+  console.log('   All companies start with requireGatepassApproval = false');
+  console.log('   When VMS access is granted to a company (REQUESTOR), approval auto-enables');
   console.log('');
   console.log('📱 QR Check-in URLs:');
-  for (const company of companies) {
-    console.log(`   ${baseUrl}/vms/checkin/${company.code} - ${company.displayName}`);
-  };
+  console.log(`   ${baseUrl}/vms/checkin/RELIABLE - Reliable Group (Campus Owner)`);
+  console.log(`   ... and ${companies.length - 1} more tenant companies`);
+  console.log('');
 
   // ================================
   // CREATE USERS WITH COMPANY ASSIGNMENT
