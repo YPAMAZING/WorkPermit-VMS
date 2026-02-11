@@ -417,9 +417,9 @@ const login = async (req, res) => {
         profilePicture: user.profilePicture,
         permissions,
         uiConfig,
-        // VMS Integration fields
-        companyName: user.companyName || null,
-        hasVMSAccess: user.hasVMSAccess || false,
+        // VMS Integration fields (handle undefined columns gracefully)
+        companyName: user.companyName !== undefined ? user.companyName : null,
+        hasVMSAccess: user.hasVMSAccess !== undefined ? user.hasVMSAccess : false,
       },
       token,
     });
