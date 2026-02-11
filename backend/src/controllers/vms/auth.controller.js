@@ -1,38 +1,58 @@
 // VMS Authentication Controller
-const vmsPrisma = require('../../config/vms-prisma');
+// Uses MAIN database (same as Work Permit system)
+// This allows admins to access both Work Permit AND VMS with same credentials
+
+const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const config = require('../../config');
 
-// Login
+const prisma = new PrismaClient();
+
+// Login - uses main database
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Find user with role
-    const user = await vmsPrisma.user.findUnique({
+    console.log('\n' + '='.repeat(60));
+    console.log('🔐 VMS LOGIN ATTEMPT');
+    console.log('='.repeat(60));
+    console.log('📧 Email:', email);
+
+    // Find user with role from MAIN database
+    const user = await prisma.user.findUnique({
       where: { email },
-      include: { 
-        role: true,
-      },
+      include: { role: true },
     });
 
     if (!user) {
+      console.log('❌ User not found');
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
+    console.log('✅ User found:', user.firstName, user.lastName);
+    console.log('🏷️  Role:', user.role?.name || 'No role');
+    console.log('✅ isActive:', user.isActive);
+    console.log('✅ isApproved:', user.isApproved);
+
     if (!user.isActive) {
+      console.log('❌ Account deactivated');
       return res.status(403).json({ message: 'Account is deactivated' });
     }
 
     if (!user.isApproved) {
+      console.log('❌ Account pending approval');
       return res.status(403).json({ message: 'Account is pending approval' });
     }
 
     // Verify password
     const isValidPassword = await bcrypt.compare(password, user.password);
     if (!isValidPassword) {
+      console.log('❌ Invalid password');
       return res.status(401).json({ message: 'Invalid credentials' });
     }
+
+    console.log('✅ Password verified');
 
     // Parse role permissions
     let permissions = [];
@@ -44,30 +64,36 @@ exports.login = async (req, res) => {
       }
     }
 
-    // Generate JWT - include companyId for filtering
+    // Generate JWT - mark as VMS system token
     const token = jwt.sign(
       {
         userId: user.id,
         email: user.email,
-        role: user.role?.name || 'USER',
-        companyId: user.companyId,  // For company-based filtering
+        role: user.role?.name || 'REQUESTOR',
         system: 'vms', // Mark as VMS token
       },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
+      config.jwtSecret,
+      { expiresIn: config.jwtExpiresIn || '24h' }
     );
 
-    // Log login action
-    await vmsPrisma.auditLog.create({
-      data: {
-        userId: user.id,
-        action: 'LOGIN',
-        entity: 'user',
-        entityId: user.id,
-        ipAddress: req.ip,
-        userAgent: req.get('User-Agent'),
-      },
-    });
+    // Log login action - handle audit log creation errors gracefully
+    try {
+      await prisma.auditLog.create({
+        data: {
+          userId: user.id,
+          action: 'VMS_LOGIN',
+          entity: 'user',
+          entityId: user.id,
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent'),
+        },
+      });
+    } catch (auditError) {
+      console.log('⚠️ Audit log error (non-critical):', auditError.message);
+    }
+
+    console.log('✅ VMS LOGIN SUCCESS');
+    console.log('='.repeat(60) + '\n');
 
     res.json({
       token,
@@ -76,29 +102,27 @@ exports.login = async (req, res) => {
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
-        role: user.role?.name || 'USER',
+        role: user.role?.name || 'REQUESTOR',
         roleName: user.role?.displayName || 'User',
         permissions,
         department: user.department,
         phone: user.phone,
         profilePicture: user.profilePicture,
-        companyId: user.companyId,
-        companyName: user.companyName || null,
       },
     });
   } catch (error) {
-    console.error('VMS Login error:', error);
+    console.error('❌ VMS Login error:', error);
     res.status(500).json({ message: 'Login failed', error: error.message });
   }
 };
 
-// Register
+// Register - uses main database
 exports.register = async (req, res) => {
   try {
     const { email, password, firstName, lastName, phone, department, requestedRole } = req.body;
 
     // Check if email exists
-    const existingUser = await vmsPrisma.user.findUnique({ where: { email } });
+    const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
       return res.status(400).json({ message: 'Email already registered' });
     }
@@ -106,19 +130,16 @@ exports.register = async (req, res) => {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Get default role (VMS_VIEWER) or requested role
+    // Get default role (REQUESTOR)
     let roleId = null;
-    const roleName = requestedRole || 'VMS_VIEWER';
-    const role = await vmsPrisma.role.findUnique({ where: { name: roleName } });
+    const roleName = requestedRole || 'REQUESTOR';
+    const role = await prisma.role.findUnique({ where: { name: roleName } });
     if (role) {
       roleId = role.id;
     }
 
-    // Determine if auto-approve (for viewer role)
-    const autoApprove = roleName === 'VMS_VIEWER';
-
-    // Create user
-    const user = await vmsPrisma.user.create({
+    // Create user - requires approval
+    const user = await prisma.user.create({
       data: {
         email,
         password: hashedPassword,
@@ -128,68 +149,43 @@ exports.register = async (req, res) => {
         department,
         roleId,
         requestedRole: roleName,
-        isApproved: autoApprove,
+        isApproved: false, // Require admin approval
       },
       include: { role: true },
     });
 
     // Log registration
-    await vmsPrisma.auditLog.create({
-      data: {
-        userId: user.id,
-        action: 'REGISTER',
-        entity: 'user',
-        entityId: user.id,
-        ipAddress: req.ip,
-        userAgent: req.get('User-Agent'),
-      },
-    });
-
-    if (autoApprove) {
-      // Generate JWT for auto-approved users
-      const token = jwt.sign(
-        {
+    try {
+      await prisma.auditLog.create({
+        data: {
           userId: user.id,
-          email: user.email,
-          role: user.role?.name || 'VMS_VIEWER',
-          system: 'vms',
-        },
-        process.env.JWT_SECRET,
-        { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
-      );
-
-      res.status(201).json({
-        message: 'Registration successful',
-        token,
-        user: {
-          id: user.id,
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          role: user.role?.name || 'VMS_VIEWER',
-          roleName: user.role?.displayName || 'VMS Viewer',
+          action: 'VMS_REGISTER',
+          entity: 'user',
+          entityId: user.id,
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent'),
         },
       });
-    } else {
-      res.status(201).json({
-        message: 'Registration successful. Awaiting admin approval.',
-        requiresApproval: true,
-      });
+    } catch (auditError) {
+      console.log('⚠️ Audit log error (non-critical):', auditError.message);
     }
+
+    res.status(201).json({
+      message: 'Registration successful. Awaiting admin approval.',
+      requiresApproval: true,
+    });
   } catch (error) {
     console.error('VMS Registration error:', error);
     res.status(500).json({ message: 'Registration failed', error: error.message });
   }
 };
 
-// Get current user
+// Get current user - uses main database
 exports.me = async (req, res) => {
   try {
-    const user = await vmsPrisma.user.findUnique({
+    const user = await prisma.user.findUnique({
       where: { id: req.user.userId },
-      include: { 
-        role: true,
-      },
+      include: { role: true },
     });
 
     if (!user) {
@@ -210,14 +206,12 @@ exports.me = async (req, res) => {
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
-      role: user.role?.name || 'USER',
+      role: user.role?.name || 'REQUESTOR',
       roleName: user.role?.displayName || 'User',
       permissions,
       department: user.department,
       phone: user.phone,
       profilePicture: user.profilePicture,
-      companyId: user.companyId,
-      companyName: user.companyName || null,
     });
   } catch (error) {
     console.error('VMS Get user error:', error);
@@ -225,12 +219,12 @@ exports.me = async (req, res) => {
   }
 };
 
-// Update profile
+// Update profile - uses main database
 exports.updateProfile = async (req, res) => {
   try {
     const { firstName, lastName, phone, department, profilePicture } = req.body;
 
-    const user = await vmsPrisma.user.update({
+    const user = await prisma.user.update({
       where: { id: req.user.userId },
       data: {
         firstName,
@@ -249,7 +243,7 @@ exports.updateProfile = async (req, res) => {
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
-        role: user.role?.name || 'USER',
+        role: user.role?.name || 'REQUESTOR',
         roleName: user.role?.displayName || 'User',
         department: user.department,
         phone: user.phone,
@@ -262,12 +256,12 @@ exports.updateProfile = async (req, res) => {
   }
 };
 
-// Change password
+// Change password - uses main database
 exports.changePassword = async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
 
-    const user = await vmsPrisma.user.findUnique({
+    const user = await prisma.user.findUnique({
       where: { id: req.user.userId },
     });
 
@@ -280,7 +274,7 @@ exports.changePassword = async (req, res) => {
     // Hash new password
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-    await vmsPrisma.user.update({
+    await prisma.user.update({
       where: { id: req.user.userId },
       data: { password: hashedPassword },
     });
