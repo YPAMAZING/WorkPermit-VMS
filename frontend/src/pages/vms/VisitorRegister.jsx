@@ -1095,7 +1095,6 @@ const VisitorRegister = () => {
                   </div>
                 </div>
               )}
-              </div>
 
               {/* Actions */}
               <div className="mt-6 flex gap-3">
