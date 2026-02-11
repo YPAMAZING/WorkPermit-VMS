@@ -12,16 +12,16 @@ const { authenticate, isAdmin } = require('../middleware/auth.middleware');
 const { validate: validateRequest } = require('../middleware/validate.middleware');
 
 /**
- * SSO Routes - Single Sign-On for MIS Integration
+ * SSO Routes - Single Sign-On for External System Integration
  * 
  * Flow 1: Token-based SSO (Server-to-Server)
- * 1. External MIS calls POST /api/sso/generate with user info
+ * 1. External system calls POST /api/sso/generate with user info
  * 2. Returns SSO token valid for 5 minutes
  * 3. Redirect user to /api/sso/verify?token=xxx
  * 4. Returns JWT token for authenticated session
  * 
  * Flow 2: External JWT Validation (Embedded/iframe)
- * 1. External MIS embeds Work Permit module
+ * 1. External system embeds Work Permit module
  * 2. Passes existing JWT to POST /api/sso/validate-external
  * 3. Returns internal JWT token for authenticated session
  */
@@ -29,7 +29,7 @@ const { validate: validateRequest } = require('../middleware/validate.middleware
 // Get SSO configuration
 router.get('/config', getSSOConfig);
 
-// Generate SSO token (called by external MIS system)
+// Generate SSO token (called by external system)
 // Requires API key or admin authentication
 router.post(
   '/generate',
@@ -37,7 +37,7 @@ router.post(
     body('email').isEmail().withMessage('Valid email is required'),
     body('firstName').optional().trim(),
     body('lastName').optional().trim(),
-    body('role').optional().isIn(['ADMIN', 'FIREMAN', 'SAFETY_OFFICER', 'REQUESTOR', 'SITE_ENGINEER']),
+    body('role').optional().isIn(['ADMIN', 'FIREMAN', 'SAFETY_OFFICER', 'REQUESTOR']),
     body('externalUserId').optional().trim(),
     body('externalSystem').optional().trim(),
   ],
