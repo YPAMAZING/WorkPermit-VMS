@@ -3,7 +3,7 @@ const { createAuditLog } = require('../services/audit.service');
 
 const prisma = new PrismaClient();
 
-// Default permissions list
+// Default permissions list (Work Permit + VMS)
 const defaultPermissions = [
   // Dashboard
   { key: 'dashboard.view', name: 'View Dashboard', module: 'dashboard', action: 'view' },
@@ -57,6 +57,48 @@ const defaultPermissions = [
   
   // Audit
   { key: 'audit.view', name: 'View Audit Logs', module: 'audit', action: 'view' },
+  
+  // VMS - Dashboard
+  { key: 'vms.dashboard.view', name: 'View VMS Dashboard', module: 'vms', action: 'view' },
+  
+  // VMS - Visitors
+  { key: 'vms.visitors.view', name: 'View Visitors', module: 'vms', action: 'view' },
+  { key: 'vms.visitors.view_all', name: 'View All Visitors', module: 'vms', action: 'view' },
+  { key: 'vms.visitors.view_own_company', name: 'View Own Company Visitors', module: 'vms', action: 'view' },
+  { key: 'vms.visitors.create', name: 'Create Visitors', module: 'vms', action: 'create' },
+  { key: 'vms.visitors.edit', name: 'Edit Visitors', module: 'vms', action: 'edit' },
+  { key: 'vms.visitors.delete', name: 'Delete Visitors', module: 'vms', action: 'delete' },
+  
+  // VMS - Gatepasses
+  { key: 'vms.gatepasses.view', name: 'View Gatepasses', module: 'vms', action: 'view' },
+  { key: 'vms.gatepasses.view_all', name: 'View All Gatepasses', module: 'vms', action: 'view' },
+  { key: 'vms.gatepasses.view_own_company', name: 'View Own Company Gatepasses', module: 'vms', action: 'view' },
+  { key: 'vms.gatepasses.create', name: 'Create Gatepasses', module: 'vms', action: 'create' },
+  { key: 'vms.gatepasses.approve', name: 'Approve Gatepasses', module: 'vms', action: 'approve' },
+  { key: 'vms.gatepasses.approve_own_company', name: 'Approve Own Company Gatepasses', module: 'vms', action: 'approve' },
+  { key: 'vms.gatepasses.reject', name: 'Reject Gatepasses', module: 'vms', action: 'approve' },
+  { key: 'vms.gatepasses.verify', name: 'Verify Gatepasses', module: 'vms', action: 'view' },
+  
+  // VMS - Check-in
+  { key: 'vms.checkin.view', name: 'View Check-ins', module: 'vms', action: 'view' },
+  { key: 'vms.checkin.manage', name: 'Manage Check-ins', module: 'vms', action: 'edit' },
+  
+  // VMS - Pre-approved
+  { key: 'vms.preapproved.view', name: 'View Pre-approved Visitors', module: 'vms', action: 'view' },
+  { key: 'vms.preapproved.create', name: 'Create Pre-approvals', module: 'vms', action: 'create' },
+  
+  // VMS - Blacklist
+  { key: 'vms.blacklist.view', name: 'View Blacklist', module: 'vms', action: 'view' },
+  { key: 'vms.blacklist.create', name: 'Add to Blacklist', module: 'vms', action: 'create' },
+  { key: 'vms.blacklist.delete', name: 'Remove from Blacklist', module: 'vms', action: 'delete' },
+  
+  // VMS - Reports
+  { key: 'vms.reports.view', name: 'View VMS Reports', module: 'vms', action: 'view' },
+  { key: 'vms.reports.export', name: 'Export VMS Reports', module: 'vms', action: 'export' },
+  
+  // VMS - Settings
+  { key: 'vms.settings.view', name: 'View VMS Settings', module: 'vms', action: 'view' },
+  { key: 'vms.settings.edit', name: 'Edit VMS Settings', module: 'vms', action: 'edit' },
 ];
 
 // Default roles
