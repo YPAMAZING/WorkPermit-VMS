@@ -8,10 +8,13 @@ exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Find user with role
+    // Find user with role and company
     const user = await vmsPrisma.user.findUnique({
       where: { email },
-      include: { role: true },
+      include: { 
+        role: true,
+        company: true,
+      },
     });
 
     if (!user) {
@@ -42,12 +45,13 @@ exports.login = async (req, res) => {
       }
     }
 
-    // Generate JWT
+    // Generate JWT - include companyId for filtering
     const token = jwt.sign(
       {
         userId: user.id,
         email: user.email,
         role: user.role?.name || 'USER',
+        companyId: user.companyId,  // For company-based filtering
         system: 'vms', // Mark as VMS token
       },
       process.env.JWT_SECRET,
@@ -79,6 +83,8 @@ exports.login = async (req, res) => {
         department: user.department,
         phone: user.phone,
         profilePicture: user.profilePicture,
+        companyId: user.companyId,
+        companyName: user.company?.name || user.company?.displayName || null,
       },
     });
   } catch (error) {
@@ -182,7 +188,10 @@ exports.me = async (req, res) => {
   try {
     const user = await vmsPrisma.user.findUnique({
       where: { id: req.user.userId },
-      include: { role: true },
+      include: { 
+        role: true,
+        company: true,
+      },
     });
 
     if (!user) {
@@ -209,6 +218,8 @@ exports.me = async (req, res) => {
       department: user.department,
       phone: user.phone,
       profilePicture: user.profilePicture,
+      companyId: user.companyId,
+      companyName: user.company?.name || user.company?.displayName || null,
     });
   } catch (error) {
     console.error('VMS Get user error:', error);

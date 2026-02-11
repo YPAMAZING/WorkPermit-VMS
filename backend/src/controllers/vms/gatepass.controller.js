@@ -42,6 +42,12 @@ const generateQRCode = async (data) => {
   }
 };
 
+// Helper: Check if user is admin (can see all companies)
+const isUserAdmin = (userRole) => {
+  const adminRoles = ['ADMIN', 'VMS_ADMIN', 'SECURITY_SUPERVISOR'];
+  return adminRoles.includes(userRole);
+};
+
 // Get all gatepasses with pagination and filters
 exports.getGatepasses = async (req, res) => {
   try {
@@ -61,6 +67,11 @@ exports.getGatepasses = async (req, res) => {
 
     // Build where clause
     const where = {};
+
+    // Company-based filtering: Non-admin users see only their company's gatepasses
+    if (req.user && !isUserAdmin(req.user.role) && req.user.companyId) {
+      where.companyId = req.user.companyId;
+    }
 
     if (search) {
       where.OR = [

@@ -1,6 +1,20 @@
 // VMS Dashboard Controller
 const vmsPrisma = require('../../config/vms-prisma');
 
+// Helper: Check if user is admin (can see all companies)
+const isUserAdmin = (userRole) => {
+  const adminRoles = ['ADMIN', 'VMS_ADMIN', 'SECURITY_SUPERVISOR'];
+  return adminRoles.includes(userRole);
+};
+
+// Helper: Build company filter based on user
+const getCompanyFilter = (req) => {
+  if (req.user && !isUserAdmin(req.user.role) && req.user.companyId) {
+    return { companyId: req.user.companyId };
+  }
+  return {};
+};
+
 // Get dashboard overview
 exports.getDashboardOverview = async (req, res) => {
   try {
@@ -8,6 +22,9 @@ exports.getDashboardOverview = async (req, res) => {
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
+
+    // Get company filter for non-admin users
+    const companyFilter = getCompanyFilter(req);
 
     // Get all stats in parallel
     const [
@@ -38,21 +55,21 @@ exports.getDashboardOverview = async (req, res) => {
       // Recent visitors
       recentVisitors,
     ] = await Promise.all([
-      // Today's gatepasses count
+      // Today's gatepasses count (filtered by company for non-admin)
       vmsPrisma.gatepass.count({
-        where: { expectedDate: { gte: today, lt: tomorrow } },
+        where: { expectedDate: { gte: today, lt: tomorrow }, ...companyFilter },
       }),
       vmsPrisma.gatepass.count({
-        where: { expectedDate: { gte: today, lt: tomorrow }, status: 'SCHEDULED' },
+        where: { expectedDate: { gte: today, lt: tomorrow }, status: 'SCHEDULED', ...companyFilter },
       }),
       vmsPrisma.gatepass.count({
-        where: { expectedDate: { gte: today, lt: tomorrow }, status: 'ACTIVE' },
+        where: { expectedDate: { gte: today, lt: tomorrow }, status: 'ACTIVE', ...companyFilter },
       }),
       vmsPrisma.gatepass.count({
-        where: { expectedDate: { gte: today, lt: tomorrow }, status: 'COMPLETED' },
+        where: { expectedDate: { gte: today, lt: tomorrow }, status: 'COMPLETED', ...companyFilter },
       }),
       vmsPrisma.gatepass.count({
-        where: { expectedDate: { gte: today, lt: tomorrow }, status: 'CANCELLED' },
+        where: { expectedDate: { gte: today, lt: tomorrow }, status: 'CANCELLED', ...companyFilter },
       }),
 
       // Total visitors
@@ -68,29 +85,31 @@ exports.getDashboardOverview = async (req, res) => {
         where: { isActive: true },
       }),
 
-      // Active pre-approvals
+      // Active pre-approvals (filtered by company for non-admin)
       vmsPrisma.preApprovedVisitor.count({
-        where: { status: 'ACTIVE', validUntil: { gte: today } },
+        where: { status: 'ACTIVE', validUntil: { gte: today }, ...companyFilter },
       }),
 
-      // Pre-approvals valid today
+      // Pre-approvals valid today (filtered by company for non-admin)
       vmsPrisma.preApprovedVisitor.count({
         where: {
           status: 'ACTIVE',
           validFrom: { lte: tomorrow },
           validUntil: { gte: today },
+          ...companyFilter,
         },
       }),
 
-      // Purpose breakdown for today
+      // Purpose breakdown for today (filtered by company for non-admin)
       vmsPrisma.gatepass.groupBy({
         by: ['purpose'],
-        where: { expectedDate: { gte: today, lt: tomorrow } },
+        where: { expectedDate: { gte: today, lt: tomorrow }, ...companyFilter },
         _count: { purpose: true },
       }),
 
-      // Recent gatepasses (last 5)
+      // Recent gatepasses (last 5) (filtered by company for non-admin)
       vmsPrisma.gatepass.findMany({
+        where: companyFilter,
         orderBy: { issuedAt: 'desc' },
         take: 5,
         include: {
