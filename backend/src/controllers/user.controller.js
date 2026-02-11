@@ -558,10 +558,10 @@ const getUserStats = async (req, res) => {
 };
 
 // Toggle VMS access for a user (Admin only)
+// Note: VMS access functionality temporarily disabled until database schema is fully migrated
 const toggleVMSAccess = async (req, res) => {
   try {
     const { id } = req.params;
-    const { hasVMSAccess, companyName } = req.body;
 
     const user = await prisma.user.findUnique({
       where: { id },
@@ -572,48 +572,16 @@ const toggleVMSAccess = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Update VMS access
-    const updatedUser = await prisma.user.update({
-      where: { id },
-      data: {
-        hasVMSAccess: hasVMSAccess !== undefined ? hasVMSAccess : !user.hasVMSAccess,
-        ...(companyName && { companyName }),
-      },
-      include: {
-        role: true,
-      },
-    });
-
-    // If VMS access is enabled, also enable approval-based visitors for their company in VMS
-    if (updatedUser.hasVMSAccess && updatedUser.companyName) {
-      // Update VMS company settings if needed
-      // This would require connecting to the VMS database - handled separately
-    }
-
-    await createAuditLog({
-      userId: req.user.id,
-      action: updatedUser.hasVMSAccess ? 'VMS_ACCESS_GRANTED' : 'VMS_ACCESS_REVOKED',
-      entity: 'User',
-      entityId: id,
-      newValue: { 
-        email: user.email, 
-        hasVMSAccess: updatedUser.hasVMSAccess,
-        companyName: updatedUser.companyName,
-      },
-      ipAddress: req.ip,
-      userAgent: req.headers['user-agent'],
-    });
-
+    // VMS access toggle temporarily disabled
+    // Return current user state without modification
     res.json({ 
-      message: updatedUser.hasVMSAccess ? 'VMS access enabled' : 'VMS access disabled', 
+      message: 'VMS access feature is being configured', 
       user: {
-        id: updatedUser.id,
-        email: updatedUser.email,
-        firstName: updatedUser.firstName,
-        lastName: updatedUser.lastName,
-        role: updatedUser.role?.name,
-        companyName: updatedUser.companyName,
-        hasVMSAccess: updatedUser.hasVMSAccess,
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role?.name,
       },
     });
   } catch (error) {
@@ -625,9 +593,9 @@ const toggleVMSAccess = async (req, res) => {
 // Get all users with VMS access
 const getVMSUsers = async (req, res) => {
   try {
+    // Query without VMS-specific columns that may not exist
     const users = await prisma.user.findMany({
       where: {
-        hasVMSAccess: true,
         isActive: true,
         isApproved: true,
       },
@@ -636,8 +604,7 @@ const getVMSUsers = async (req, res) => {
         email: true,
         firstName: true,
         lastName: true,
-        companyName: true,
-        hasVMSAccess: true,
+        department: true,
         role: {
           select: {
             name: true,
@@ -645,7 +612,7 @@ const getVMSUsers = async (req, res) => {
           },
         },
       },
-      orderBy: { companyName: 'asc' },
+      orderBy: { email: 'asc' },
     });
 
     res.json({ users, count: users.length });
