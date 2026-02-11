@@ -3,46 +3,32 @@ const { createAuditLog } = require('../services/audit.service');
 
 const prisma = new PrismaClient();
 
-// Default permissions list (Work Permit + VMS)
+// SIMPLIFIED permissions - Work Permit only (VMS uses role-based access)
 const defaultPermissions = [
   // Dashboard
   { key: 'dashboard.view', name: 'View Dashboard', module: 'dashboard', action: 'view' },
-  { key: 'dashboard.stats', name: 'View Statistics', module: 'dashboard', action: 'view' },
+  { key: 'dashboard.stats', name: 'View Statistics', module: 'dashboard', action: 'stats' },
   
   // Permits
-  { key: 'permits.view', name: 'View Permits', module: 'permits', action: 'view' },
-  { key: 'permits.view_all', name: 'View All Permits', module: 'permits', action: 'view' },
+  { key: 'permits.view', name: 'View All Permits', module: 'permits', action: 'view' },
   { key: 'permits.view_own', name: 'View Own Permits', module: 'permits', action: 'view' },
   { key: 'permits.create', name: 'Create Permits', module: 'permits', action: 'create' },
   { key: 'permits.edit', name: 'Edit Permits', module: 'permits', action: 'edit' },
-  { key: 'permits.edit_own', name: 'Edit Own Permits', module: 'permits', action: 'edit' },
   { key: 'permits.delete', name: 'Delete Permits', module: 'permits', action: 'delete' },
-  { key: 'permits.export', name: 'Export Permits PDF', module: 'permits', action: 'export' },
-  { key: 'permits.extend', name: 'Extend Permits', module: 'permits', action: 'edit' },
-  { key: 'permits.revoke', name: 'Revoke Permits', module: 'permits', action: 'edit' },
-  { key: 'permits.close', name: 'Close Permits', module: 'permits', action: 'edit' },
-  { key: 'permits.reapprove', name: 'Re-Approve Revoked Permits', module: 'permits', action: 'edit' },
-  { key: 'permits.transfer', name: 'Transfer Permits', module: 'permits', action: 'edit' },
-  
-  // Approvals
-  { key: 'approvals.view', name: 'View Approvals', module: 'approvals', action: 'view' },
-  { key: 'approvals.approve', name: 'Approve/Reject Permits', module: 'approvals', action: 'approve' },
-  { key: 'approvals.sign', name: 'Sign Approvals', module: 'approvals', action: 'approve' },
-  { key: 'approvals.reapprove', name: 'Re-Approve Revoked Permits', module: 'approvals', action: 'approve' },
+  { key: 'permits.export', name: 'Export Permits', module: 'permits', action: 'export' },
+  { key: 'permits.approve', name: 'Approve Permits', module: 'permits', action: 'approve' },
   
   // Workers
   { key: 'workers.view', name: 'View Workers', module: 'workers', action: 'view' },
   { key: 'workers.create', name: 'Create Workers', module: 'workers', action: 'create' },
   { key: 'workers.edit', name: 'Edit Workers', module: 'workers', action: 'edit' },
   { key: 'workers.delete', name: 'Delete Workers', module: 'workers', action: 'delete' },
-  { key: 'workers.qr', name: 'Generate Worker QR', module: 'workers', action: 'view' },
   
   // Users
   { key: 'users.view', name: 'View Users', module: 'users', action: 'view' },
   { key: 'users.create', name: 'Create Users', module: 'users', action: 'create' },
   { key: 'users.edit', name: 'Edit Users', module: 'users', action: 'edit' },
   { key: 'users.delete', name: 'Delete Users', module: 'users', action: 'delete' },
-  { key: 'users.assign_role', name: 'Assign Roles to Users', module: 'users', action: 'edit' },
   
   // Roles
   { key: 'roles.view', name: 'View Roles', module: 'roles', action: 'view' },
@@ -53,130 +39,89 @@ const defaultPermissions = [
   // Settings
   { key: 'settings.view', name: 'View Settings', module: 'settings', action: 'view' },
   { key: 'settings.edit', name: 'Edit Settings', module: 'settings', action: 'edit' },
-  { key: 'settings.system', name: 'System Settings', module: 'settings', action: 'edit' },
   
   // Audit
   { key: 'audit.view', name: 'View Audit Logs', module: 'audit', action: 'view' },
-  
-  // VMS - Dashboard
-  { key: 'vms.dashboard.view', name: 'View VMS Dashboard', module: 'vms', action: 'view' },
-  
-  // VMS - Visitors
-  { key: 'vms.visitors.view', name: 'View Visitors', module: 'vms', action: 'view' },
-  { key: 'vms.visitors.view_all', name: 'View All Visitors', module: 'vms', action: 'view' },
-  { key: 'vms.visitors.view_own_company', name: 'View Own Company Visitors', module: 'vms', action: 'view' },
-  { key: 'vms.visitors.create', name: 'Create Visitors', module: 'vms', action: 'create' },
-  { key: 'vms.visitors.edit', name: 'Edit Visitors', module: 'vms', action: 'edit' },
-  { key: 'vms.visitors.delete', name: 'Delete Visitors', module: 'vms', action: 'delete' },
-  
-  // VMS - Gatepasses
-  { key: 'vms.gatepasses.view', name: 'View Gatepasses', module: 'vms', action: 'view' },
-  { key: 'vms.gatepasses.view_all', name: 'View All Gatepasses', module: 'vms', action: 'view' },
-  { key: 'vms.gatepasses.view_own_company', name: 'View Own Company Gatepasses', module: 'vms', action: 'view' },
-  { key: 'vms.gatepasses.create', name: 'Create Gatepasses', module: 'vms', action: 'create' },
-  { key: 'vms.gatepasses.approve', name: 'Approve Gatepasses', module: 'vms', action: 'approve' },
-  { key: 'vms.gatepasses.approve_own_company', name: 'Approve Own Company Gatepasses', module: 'vms', action: 'approve' },
-  { key: 'vms.gatepasses.reject', name: 'Reject Gatepasses', module: 'vms', action: 'approve' },
-  { key: 'vms.gatepasses.verify', name: 'Verify Gatepasses', module: 'vms', action: 'view' },
-  
-  // VMS - Check-in
-  { key: 'vms.checkin.view', name: 'View Check-ins', module: 'vms', action: 'view' },
-  { key: 'vms.checkin.manage', name: 'Manage Check-ins', module: 'vms', action: 'edit' },
-  
-  // VMS - Pre-approved
-  { key: 'vms.preapproved.view', name: 'View Pre-approved Visitors', module: 'vms', action: 'view' },
-  { key: 'vms.preapproved.create', name: 'Create Pre-approvals', module: 'vms', action: 'create' },
-  
-  // VMS - Blacklist
-  { key: 'vms.blacklist.view', name: 'View Blacklist', module: 'vms', action: 'view' },
-  { key: 'vms.blacklist.create', name: 'Add to Blacklist', module: 'vms', action: 'create' },
-  { key: 'vms.blacklist.delete', name: 'Remove from Blacklist', module: 'vms', action: 'delete' },
-  
-  // VMS - Reports
-  { key: 'vms.reports.view', name: 'View VMS Reports', module: 'vms', action: 'view' },
-  { key: 'vms.reports.export', name: 'Export VMS Reports', module: 'vms', action: 'export' },
-  
-  // VMS - Settings
-  { key: 'vms.settings.view', name: 'View VMS Settings', module: 'vms', action: 'view' },
-  { key: 'vms.settings.edit', name: 'Edit VMS Settings', module: 'vms', action: 'edit' },
 ];
 
-// Default roles
+// Default roles - SIMPLIFIED (3 main roles only)
 const defaultRoles = [
   {
     name: 'ADMIN',
     displayName: 'Administrator',
-    description: 'Full system access with all permissions',
+    description: 'Full system access',
     isSystem: true,
-    permissions: defaultPermissions.map(p => p.key),
+    permissions: defaultPermissions.map(p => p.key), // All permissions
     uiConfig: {
-      theme: 'default',
-      sidebarColor: 'slate',
-      accentColor: 'emerald',
+      theme: 'admin',
+      primaryColor: '#3b82f6',
       showAllMenus: true,
-      dashboardWidgets: ['stats', 'charts', 'activity', 'pending'],
     },
   },
   {
     name: 'FIREMAN',
-    displayName: 'Fireman',
-    description: 'Can approve/reject permits, re-approve revoked permits, and manage workers.',
+    displayName: 'Fire Safety Officer',
+    description: 'Approve and manage permits',
     isSystem: true,
     permissions: [
       'dashboard.view', 'dashboard.stats',
-      'permits.view', 'permits.view_all', 'permits.export', 'permits.extend', 'permits.revoke', 'permits.close', 'permits.reapprove',
-      'approvals.view', 'approvals.approve', 'approvals.sign', 'approvals.reapprove',
-      'workers.view', 'workers.create', 'workers.edit', 'workers.qr',
+      'permits.view', 'permits.export', 'permits.approve',
+      'workers.view',
       'settings.view',
     ],
     uiConfig: {
-      theme: 'default',
-      sidebarColor: 'slate',
-      accentColor: 'blue',
-      showAllMenus: false,
-      dashboardWidgets: ['stats', 'pending', 'activity'],
+      theme: 'fireman',
+      primaryColor: '#ef4444',
     },
   },
   {
     name: 'REQUESTOR',
-    displayName: 'Requestor',
-    description: 'Can create and view own permits',
+    displayName: 'Permit Requestor',
+    description: 'Create and manage own permits',
     isSystem: true,
     permissions: [
       'dashboard.view',
-      'permits.view', 'permits.view_own', 'permits.create', 'permits.edit_own', 'permits.export',
-      'workers.view', 'workers.qr',
+      'permits.view_own', 'permits.create',
+      'workers.view',
       'settings.view',
     ],
     uiConfig: {
-      theme: 'default',
-      sidebarColor: 'slate',
-      accentColor: 'primary',
-      showAllMenus: false,
-      dashboardWidgets: ['stats', 'activity'],
+      theme: 'requestor',
+      primaryColor: '#10b981',
     },
   },
 ];
 
-// Initialize permissions and roles
+// Initialize roles and permissions (called on server startup)
 const initializeRolesAndPermissions = async () => {
   try {
+    console.log('🔄 Initializing roles and permissions...');
+    
     // Create permissions if they don't exist
     for (const perm of defaultPermissions) {
-      await prisma.permission.upsert({
+      const existing = await prisma.permission.findUnique({
         where: { key: perm.key },
-        update: {},
-        create: perm,
       });
+      
+      if (!existing) {
+        await prisma.permission.create({
+          data: {
+            key: perm.key,
+            name: perm.name,
+            module: perm.module,
+            action: perm.action,
+          },
+        });
+      }
     }
 
     // Create default roles if they don't exist
     for (const role of defaultRoles) {
-      const existingRole = await prisma.role.findUnique({
+      const existing = await prisma.role.findUnique({
         where: { name: role.name },
       });
 
-      if (!existingRole) {
+      if (!existing) {
         await prisma.role.create({
           data: {
             name: role.name,
@@ -187,32 +132,35 @@ const initializeRolesAndPermissions = async () => {
             uiConfig: JSON.stringify(role.uiConfig),
           },
         });
+        console.log(`✅ Created role: ${role.name}`);
       }
     }
 
-    // Migrate existing users to new role system
+    // Migrate users without roleId
     const usersWithoutRole = await prisma.user.findMany({
       where: { roleId: null },
+      select: { id: true, email: true },
     });
 
-    for (const user of usersWithoutRole) {
-      // Map old role field to new roleId
-      const roleName = user.role || 'REQUESTOR';
-      const role = await prisma.role.findUnique({
-        where: { name: roleName },
+    if (usersWithoutRole.length > 0) {
+      const requestorRole = await prisma.role.findUnique({
+        where: { name: 'REQUESTOR' },
       });
 
-      if (role) {
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { roleId: role.id },
-        });
+      if (requestorRole) {
+        for (const user of usersWithoutRole) {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { roleId: requestorRole.id },
+          });
+          console.log(`✅ Assigned REQUESTOR role to: ${user.email}`);
+        }
       }
     }
 
     console.log('✅ Roles and permissions initialized');
   } catch (error) {
-    console.error('Error initializing roles:', error);
+    console.error('Error initializing roles:', error.message);
   }
 };
 
@@ -229,14 +177,15 @@ const getAllRoles = async (req, res) => {
       orderBy: { name: 'asc' },
     });
 
-    const rolesWithParsed = roles.map(role => ({
+    // Parse JSON fields
+    const parsedRoles = roles.map(role => ({
       ...role,
       permissions: JSON.parse(role.permissions || '[]'),
       uiConfig: JSON.parse(role.uiConfig || '{}'),
       userCount: role._count.users,
     }));
 
-    res.json({ roles: rolesWithParsed });
+    res.json({ roles: parsedRoles });
   } catch (error) {
     console.error('Get roles error:', error);
     res.status(500).json({ message: 'Error fetching roles' });
@@ -283,15 +232,14 @@ const getRoleById = async (req, res) => {
 const createRole = async (req, res) => {
   try {
     const { name, displayName, description, permissions, uiConfig } = req.body;
-    const user = req.user;
 
-    // Check if role name already exists
-    const existingRole = await prisma.role.findUnique({
+    // Check if role exists
+    const existing = await prisma.role.findUnique({
       where: { name: name.toUpperCase() },
     });
 
-    if (existingRole) {
-      return res.status(400).json({ message: 'Role name already exists' });
+    if (existing) {
+      return res.status(400).json({ message: 'Role already exists' });
     }
 
     const role = await prisma.role.create({
@@ -301,26 +249,30 @@ const createRole = async (req, res) => {
         description,
         permissions: JSON.stringify(permissions || []),
         uiConfig: JSON.stringify(uiConfig || {}),
-        isSystem: false,
       },
     });
 
-    await createAuditLog({
-      userId: user.id,
-      action: 'ROLE_CREATED',
-      entity: 'Role',
-      entityId: role.id,
-      newValue: { name: role.name, permissions },
-      ipAddress: req.ip,
-      userAgent: req.headers['user-agent'],
-    });
+    // Audit log
+    try {
+      await createAuditLog({
+        userId: req.user.id,
+        action: 'ROLE_CREATED',
+        entity: 'Role',
+        entityId: role.id,
+        newValue: { name: role.name, displayName },
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+      });
+    } catch (auditError) {
+      console.error('Audit log error:', auditError.message);
+    }
 
     res.status(201).json({
       message: 'Role created successfully',
       role: {
         ...role,
-        permissions: JSON.parse(role.permissions),
-        uiConfig: JSON.parse(role.uiConfig),
+        permissions: JSON.parse(role.permissions || '[]'),
+        uiConfig: JSON.parse(role.uiConfig || '{}'),
       },
     });
   } catch (error) {
@@ -334,13 +286,9 @@ const updateRole = async (req, res) => {
   try {
     const { id } = req.params;
     const { displayName, description, permissions, uiConfig } = req.body;
-    const user = req.user;
 
-    const existingRole = await prisma.role.findUnique({
-      where: { id },
-    });
-
-    if (!existingRole) {
+    const existing = await prisma.role.findUnique({ where: { id } });
+    if (!existing) {
       return res.status(404).json({ message: 'Role not found' });
     }
 
@@ -349,28 +297,32 @@ const updateRole = async (req, res) => {
       data: {
         displayName,
         description,
-        permissions: permissions ? JSON.stringify(permissions) : undefined,
-        uiConfig: uiConfig ? JSON.stringify(uiConfig) : undefined,
+        permissions: JSON.stringify(permissions || []),
+        uiConfig: JSON.stringify(uiConfig || {}),
       },
     });
 
-    await createAuditLog({
-      userId: user.id,
-      action: 'ROLE_UPDATED',
-      entity: 'Role',
-      entityId: role.id,
-      oldValue: { permissions: JSON.parse(existingRole.permissions) },
-      newValue: { permissions },
-      ipAddress: req.ip,
-      userAgent: req.headers['user-agent'],
-    });
+    // Audit log
+    try {
+      await createAuditLog({
+        userId: req.user.id,
+        action: 'ROLE_UPDATED',
+        entity: 'Role',
+        entityId: role.id,
+        newValue: { displayName, permissions },
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+      });
+    } catch (auditError) {
+      console.error('Audit log error:', auditError.message);
+    }
 
     res.json({
       message: 'Role updated successfully',
       role: {
         ...role,
-        permissions: JSON.parse(role.permissions),
-        uiConfig: JSON.parse(role.uiConfig),
+        permissions: JSON.parse(role.permissions || '[]'),
+        uiConfig: JSON.parse(role.uiConfig || '{}'),
       },
     });
   } catch (error) {
@@ -383,15 +335,10 @@ const updateRole = async (req, res) => {
 const deleteRole = async (req, res) => {
   try {
     const { id } = req.params;
-    const user = req.user;
 
     const role = await prisma.role.findUnique({
       where: { id },
-      include: {
-        _count: {
-          select: { users: true },
-        },
-      },
+      include: { _count: { select: { users: true } } },
     });
 
     if (!role) {
@@ -403,24 +350,25 @@ const deleteRole = async (req, res) => {
     }
 
     if (role._count.users > 0) {
-      return res.status(400).json({ 
-        message: 'Cannot delete role with assigned users. Reassign users first.' 
-      });
+      return res.status(400).json({ message: 'Cannot delete role with assigned users' });
     }
 
-    await prisma.role.delete({
-      where: { id },
-    });
+    await prisma.role.delete({ where: { id } });
 
-    await createAuditLog({
-      userId: user.id,
-      action: 'ROLE_DELETED',
-      entity: 'Role',
-      entityId: id,
-      oldValue: { name: role.name },
-      ipAddress: req.ip,
-      userAgent: req.headers['user-agent'],
-    });
+    // Audit log
+    try {
+      await createAuditLog({
+        userId: req.user.id,
+        action: 'ROLE_DELETED',
+        entity: 'Role',
+        entityId: id,
+        oldValue: { name: role.name },
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+      });
+    } catch (auditError) {
+      console.error('Audit log error:', auditError.message);
+    }
 
     res.json({ message: 'Role deleted successfully' });
   } catch (error) {
@@ -429,7 +377,7 @@ const deleteRole = async (req, res) => {
   }
 };
 
-// Get all permissions
+// Get all permissions (for role editing UI)
 const getAllPermissions = async (req, res) => {
   try {
     const permissions = await prisma.permission.findMany({
@@ -457,40 +405,41 @@ const getAllPermissions = async (req, res) => {
 const assignRoleToUser = async (req, res) => {
   try {
     const { userId, roleId } = req.body;
-    const currentUser = req.user;
 
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-    });
-
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    const role = await prisma.role.findUnique({
-      where: { id: roleId },
-    });
-
+    const role = await prisma.role.findUnique({ where: { id: roleId } });
     if (!role) {
       return res.status(404).json({ message: 'Role not found' });
     }
 
-    await prisma.user.update({
+    const user = await prisma.user.update({
       where: { id: userId },
       data: { roleId },
+      include: { role: true },
     });
 
-    await createAuditLog({
-      userId: currentUser.id,
-      action: 'ROLE_ASSIGNED',
-      entity: 'User',
-      entityId: userId,
-      newValue: { roleId, roleName: role.name },
-      ipAddress: req.ip,
-      userAgent: req.headers['user-agent'],
-    });
+    // Audit log
+    try {
+      await createAuditLog({
+        userId: req.user.id,
+        action: 'ROLE_ASSIGNED',
+        entity: 'User',
+        entityId: userId,
+        newValue: { roleId, roleName: role.name },
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+      });
+    } catch (auditError) {
+      console.error('Audit log error:', auditError.message);
+    }
 
-    res.json({ message: 'Role assigned successfully' });
+    res.json({
+      message: 'Role assigned successfully',
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role?.name,
+      },
+    });
   } catch (error) {
     console.error('Assign role error:', error);
     res.status(500).json({ message: 'Error assigning role' });
