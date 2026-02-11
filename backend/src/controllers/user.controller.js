@@ -61,8 +61,6 @@ const getAllUsers = async (req, res) => {
           requestedRole: true,
           approvedAt: true,
           createdAt: true,
-          companyName: true,      // VMS Integration
-          hasVMSAccess: true,     // VMS Integration
           role: {
             select: {
               id: true,
