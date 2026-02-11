@@ -652,7 +652,7 @@ const Settings = () => {
           <div className="grid md:grid-cols-2 gap-4 text-sm">
             <div>
               <p className="text-gray-500">Application</p>
-              <p className="font-medium text-gray-900">Reliable Work Permit and VMS</p>
+              <p className="font-medium text-gray-900">Reliable Group | Work Permit and VMS</p>
               <p className="text-xs text-gray-400 mt-1">© YP SECURITY SERVICES PVT LTD</p>
             </div>
             <div>

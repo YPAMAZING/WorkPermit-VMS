@@ -80,7 +80,7 @@ const VMSLanding = () => {
               className="w-12 h-12 object-contain bg-white rounded-lg p-1"
             />
             <div>
-              <h1 className="text-white font-bold text-xl">Reliable Group</h1>
+              <h1 className="text-white font-bold text-xl">Reliable Group | Work Permit and VMS</h1>
               <p className="text-teal-300 text-xs">Visitor Management System</p>
             </div>
           </div>

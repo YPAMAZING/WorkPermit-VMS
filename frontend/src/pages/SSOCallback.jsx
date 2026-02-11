@@ -80,7 +80,7 @@ const SSOCallback = () => {
           <div className="inline-flex items-center justify-center w-16 h-16 bg-white rounded-2xl shadow-lg mb-4">
             <Shield className="w-10 h-10 text-primary-600" />
           </div>
-          <h1 className="text-3xl font-bold text-white">Reliable</h1>
+          <h1 className="text-3xl font-bold text-white">Reliable Group | Work Permit and VMS</h1>
           <p className="text-primary-200 mt-2">Single Sign-On</p>
         </div>
 

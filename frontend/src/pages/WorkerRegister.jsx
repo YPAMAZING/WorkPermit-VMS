@@ -341,7 +341,7 @@ const WorkerRegister = () => {
         </form>
 
         <p className="text-center text-slate-500 text-sm mt-6">
-          Powered by Reliable Work Permit and VMS
+          Powered by Reliable Group | Work Permit and VMS
         </p>
       </div>
     </div>

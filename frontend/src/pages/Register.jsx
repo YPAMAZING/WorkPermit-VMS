@@ -187,7 +187,7 @@ const Register = () => {
           {/* Title */}
           <div className="text-center mb-6">
             <h2 className="text-2xl font-bold text-white leading-tight mb-2">
-              Reliable Work Permit and VMS
+              Reliable Group | Work Permit and VMS
             </h2>
             <p className="text-blue-200 text-sm">
               Work Permit Management System
@@ -233,7 +233,7 @@ const Register = () => {
                 className="h-12 w-auto"
               />
             </div>
-            <h2 className="text-base font-bold text-gray-900">Reliable Work Permit and VMS</h2>
+            <h2 className="text-base font-bold text-gray-900">Reliable Group | Work Permit and VMS</h2>
           </div>
 
           {/* Register card */}
