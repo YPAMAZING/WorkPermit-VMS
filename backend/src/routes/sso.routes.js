@@ -7,6 +7,8 @@ const {
   verifySSOToken,
   validateExternalToken,
   getSSOConfig,
+  generateVMSSSOToken,
+  verifyVMSSSOToken,
 } = require('../controllers/sso.controller');
 const { authenticate, isAdmin } = require('../middleware/auth.middleware');
 const { validate: validateRequest } = require('../middleware/validate.middleware');
@@ -24,10 +26,32 @@ const { validate: validateRequest } = require('../middleware/validate.middleware
  * 1. External system embeds Work Permit module
  * 2. Passes existing JWT to POST /api/sso/validate-external
  * 3. Returns internal JWT token for authenticated session
+ * 
+ * Flow 3: VMS Admin SSO (Work Permit → VMS)
+ * 1. User with vms.admin permission calls GET /api/sso/vms/generate
+ * 2. Returns SSO token and redirect URL to VMS
+ * 3. VMS calls GET /api/sso/vms/verify?token=xxx to validate
+ * 4. VMS creates/logins user as VMS_ADMIN
  */
 
 // Get SSO configuration
 router.get('/config', getSSOConfig);
+
+// ================================
+// VMS SSO ROUTES (Work Permit → VMS)
+// ================================
+
+// Generate VMS SSO token (for users with vms.admin permission)
+// Returns token and redirect URL to VMS
+router.get('/vms/generate', authenticate, generateVMSSSOToken);
+
+// Verify VMS SSO token (called by VMS backend)
+// Returns Work Permit user info for VMS to create/login user
+router.get('/vms/verify', verifyVMSSSOToken);
+
+// ================================
+// GENERAL SSO ROUTES
+// ================================
 
 // Generate SSO token (called by external system)
 // Requires API key or admin authentication

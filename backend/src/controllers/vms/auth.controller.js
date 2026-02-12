@@ -1,15 +1,203 @@
 // VMS Authentication Controller
-// Uses MAIN database (same as Work Permit system)
-// This allows admins to access both Work Permit AND VMS with same credentials
+// Uses SEPARATE VMS database for VMS-specific data
+// Supports SSO from Work Permit system for VMS Admin access
 
-const { PrismaClient } = require('@prisma/client');
+const vmsPrisma = require('../../config/vms-prisma');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const config = require('../../config');
+const crypto = require('crypto');
+const { v4: uuidv4 } = require('uuid');
 
-const prisma = new PrismaClient();
+// VMS Full Permissions (for VMS_ADMIN role)
+const VMS_ADMIN_PERMISSIONS = [
+  'vms.dashboard.view',
+  'vms.dashboard.stats',
+  'vms.visitors.view',
+  'vms.visitors.view_all',
+  'vms.visitors.create',
+  'vms.visitors.edit',
+  'vms.visitors.delete',
+  'vms.gatepasses.view',
+  'vms.gatepasses.create',
+  'vms.gatepasses.edit',
+  'vms.gatepasses.approve',
+  'vms.gatepasses.cancel',
+  'vms.checkin.view',
+  'vms.checkin.approve',
+  'vms.checkin.reject',
+  'vms.checkin.manage',
+  'vms.preapproved.view',
+  'vms.preapproved.create',
+  'vms.preapproved.edit',
+  'vms.preapproved.delete',
+  'vms.blacklist.view',
+  'vms.blacklist.manage',
+  'vms.companies.view',
+  'vms.companies.create',
+  'vms.companies.edit',
+  'vms.companies.delete',
+  'vms.users.view',
+  'vms.users.create',
+  'vms.users.edit',
+  'vms.users.delete',
+  'vms.roles.view',
+  'vms.roles.create',
+  'vms.roles.edit',
+  'vms.roles.delete',
+  'vms.settings.view',
+  'vms.settings.edit',
+  'vms.reports.view',
+  'vms.reports.export',
+  'vms.audit.view',
+];
 
-// Login - uses main database
+// SSO Login from Work Permit System
+// Called when user clicks "Access VMS" in Work Permit with vms.admin permission
+exports.ssoLogin = async (req, res) => {
+  try {
+    const { token } = req.query;
+
+    if (!token) {
+      return res.status(400).json({ message: 'SSO token is required' });
+    }
+
+    console.log('\n' + '='.repeat(60));
+    console.log('🔐 VMS SSO LOGIN ATTEMPT');
+    console.log('='.repeat(60));
+
+    // Verify SSO token with Work Permit backend
+    const workPermitApiUrl = process.env.WORK_PERMIT_API_URL || process.env.API_URL || 'http://localhost:5000';
+    
+    // Call Work Permit SSO verify endpoint
+    const verifyResponse = await fetch(`${workPermitApiUrl}/api/sso/vms/verify?token=${token}`);
+    const verifyData = await verifyResponse.json();
+
+    if (!verifyResponse.ok || !verifyData.verified) {
+      console.log('❌ SSO Token verification failed:', verifyData.message);
+      return res.status(401).json({ message: verifyData.message || 'Invalid SSO token' });
+    }
+
+    const workPermitUser = verifyData.workPermitUser;
+    console.log('✅ SSO Token verified for:', workPermitUser.email);
+
+    // Find or create user in VMS database
+    let vmsUser = await vmsPrisma.user.findUnique({
+      where: { email: workPermitUser.email },
+      include: { role: true },
+    });
+
+    // Get or create VMS_ADMIN role
+    let vmsAdminRole = await vmsPrisma.role.findUnique({
+      where: { name: 'VMS_ADMIN' },
+    });
+
+    if (!vmsAdminRole) {
+      console.log('📋 Creating VMS_ADMIN role...');
+      vmsAdminRole = await vmsPrisma.role.create({
+        data: {
+          id: uuidv4(),
+          name: 'VMS_ADMIN',
+          displayName: 'VMS Administrator',
+          description: 'Full VMS system access (from Work Permit SSO)',
+          permissions: JSON.stringify(VMS_ADMIN_PERMISSIONS),
+          uiConfig: JSON.stringify({
+            theme: 'admin',
+            primaryColor: '#3b82f6',
+            showAllMenus: true,
+          }),
+          isSystem: true,
+          isActive: true,
+        },
+      });
+      console.log('✅ VMS_ADMIN role created');
+    }
+
+    if (!vmsUser) {
+      // Create new VMS user from Work Permit user
+      console.log('📋 Creating new VMS user...');
+      vmsUser = await vmsPrisma.user.create({
+        data: {
+          id: uuidv4(),
+          email: workPermitUser.email,
+          password: await bcrypt.hash(crypto.randomBytes(16).toString('hex'), 10), // Random password
+          firstName: workPermitUser.firstName,
+          lastName: workPermitUser.lastName,
+          roleId: vmsAdminRole.id,
+          isActive: true,
+          isApproved: true,
+        },
+        include: { role: true },
+      });
+      console.log('✅ VMS user created:', vmsUser.email);
+    } else {
+      // Update existing user to VMS_ADMIN role
+      vmsUser = await vmsPrisma.user.update({
+        where: { id: vmsUser.id },
+        data: {
+          roleId: vmsAdminRole.id,
+          isActive: true,
+          isApproved: true,
+        },
+        include: { role: true },
+      });
+      console.log('✅ VMS user updated to admin:', vmsUser.email);
+    }
+
+    // Generate VMS JWT token
+    const vmsToken = jwt.sign(
+      {
+        userId: vmsUser.id,
+        email: vmsUser.email,
+        role: 'VMS_ADMIN',
+        system: 'vms',
+        ssoSource: 'work_permit',
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
+    );
+
+    // Log SSO login
+    try {
+      await vmsPrisma.auditLog.create({
+        data: {
+          id: uuidv4(),
+          userId: vmsUser.id,
+          action: 'SSO_LOGIN',
+          entity: 'user',
+          entityId: vmsUser.id,
+          newValue: JSON.stringify({ source: 'work_permit', workPermitUserId: workPermitUser.id }),
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent'),
+        },
+      });
+    } catch (auditError) {
+      console.log('⚠️ Audit log error (non-critical):', auditError.message);
+    }
+
+    console.log('✅ VMS SSO LOGIN SUCCESS');
+    console.log('='.repeat(60) + '\n');
+
+    res.json({
+      success: true,
+      token: vmsToken,
+      user: {
+        id: vmsUser.id,
+        email: vmsUser.email,
+        firstName: vmsUser.firstName,
+        lastName: vmsUser.lastName,
+        role: 'VMS_ADMIN',
+        roleName: 'VMS Administrator',
+        permissions: VMS_ADMIN_PERMISSIONS,
+        ssoSource: 'work_permit',
+      },
+    });
+  } catch (error) {
+    console.error('❌ VMS SSO Login error:', error);
+    res.status(500).json({ message: 'SSO Login failed', error: error.message });
+  }
+};
+
+// Regular VMS Login (for VMS-only users)
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -19,21 +207,19 @@ exports.login = async (req, res) => {
     console.log('='.repeat(60));
     console.log('📧 Email:', email);
 
-    // Find user with role from MAIN database
-    const user = await prisma.user.findUnique({
+    // Find user in VMS database
+    const user = await vmsPrisma.user.findUnique({
       where: { email },
       include: { role: true },
     });
 
     if (!user) {
-      console.log('❌ User not found');
+      console.log('❌ User not found in VMS database');
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
     console.log('✅ User found:', user.firstName, user.lastName);
     console.log('🏷️  Role:', user.role?.name || 'No role');
-    console.log('✅ isActive:', user.isActive);
-    console.log('✅ isApproved:', user.isApproved);
 
     if (!user.isActive) {
       console.log('❌ Account deactivated');
@@ -64,24 +250,25 @@ exports.login = async (req, res) => {
       }
     }
 
-    // Generate JWT - mark as VMS system token
+    // Generate VMS JWT
     const token = jwt.sign(
       {
         userId: user.id,
         email: user.email,
-        role: user.role?.name || 'REQUESTOR',
-        system: 'vms', // Mark as VMS token
+        role: user.role?.name || 'VMS_USER',
+        system: 'vms',
       },
-      config.jwtSecret,
-      { expiresIn: config.jwtExpiresIn || '24h' }
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
     );
 
-    // Log login action - handle audit log creation errors gracefully
+    // Log login
     try {
-      await prisma.auditLog.create({
+      await vmsPrisma.auditLog.create({
         data: {
+          id: uuidv4(),
           userId: user.id,
-          action: 'VMS_LOGIN',
+          action: 'LOGIN',
           entity: 'user',
           entityId: user.id,
           ipAddress: req.ip,
@@ -102,7 +289,7 @@ exports.login = async (req, res) => {
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
-        role: user.role?.name || 'REQUESTOR',
+        role: user.role?.name || 'VMS_USER',
         roleName: user.role?.displayName || 'User',
         permissions,
         department: user.department,
@@ -116,13 +303,13 @@ exports.login = async (req, res) => {
   }
 };
 
-// Register - uses main database
+// Register new VMS user
 exports.register = async (req, res) => {
   try {
     const { email, password, firstName, lastName, phone, department, requestedRole } = req.body;
 
     // Check if email exists
-    const existingUser = await prisma.user.findUnique({ where: { email } });
+    const existingUser = await vmsPrisma.user.findUnique({ where: { email } });
     if (existingUser) {
       return res.status(400).json({ message: 'Email already registered' });
     }
@@ -130,17 +317,18 @@ exports.register = async (req, res) => {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Get default role (REQUESTOR)
+    // Get default role (VMS_USER)
     let roleId = null;
-    const roleName = requestedRole || 'REQUESTOR';
-    const role = await prisma.role.findUnique({ where: { name: roleName } });
+    const roleName = requestedRole || 'VMS_USER';
+    const role = await vmsPrisma.role.findUnique({ where: { name: roleName } });
     if (role) {
       roleId = role.id;
     }
 
     // Create user - requires approval
-    const user = await prisma.user.create({
+    const user = await vmsPrisma.user.create({
       data: {
+        id: uuidv4(),
         email,
         password: hashedPassword,
         firstName,
@@ -148,7 +336,6 @@ exports.register = async (req, res) => {
         phone,
         department,
         roleId,
-        requestedRole: roleName,
         isApproved: false, // Require admin approval
       },
       include: { role: true },
@@ -156,10 +343,11 @@ exports.register = async (req, res) => {
 
     // Log registration
     try {
-      await prisma.auditLog.create({
+      await vmsPrisma.auditLog.create({
         data: {
+          id: uuidv4(),
           userId: user.id,
-          action: 'VMS_REGISTER',
+          action: 'REGISTER',
           entity: 'user',
           entityId: user.id,
           ipAddress: req.ip,
@@ -180,10 +368,10 @@ exports.register = async (req, res) => {
   }
 };
 
-// Get current user - uses main database
+// Get current user
 exports.me = async (req, res) => {
   try {
-    const user = await prisma.user.findUnique({
+    const user = await vmsPrisma.user.findUnique({
       where: { id: req.user.userId },
       include: { role: true },
     });
@@ -206,7 +394,7 @@ exports.me = async (req, res) => {
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
-      role: user.role?.name || 'REQUESTOR',
+      role: user.role?.name || 'VMS_USER',
       roleName: user.role?.displayName || 'User',
       permissions,
       department: user.department,
@@ -219,12 +407,12 @@ exports.me = async (req, res) => {
   }
 };
 
-// Update profile - uses main database
+// Update profile
 exports.updateProfile = async (req, res) => {
   try {
     const { firstName, lastName, phone, department, profilePicture } = req.body;
 
-    const user = await prisma.user.update({
+    const user = await vmsPrisma.user.update({
       where: { id: req.user.userId },
       data: {
         firstName,
@@ -243,7 +431,7 @@ exports.updateProfile = async (req, res) => {
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
-        role: user.role?.name || 'REQUESTOR',
+        role: user.role?.name || 'VMS_USER',
         roleName: user.role?.displayName || 'User',
         department: user.department,
         phone: user.phone,
@@ -256,12 +444,12 @@ exports.updateProfile = async (req, res) => {
   }
 };
 
-// Change password - uses main database
+// Change password
 exports.changePassword = async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
 
-    const user = await prisma.user.findUnique({
+    const user = await vmsPrisma.user.findUnique({
       where: { id: req.user.userId },
     });
 
@@ -274,7 +462,7 @@ exports.changePassword = async (req, res) => {
     // Hash new password
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-    await prisma.user.update({
+    await vmsPrisma.user.update({
       where: { id: req.user.userId },
       data: { password: hashedPassword },
     });

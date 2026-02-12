@@ -11,7 +11,7 @@ const { v4: uuidv4 } = require('uuid');
 
 const prisma = new PrismaClient();
 
-// Simple permissions - Work Permit only
+// Simple permissions - Work Permit + VMS Admin Access
 const PERMISSIONS = [
   { key: 'dashboard.view', name: 'View Dashboard', module: 'dashboard', action: 'view' },
   { key: 'dashboard.stats', name: 'View Statistics', module: 'dashboard', action: 'stats' },
@@ -37,6 +37,8 @@ const PERMISSIONS = [
   { key: 'settings.view', name: 'View Settings', module: 'settings', action: 'view' },
   { key: 'settings.edit', name: 'Edit Settings', module: 'settings', action: 'edit' },
   { key: 'audit.view', name: 'View Audit Logs', module: 'audit', action: 'view' },
+  // VMS Admin Access - Single permission to access VMS as Admin
+  { key: 'vms.admin', name: 'VMS Administrator Access', module: 'vms', action: 'admin' },
 ];
 
 // 3 Simple roles

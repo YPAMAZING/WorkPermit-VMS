@@ -3,7 +3,7 @@ const { createAuditLog } = require('../services/audit.service');
 
 const prisma = new PrismaClient();
 
-// SIMPLIFIED permissions - Work Permit only (VMS uses role-based access)
+// SIMPLIFIED permissions - Work Permit + VMS Admin Access
 const defaultPermissions = [
   // Dashboard
   { key: 'dashboard.view', name: 'View Dashboard', module: 'dashboard', action: 'view' },
@@ -42,6 +42,9 @@ const defaultPermissions = [
   
   // Audit
   { key: 'audit.view', name: 'View Audit Logs', module: 'audit', action: 'view' },
+  
+  // VMS Access - Single permission to access VMS as Admin
+  { key: 'vms.admin', name: 'VMS Administrator Access', module: 'vms', action: 'admin' },
 ];
 
 // Default roles - SIMPLIFIED (3 main roles only)
@@ -49,13 +52,14 @@ const defaultRoles = [
   {
     name: 'ADMIN',
     displayName: 'Administrator',
-    description: 'Full system access',
+    description: 'Full system access including VMS',
     isSystem: true,
-    permissions: defaultPermissions.map(p => p.key), // All permissions
+    permissions: defaultPermissions.map(p => p.key), // All permissions including vms.admin
     uiConfig: {
       theme: 'admin',
       primaryColor: '#3b82f6',
       showAllMenus: true,
+      hasVMSAccess: true, // Shows VMS button in UI
     },
   },
   {

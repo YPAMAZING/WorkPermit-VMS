@@ -8,7 +8,143 @@ const prisma = new PrismaClient();
 
 /**
  * SSO Controller - Handles Single Sign-On integration
+ * Includes VMS Admin SSO for Work Permit → VMS redirection
  */
+
+// Generate VMS SSO Token (for Work Permit users with vms.admin permission)
+const generateVMSSSOToken = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    // Get user with role and permissions
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { role: true },
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Check if user has vms.admin permission
+    const permissions = user.role ? JSON.parse(user.role.permissions || '[]') : [];
+    const hasVMSAdmin = permissions.includes('vms.admin') || user.role?.name === 'ADMIN';
+
+    if (!hasVMSAdmin) {
+      return res.status(403).json({ message: 'You do not have VMS Admin access' });
+    }
+
+    // Generate secure SSO token for VMS
+    const ssoToken = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes expiry
+
+    // Store SSO token in database
+    await prisma.sSOToken.create({
+      data: {
+        token: ssoToken,
+        userId: user.id,
+        externalSystem: 'VMS',
+        expiresAt,
+        isUsed: false,
+      },
+    });
+
+    console.log(`\n🔐 VMS SSO Token Generated for ${user.email}`);
+
+    // Return token and redirect URL
+    const vmsUrl = process.env.VMS_URL || process.env.FRONTEND_URL || 'http://localhost:3000';
+    
+    res.json({
+      success: true,
+      ssoToken,
+      expiresAt,
+      redirectUrl: `${vmsUrl}/vms/sso?token=${ssoToken}`,
+      user: {
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+      },
+    });
+  } catch (error) {
+    console.error('Generate VMS SSO token error:', error);
+    res.status(500).json({ message: 'Error generating VMS SSO token' });
+  }
+};
+
+// Verify VMS SSO Token (called by VMS to validate and login user)
+const verifyVMSSSOToken = async (req, res) => {
+  try {
+    const { token } = req.query;
+
+    if (!token) {
+      return res.status(400).json({ message: 'SSO token is required' });
+    }
+
+    // Find and validate SSO token
+    const ssoToken = await prisma.sSOToken.findUnique({
+      where: { token },
+    });
+
+    if (!ssoToken) {
+      return res.status(401).json({ message: 'Invalid SSO token' });
+    }
+
+    if (ssoToken.isUsed) {
+      return res.status(401).json({ message: 'SSO token already used' });
+    }
+
+    if (new Date() > ssoToken.expiresAt) {
+      return res.status(401).json({ message: 'SSO token expired' });
+    }
+
+    if (ssoToken.externalSystem !== 'VMS') {
+      return res.status(401).json({ message: 'Invalid token type' });
+    }
+
+    // Mark token as used
+    await prisma.sSOToken.update({
+      where: { id: ssoToken.id },
+      data: { isUsed: true },
+    });
+
+    // Get user from Work Permit database
+    const user = await prisma.user.findUnique({
+      where: { id: ssoToken.userId },
+      include: { role: true },
+    });
+
+    if (!user || !user.isActive) {
+      return res.status(401).json({ message: 'User not found or inactive' });
+    }
+
+    // Verify user has VMS admin permission
+    const permissions = user.role ? JSON.parse(user.role.permissions || '[]') : [];
+    const hasVMSAdmin = permissions.includes('vms.admin') || user.role?.name === 'ADMIN';
+
+    if (!hasVMSAdmin) {
+      return res.status(403).json({ message: 'User does not have VMS Admin access' });
+    }
+
+    console.log(`\n✅ VMS SSO Token Verified for ${user.email}`);
+
+    // Return user info for VMS to create/login user in VMS database
+    res.json({
+      success: true,
+      verified: true,
+      workPermitUser: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: 'VMS_ADMIN', // VMS should create/login this user as VMS_ADMIN
+        permissions: ['vms.*'], // Full VMS access
+      },
+    });
+  } catch (error) {
+    console.error('Verify VMS SSO token error:', error);
+    res.status(500).json({ message: 'Error verifying VMS SSO token' });
+  }
+};
 
 // Generate SSO token for external system to authenticate
 const generateSSOToken = async (req, res) => {
@@ -273,4 +409,6 @@ module.exports = {
   verifySSOToken,
   validateExternalToken,
   getSSOConfig,
+  generateVMSSSOToken,
+  verifyVMSSSOToken,
 };
