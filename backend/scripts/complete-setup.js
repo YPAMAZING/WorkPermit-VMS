@@ -2,27 +2,26 @@
 /**
  * Complete Setup Script for WorkPermit-VMS
  * 
- * This script handles:
- * 1. Main database (workpermit_db) setup
- * 2. VMS database (workpermit_vms_db) setup (optional)
- * 3. Creating admin user
- * 4. Setting up roles and permissions
+ * SINGLE DATABASE APPROACH
+ * Both Work Permit and VMS use the same database (workpermit_db)
+ * VMS access is controlled by hasVMSAccess flag on users
+ * 
+ * This script:
+ * 1. Creates all permissions (including vms.admin)
+ * 2. Creates default roles (ADMIN, FIREMAN, REQUESTOR)
+ * 3. Creates admin user with VMS access
+ * 4. Updates users without roles to REQUESTOR
  * 
  * Usage:
  *   node scripts/complete-setup.js
- *   node scripts/complete-setup.js --vms  (also setup VMS database)
  */
 
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
-const { v4: uuidv4 } = require('uuid');
 
 const prisma = new PrismaClient();
 
-// Check for VMS setup flag
-const setupVMS = process.argv.includes('--vms');
-
-// Default permissions
+// All permissions (Work Permit + VMS)
 const PERMISSIONS = [
   // Dashboard
   { key: 'dashboard.view', name: 'View Dashboard', module: 'dashboard', action: 'view' },
@@ -62,18 +61,21 @@ const PERMISSIONS = [
   // Audit
   { key: 'audit.view', name: 'View Audit Logs', module: 'audit', action: 'view' },
   
-  // VMS Access - Single permission to access VMS as Admin
+  // VMS Access - Single permission to access VMS
+  // When this permission is in a role, all users with that role get hasVMSAccess = true
   { key: 'vms.admin', name: 'VMS Administrator Access', module: 'vms', action: 'admin' },
 ];
 
-// Default roles (vms.admin NOT included by default)
+// Default roles
+// NOTE: ADMIN role includes vms.admin by default (can access VMS)
+// Other roles need vms.admin added manually if they need VMS access
 const ROLES = [
   {
     name: 'ADMIN',
     displayName: 'Administrator',
-    description: 'Full Work Permit system access (VMS access must be granted separately)',
+    description: 'Full system access including VMS',
     isSystem: true,
-    permissions: PERMISSIONS.filter(p => p.key !== 'vms.admin').map(p => p.key),
+    permissions: PERMISSIONS.map(p => p.key), // ALL permissions including vms.admin
     uiConfig: { theme: 'admin', primaryColor: '#3b82f6', showAllMenus: true },
   },
   {
@@ -94,233 +96,155 @@ const ROLES = [
   },
 ];
 
-async function setupMainDatabase() {
-  console.log('\n' + '='.repeat(60));
-  console.log('📦 SETTING UP MAIN DATABASE (workpermit_db)');
-  console.log('='.repeat(60));
-
-  // Create permissions
-  console.log('\n📋 Creating permissions...');
-  for (const perm of PERMISSIONS) {
-    try {
-      await prisma.permission.upsert({
-        where: { key: perm.key },
-        update: { name: perm.name, module: perm.module, action: perm.action },
-        create: { key: perm.key, name: perm.name, module: perm.module, action: perm.action },
-      });
-      console.log(`  ✅ ${perm.key}`);
-    } catch (error) {
-      console.log(`  ⚠️ ${perm.key}: ${error.message}`);
-    }
-  }
-
-  // Create roles
-  console.log('\n🎭 Creating roles...');
-  for (const role of ROLES) {
-    try {
-      await prisma.role.upsert({
-        where: { name: role.name },
-        update: {
-          displayName: role.displayName,
-          description: role.description,
-          permissions: JSON.stringify(role.permissions),
-          uiConfig: JSON.stringify(role.uiConfig),
-        },
-        create: {
-          name: role.name,
-          displayName: role.displayName,
-          description: role.description,
-          isSystem: role.isSystem,
-          permissions: JSON.stringify(role.permissions),
-          uiConfig: JSON.stringify(role.uiConfig),
-        },
-      });
-      console.log(`  ✅ ${role.name} (${role.displayName})`);
-    } catch (error) {
-      console.log(`  ⚠️ ${role.name}: ${error.message}`);
-    }
-  }
-
-  // Create admin user
-  console.log('\n👤 Creating admin user...');
-  const adminRole = await prisma.role.findUnique({ where: { name: 'ADMIN' } });
-  
-  if (adminRole) {
-    const hashedPassword = await bcrypt.hash('admin123', 10);
-    
-    try {
-      const admin = await prisma.user.upsert({
-        where: { email: 'admin@permitmanager.com' },
-        update: {
-          roleId: adminRole.id,
-          isActive: true,
-          isApproved: true,
-        },
-        create: {
-          email: 'admin@permitmanager.com',
-          password: hashedPassword,
-          firstName: 'System',
-          lastName: 'Admin',
-          roleId: adminRole.id,
-          isActive: true,
-          isApproved: true,
-        },
-      });
-      console.log(`  ✅ Admin user: ${admin.email}`);
-      console.log(`  🔑 Password: admin123`);
-    } catch (error) {
-      console.log(`  ⚠️ Admin user: ${error.message}`);
-    }
-  }
-
-  // Update users without roleId
-  console.log('\n🔄 Updating users without roles...');
-  const requestorRole = await prisma.role.findUnique({ where: { name: 'REQUESTOR' } });
-  if (requestorRole) {
-    const updated = await prisma.user.updateMany({
-      where: { roleId: null },
-      data: { roleId: requestorRole.id },
-    });
-    console.log(`  ✅ Updated ${updated.count} users to REQUESTOR role`);
-  }
-
-  // Mark all users as approved
-  console.log('\n✅ Marking all users as approved...');
-  const approved = await prisma.user.updateMany({
-    where: { isApproved: false },
-    data: { isApproved: true },
-  });
-  console.log(`  ✅ Approved ${approved.count} users`);
-
-  console.log('\n' + '='.repeat(60));
-  console.log('✅ MAIN DATABASE SETUP COMPLETE');
-  console.log('='.repeat(60));
-}
-
-async function setupVMSDatabase() {
-  console.log('\n' + '='.repeat(60));
-  console.log('📦 SETTING UP VMS DATABASE (workpermit_vms_db)');
-  console.log('='.repeat(60));
-
-  // Check if VMS database is configured
-  if (!process.env.VMS_DATABASE_URL) {
-    console.log('\n⚠️ VMS_DATABASE_URL not configured in .env');
-    console.log('   Skipping VMS database setup');
-    console.log('   To enable VMS, add this to your .env file:');
-    console.log('   VMS_DATABASE_URL=mysql://username:password@localhost:3306/workpermit_vms_db');
-    return;
-  }
-
-  try {
-    const { PrismaClient: VMSPrismaClient } = require('.prisma/vms-client');
-    const vmsPrisma = new VMSPrismaClient();
-
-    // VMS Permissions (simple version)
-    const VMS_PERMISSIONS = ['vms.*']; // Wildcard for all VMS permissions
-
-    // Create VMS_ADMIN role
-    console.log('\n🎭 Creating VMS_ADMIN role...');
-    try {
-      await vmsPrisma.role.upsert({
-        where: { name: 'VMS_ADMIN' },
-        update: {
-          displayName: 'VMS Administrator',
-          permissions: JSON.stringify(VMS_PERMISSIONS),
-          uiConfig: JSON.stringify({ theme: 'admin', primaryColor: '#3b82f6' }),
-        },
-        create: {
-          id: uuidv4(),
-          name: 'VMS_ADMIN',
-          displayName: 'VMS Administrator',
-          description: 'Full VMS system access',
-          permissions: JSON.stringify(VMS_PERMISSIONS),
-          uiConfig: JSON.stringify({ theme: 'admin', primaryColor: '#3b82f6' }),
-          isSystem: true,
-          isActive: true,
-        },
-      });
-      console.log('  ✅ VMS_ADMIN role created');
-    } catch (error) {
-      console.log(`  ⚠️ VMS_ADMIN role: ${error.message}`);
-    }
-
-    // Create VMS admin user
-    console.log('\n👤 Creating VMS admin user...');
-    const vmsAdminRole = await vmsPrisma.role.findUnique({ where: { name: 'VMS_ADMIN' } });
-    
-    if (vmsAdminRole) {
-      const hashedPassword = await bcrypt.hash('admin123', 10);
-      
-      try {
-        const vmsAdmin = await vmsPrisma.user.upsert({
-          where: { email: 'admin@permitmanager.com' },
-          update: {
-            roleId: vmsAdminRole.id,
-            isActive: true,
-            isApproved: true,
-          },
-          create: {
-            id: uuidv4(),
-            email: 'admin@permitmanager.com',
-            password: hashedPassword,
-            firstName: 'VMS',
-            lastName: 'Admin',
-            roleId: vmsAdminRole.id,
-            isActive: true,
-            isApproved: true,
-          },
-        });
-        console.log(`  ✅ VMS Admin user: ${vmsAdmin.email}`);
-        console.log(`  🔑 Password: admin123`);
-      } catch (error) {
-        console.log(`  ⚠️ VMS Admin user: ${error.message}`);
-      }
-    }
-
-    await vmsPrisma.$disconnect();
-
-    console.log('\n' + '='.repeat(60));
-    console.log('✅ VMS DATABASE SETUP COMPLETE');
-    console.log('='.repeat(60));
-  } catch (error) {
-    console.log('\n❌ VMS database setup failed:', error.message);
-    console.log('   Make sure to run:');
-    console.log('   1. npx prisma generate --schema=./prisma-vms/schema.prisma');
-    console.log('   2. npx prisma db push --schema=./prisma-vms/schema.prisma');
-  }
-}
-
 async function main() {
   console.log('\n');
   console.log('╔════════════════════════════════════════════════════════════╗');
-  console.log('║         WORKPERMIT-VMS COMPLETE SETUP SCRIPT               ║');
+  console.log('║      WORKPERMIT-VMS SETUP (SINGLE DATABASE)                ║');
   console.log('╚════════════════════════════════════════════════════════════╝');
   console.log('\n');
 
   try {
-    // Always setup main database
-    await setupMainDatabase();
-
-    // Setup VMS database if flag is provided
-    if (setupVMS) {
-      await setupVMSDatabase();
-    } else {
-      console.log('\n💡 TIP: Run with --vms flag to also setup VMS database:');
-      console.log('   node scripts/complete-setup.js --vms');
+    // Create permissions
+    console.log('📋 Creating permissions...');
+    for (const perm of PERMISSIONS) {
+      try {
+        await prisma.permission.upsert({
+          where: { key: perm.key },
+          update: { name: perm.name, module: perm.module, action: perm.action },
+          create: { key: perm.key, name: perm.name, module: perm.module, action: perm.action },
+        });
+        console.log(`  ✅ ${perm.key}`);
+      } catch (error) {
+        console.log(`  ⚠️ ${perm.key}: ${error.message}`);
+      }
     }
+
+    // Create roles
+    console.log('\n🎭 Creating roles...');
+    for (const role of ROLES) {
+      try {
+        await prisma.role.upsert({
+          where: { name: role.name },
+          update: {
+            displayName: role.displayName,
+            description: role.description,
+            permissions: JSON.stringify(role.permissions),
+            uiConfig: JSON.stringify(role.uiConfig),
+          },
+          create: {
+            name: role.name,
+            displayName: role.displayName,
+            description: role.description,
+            isSystem: role.isSystem,
+            permissions: JSON.stringify(role.permissions),
+            uiConfig: JSON.stringify(role.uiConfig),
+          },
+        });
+        console.log(`  ✅ ${role.name} (${role.displayName})`);
+        if (role.permissions.includes('vms.admin')) {
+          console.log(`     📌 Has VMS Access`);
+        }
+      } catch (error) {
+        console.log(`  ⚠️ ${role.name}: ${error.message}`);
+      }
+    }
+
+    // Create admin user with VMS access
+    console.log('\n👤 Creating admin user...');
+    const adminRole = await prisma.role.findUnique({ where: { name: 'ADMIN' } });
+    
+    if (adminRole) {
+      const hashedPassword = await bcrypt.hash('admin123', 10);
+      
+      try {
+        const admin = await prisma.user.upsert({
+          where: { email: 'admin@permitmanager.com' },
+          update: {
+            roleId: adminRole.id,
+            isActive: true,
+            isApproved: true,
+            hasVMSAccess: true, // Admin has VMS access
+          },
+          create: {
+            email: 'admin@permitmanager.com',
+            password: hashedPassword,
+            firstName: 'System',
+            lastName: 'Admin',
+            roleId: adminRole.id,
+            isActive: true,
+            isApproved: true,
+            hasVMSAccess: true, // Admin has VMS access
+          },
+        });
+        console.log(`  ✅ Admin user: ${admin.email}`);
+        console.log(`  🔑 Password: admin123`);
+        console.log(`  📌 Has VMS Access: YES`);
+      } catch (error) {
+        console.log(`  ⚠️ Admin user: ${error.message}`);
+      }
+    }
+
+    // Update users with ADMIN role to have VMS access
+    console.log('\n🔄 Syncing VMS access for users with vms.admin permission...');
+    const rolesWithVMS = await prisma.role.findMany({
+      where: {
+        permissions: { contains: 'vms.admin' }
+      }
+    });
+    
+    for (const role of rolesWithVMS) {
+      const updated = await prisma.user.updateMany({
+        where: { roleId: role.id },
+        data: { hasVMSAccess: true },
+      });
+      console.log(`  ✅ ${role.name}: ${updated.count} users granted VMS access`);
+    }
+
+    // Update users without roleId
+    console.log('\n🔄 Updating users without roles...');
+    const requestorRole = await prisma.role.findUnique({ where: { name: 'REQUESTOR' } });
+    if (requestorRole) {
+      const updated = await prisma.user.updateMany({
+        where: { roleId: null },
+        data: { roleId: requestorRole.id },
+      });
+      console.log(`  ✅ Assigned REQUESTOR role to ${updated.count} users`);
+    }
+
+    // Approve all pending users
+    console.log('\n✅ Approving pending users...');
+    const approved = await prisma.user.updateMany({
+      where: { isApproved: false },
+      data: { isApproved: true },
+    });
+    console.log(`  ✅ Approved ${approved.count} users`);
+
+    // Summary
+    const totalUsers = await prisma.user.count();
+    const vmsUsers = await prisma.user.count({ where: { hasVMSAccess: true } });
+    const totalRoles = await prisma.role.count();
+    const totalPermissions = await prisma.permission.count();
 
     console.log('\n');
     console.log('╔════════════════════════════════════════════════════════════╗');
     console.log('║                    SETUP COMPLETE!                          ║');
     console.log('╠════════════════════════════════════════════════════════════╣');
-    console.log('║  Login Credentials:                                         ║');
-    console.log('║  📧 Email:    admin@permitmanager.com                       ║');
-    console.log('║  🔑 Password: admin123                                      ║');
-    console.log('║                                                             ║');
-    console.log('║  To grant VMS access to a user:                            ║');
-    console.log('║  1. Go to Settings → Roles                                 ║');
-    console.log('║  2. Edit a role and add "vms.admin" permission             ║');
-    console.log('║  3. Users with that role can access VMS                    ║');
+    console.log(`║  📊 Statistics:                                             ║`);
+    console.log(`║     Total Users: ${String(totalUsers).padEnd(40)}║`);
+    console.log(`║     Users with VMS Access: ${String(vmsUsers).padEnd(30)}║`);
+    console.log(`║     Total Roles: ${String(totalRoles).padEnd(40)}║`);
+    console.log(`║     Total Permissions: ${String(totalPermissions).padEnd(35)}║`);
+    console.log('╠════════════════════════════════════════════════════════════╣');
+    console.log('║  🔑 Login Credentials:                                      ║');
+    console.log('║     Email:    admin@permitmanager.com                       ║');
+    console.log('║     Password: admin123                                      ║');
+    console.log('╠════════════════════════════════════════════════════════════╣');
+    console.log('║  📌 VMS Access:                                             ║');
+    console.log('║     - Admin can login to VMS using same credentials        ║');
+    console.log('║     - To grant VMS access to other users:                  ║');
+    console.log('║       1. Go to Settings → Roles                            ║');
+    console.log('║       2. Add "vms.admin" permission to the role            ║');
+    console.log('║       3. All users with that role get VMS access           ║');
     console.log('╚════════════════════════════════════════════════════════════╝');
     console.log('\n');
 
