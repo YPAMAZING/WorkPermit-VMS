@@ -1,13 +1,13 @@
 -- Create VMS tables manually (MySQL compatible)
 -- Run this in MySQL: mysql -u root -p workpermit_db < scripts/create-vms-tables.sql
 
--- VMS Roles table (no default on TEXT column)
+-- VMS Roles table (LONGTEXT for permissions to handle large arrays)
 CREATE TABLE IF NOT EXISTS `vms_roles` (
   `id` VARCHAR(36) NOT NULL,
   `name` VARCHAR(50) NOT NULL,
   `displayName` VARCHAR(100) NOT NULL,
   `description` TEXT NULL,
-  `permissions` TEXT NOT NULL,
+  `permissions` LONGTEXT NOT NULL,
   `isSystem` BOOLEAN NOT NULL DEFAULT false,
   `isActive` BOOLEAN NOT NULL DEFAULT true,
   `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
