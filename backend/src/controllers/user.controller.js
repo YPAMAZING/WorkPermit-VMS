@@ -2,6 +2,7 @@ const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
 const { createAuditLog } = require('../services/audit.service');
 const { sendWelcomeEmail } = require('../services/otp.service');
+const { syncUserRoleChange } = require('../services/vms-sync.service');
 
 const prisma = new PrismaClient();
 
@@ -147,6 +148,8 @@ const approveUser = async (req, res) => {
       });
     }
 
+    const newRoleId = roleRecord?.id || user.roleId;
+
     // Update user - approve and assign requested role
     const updatedUser = await prisma.user.update({
       where: { id },
@@ -154,13 +157,21 @@ const approveUser = async (req, res) => {
         isApproved: true,
         approvedBy: req.user.id,
         approvedAt: new Date(),
-        roleId: roleRecord?.id || user.roleId,
+        roleId: newRoleId,
         requestedRole: null, // Clear requested role after approval
       },
       include: {
         role: true,
       },
     });
+
+    // 🔄 SYNC VMS ACCESS - When user is approved with a role that has vms.admin
+    try {
+      const syncResult = await syncUserRoleChange(id, newRoleId);
+      console.log(`🔄 VMS Sync for approved user ${updatedUser.email}: ${syncResult.success ? 'Success' : 'Failed'}`);
+    } catch (syncError) {
+      console.error('VMS Sync error (non-critical):', syncError.message);
+    }
 
     await createAuditLog({
       userId: req.user.id,
@@ -386,12 +397,14 @@ const updateUser = async (req, res) => {
 
     // Find new role if provided
     let roleId = oldUser.roleId;
+    let roleChanged = false;
     if (role && req.user.role === 'ADMIN') {
       const roleRecord = await prisma.role.findUnique({
         where: { name: role },
       });
       if (roleRecord) {
         roleId = roleRecord.id;
+        roleChanged = roleId !== oldUser.roleId;
       }
     }
 
@@ -408,6 +421,16 @@ const updateUser = async (req, res) => {
         role: true,
       },
     });
+
+    // 🔄 SYNC VMS ACCESS - When user's role changes, sync their VMS access
+    if (roleChanged) {
+      try {
+        const syncResult = await syncUserRoleChange(id, roleId);
+        console.log(`🔄 VMS Sync for user ${user.email}: ${syncResult.success ? 'Success' : 'Failed'}`);
+      } catch (syncError) {
+        console.error('VMS Sync error (non-critical):', syncError.message);
+      }
+    }
 
     await createAuditLog({
       userId: req.user.id,

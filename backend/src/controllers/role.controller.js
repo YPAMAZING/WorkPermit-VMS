@@ -1,5 +1,6 @@
 const { PrismaClient } = require('@prisma/client');
 const { createAuditLog } = require('../services/audit.service');
+const { syncRoleUsersVMSAccess, syncUserRoleChange } = require('../services/vms-sync.service');
 
 const prisma = new PrismaClient();
 
@@ -306,6 +307,14 @@ const updateRole = async (req, res) => {
       },
     });
 
+    // 🔄 SYNC VMS ACCESS - When role permissions change, sync all users with this role
+    try {
+      const syncResult = await syncRoleUsersVMSAccess(id, permissions);
+      console.log(`🔄 VMS Sync Result: ${syncResult.synced}/${syncResult.total} users synced`);
+    } catch (syncError) {
+      console.error('VMS Sync error (non-critical):', syncError.message);
+    }
+
     // Audit log
     try {
       await createAuditLog({
@@ -420,6 +429,14 @@ const assignRoleToUser = async (req, res) => {
       data: { roleId },
       include: { role: true },
     });
+
+    // 🔄 SYNC VMS ACCESS - When user's role changes, sync their VMS access
+    try {
+      const syncResult = await syncUserRoleChange(userId, roleId);
+      console.log(`🔄 VMS Sync for user ${user.email}: ${syncResult.success ? 'Success' : 'Failed'}`);
+    } catch (syncError) {
+      console.error('VMS Sync error (non-critical):', syncError.message);
+    }
 
     // Audit log
     try {
