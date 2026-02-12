@@ -143,8 +143,8 @@ model Role {
   name        String    @unique
   displayName String
   description String?
-  permissions String    @default("[]") // JSON array of permission keys
-  uiConfig    String    @default("{}") // JSON for UI customization
+  permissions String    @default("[]") @db.LongText // JSON array of permission keys
+  uiConfig    String    @default("{}") @db.LongText // JSON for UI customization
   isSystem    Boolean   @default(false)
   isActive    Boolean   @default(true)
   createdAt   DateTime  @default(now())
