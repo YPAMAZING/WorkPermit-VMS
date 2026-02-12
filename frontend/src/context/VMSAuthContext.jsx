@@ -103,7 +103,10 @@ export const VMSAuthProvider = ({ children }) => {
 
       try {
         // Use VMS auth endpoint (separate vms_users table)
-        const response = await vmsApi.get('/auth/me')
+        const vmsMeUrl = `${API_URL}/vms/auth/me`
+        const response = await axios.get(vmsMeUrl, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
         const userData = response.data.user || response.data
         
         // Add VMS permissions
@@ -128,7 +131,11 @@ export const VMSAuthProvider = ({ children }) => {
       setError(null)
       
       // Use VMS authentication endpoint (separate vms_users table)
-      const response = await vmsApi.post('/auth/login', { email, password })
+      // Direct API call to ensure correct endpoint is used
+      const vmsLoginUrl = `${API_URL}/vms/auth/login`
+      console.log('VMS Login URL:', vmsLoginUrl)
+      
+      const response = await axios.post(vmsLoginUrl, { email, password })
       const { token, user: userData } = response.data
       
       setToken(token)
@@ -139,6 +146,7 @@ export const VMSAuthProvider = ({ children }) => {
       
       return { success: true }
     } catch (err) {
+      console.error('VMS Login error:', err.response?.data || err.message)
       const message = err.response?.data?.message || 'Login failed. Please check your credentials.'
       setError(message)
       return { success: false, error: message }
