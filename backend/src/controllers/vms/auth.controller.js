@@ -57,6 +57,8 @@ exports.login = async (req, res) => {
     console.log('🔐 VMS LOGIN ATTEMPT');
     console.log('='.repeat(60));
     console.log('📧 Email:', email);
+    console.log('🔑 Password provided:', password ? 'YES' : 'NO');
+    console.log('📝 Request body:', JSON.stringify(req.body));
 
     // Find user in VMS users table
     const user = await prisma.vMSUser.findUnique({
