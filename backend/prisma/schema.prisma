@@ -317,6 +317,7 @@ model VMSCompany {
   visitors            VMSVisitor[]
   gatepasses          VMSGatepass[]
   users               VMSUser[]
+  companyUsers        VMSCompanyUser[]
   
   @@index([name])
   @@map("vms_companies")
