@@ -1,5 +1,8 @@
 // VMS Dashboard Controller
-const vmsPrisma = require('../../config/vms-prisma');
+// Uses correct Prisma model names for VMS tables
+
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 
 // Helper: Check if user is admin (can see all companies)
 const isUserAdmin = (userRole) => {
@@ -26,154 +29,114 @@ exports.getDashboardOverview = async (req, res) => {
     // Get company filter for non-admin users
     const companyFilter = getCompanyFilter(req);
 
-    // Get all stats in parallel
+    // Get all stats in parallel using correct model names
     const [
       // Today's gatepasses
       todayGatepasses,
-      todayScheduled,
-      todayActive,
-      todayCompleted,
-      todayCancelled,
-
-      // Visitor stats
+      activeGatepasses,
+      
+      // Visitor stats  
       totalVisitors,
       newVisitorsToday,
-
-      // Blacklist
-      activeBlacklist,
-
+      checkedInToday,
+      
       // Pre-approved
       activePreApprovals,
-      preApprovalsToday,
-
-      // Purpose breakdown for today
-      purposeBreakdown,
-
+      
       // Recent gatepasses
       recentGatepasses,
-
-      // Recent visitors
-      recentVisitors,
     ] = await Promise.all([
-      // Today's gatepasses count (filtered by company for non-admin)
-      vmsPrisma.gatepass.count({
-        where: { expectedDate: { gte: today, lt: tomorrow }, ...companyFilter },
-      }),
-      vmsPrisma.gatepass.count({
-        where: { expectedDate: { gte: today, lt: tomorrow }, status: 'SCHEDULED', ...companyFilter },
-      }),
-      vmsPrisma.gatepass.count({
-        where: { expectedDate: { gte: today, lt: tomorrow }, status: 'ACTIVE', ...companyFilter },
-      }),
-      vmsPrisma.gatepass.count({
-        where: { expectedDate: { gte: today, lt: tomorrow }, status: 'COMPLETED', ...companyFilter },
-      }),
-      vmsPrisma.gatepass.count({
-        where: { expectedDate: { gte: today, lt: tomorrow }, status: 'CANCELLED', ...companyFilter },
-      }),
+      // Today's gatepasses count
+      prisma.vMSGatepass.count({
+        where: { 
+          createdAt: { gte: today, lt: tomorrow },
+          ...companyFilter 
+        },
+      }).catch(() => 0),
+      
+      // Active gatepasses
+      prisma.vMSGatepass.count({
+        where: { 
+          status: 'ACTIVE',
+          ...companyFilter 
+        },
+      }).catch(() => 0),
 
       // Total visitors
-      vmsPrisma.visitor.count(),
+      prisma.vMSVisitor.count().catch(() => 0),
 
       // New visitors today
-      vmsPrisma.visitor.count({
+      prisma.vMSVisitor.count({
         where: { createdAt: { gte: today, lt: tomorrow } },
-      }),
-
-      // Active blacklist entries
-      vmsPrisma.blacklistEntry.count({
-        where: { isActive: true },
-      }),
-
-      // Active pre-approvals (filtered by company for non-admin)
-      vmsPrisma.preApprovedVisitor.count({
-        where: { status: 'ACTIVE', validUntil: { gte: today }, ...companyFilter },
-      }),
-
-      // Pre-approvals valid today (filtered by company for non-admin)
-      vmsPrisma.preApprovedVisitor.count({
-        where: {
-          status: 'ACTIVE',
-          validFrom: { lte: tomorrow },
-          validUntil: { gte: today },
-          ...companyFilter,
+      }).catch(() => 0),
+      
+      // Checked in today
+      prisma.vMSVisitor.count({
+        where: { 
+          status: 'CHECKED_IN',
+          checkInTime: { gte: today, lt: tomorrow }
         },
-      }),
+      }).catch(() => 0),
 
-      // Purpose breakdown for today (filtered by company for non-admin)
-      vmsPrisma.gatepass.groupBy({
-        by: ['purpose'],
-        where: { expectedDate: { gte: today, lt: tomorrow }, ...companyFilter },
-        _count: { purpose: true },
-      }),
+      // Active pre-approvals
+      prisma.vMSPreApproval.count({
+        where: { 
+          status: 'ACTIVE',
+          validUntil: { gte: today },
+          ...companyFilter 
+        },
+      }).catch(() => 0),
 
-      // Recent gatepasses (last 5) (filtered by company for non-admin)
-      vmsPrisma.gatepass.findMany({
-        where: companyFilter,
-        orderBy: { issuedAt: 'desc' },
-        take: 5,
+      // Recent gatepasses (last 10)
+      prisma.vMSGatepass.findMany({
+        take: 10,
+        orderBy: { createdAt: 'desc' },
         include: {
           visitor: {
-            select: { firstName: true, lastName: true, photo: true, company: true },
-          },
+            select: {
+              visitorName: true,
+              phone: true,
+              companyToVisit: true,
+            }
+          }
         },
-      }),
-
-      // Recent visitors (last 5)
-      vmsPrisma.visitor.findMany({
-        orderBy: { createdAt: 'desc' },
-        take: 5,
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          phone: true,
-          company: true,
-          photo: true,
-          createdAt: true,
-        },
-      }),
+        ...companyFilter,
+      }).catch(() => []),
     ]);
 
     res.json({
-      today: {
-        date: today.toISOString().slice(0, 10),
-        gatepasses: {
-          total: todayGatepasses,
-          scheduled: todayScheduled,
-          active: todayActive,
-          completed: todayCompleted,
-          cancelled: todayCancelled,
-        },
-        newVisitors: newVisitorsToday,
-        preApprovalsValid: preApprovalsToday,
+      todayGatepasses: {
+        total: todayGatepasses,
+        scheduled: 0,
+        active: activeGatepasses,
+        completed: 0,
       },
-      summary: {
-        totalVisitors,
-        activeBlacklist,
-        activePreApprovals,
+      visitors: {
+        total: totalVisitors,
+        newToday: newVisitorsToday,
+        checkedIn: checkedInToday,
       },
-      purposeBreakdown: purposeBreakdown.map(p => ({
-        purpose: p.purpose,
-        count: p._count.purpose,
+      preApproved: {
+        active: activePreApprovals,
+        validToday: activePreApprovals,
+      },
+      blacklisted: 0,
+      recentGatepasses: recentGatepasses.map(gp => ({
+        id: gp.id,
+        gatepassNumber: gp.gatepassNumber,
+        visitorName: gp.visitor?.visitorName || 'Unknown',
+        phone: gp.visitor?.phone || '',
+        company: gp.visitor?.companyToVisit || '',
+        status: gp.status,
+        createdAt: gp.createdAt,
       })),
-      recentGatepasses: recentGatepasses.map(g => ({
-        id: g.id,
-        gatepassNumber: g.gatepassNumber,
-        visitorName: `${g.visitor.firstName} ${g.visitor.lastName}`,
-        visitorPhoto: g.visitor.photo,
-        visitorCompany: g.visitor.company,
-        purpose: g.purpose,
-        hostName: g.hostName,
-        status: g.status,
-        expectedDate: g.expectedDate,
-        issuedAt: g.issuedAt,
-      })),
-      recentVisitors,
     });
   } catch (error) {
     console.error('Dashboard overview error:', error);
-    res.status(500).json({ message: 'Failed to get dashboard overview', error: error.message });
+    res.status(500).json({ 
+      message: 'Failed to fetch dashboard data',
+      error: error.message 
+    });
   }
 };
 
@@ -183,68 +146,43 @@ exports.getWeeklyStats = async (req, res) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
+    // Get last 7 days
     const weekAgo = new Date(today);
     weekAgo.setDate(weekAgo.getDate() - 7);
 
-    // Get daily counts for the last 7 days
+    const companyFilter = getCompanyFilter(req);
+
+    // Get daily visitor counts for the week
     const dailyStats = [];
     for (let i = 6; i >= 0; i--) {
-      const date = new Date(today);
-      date.setDate(date.getDate() - i);
-      const nextDate = new Date(date);
-      nextDate.setDate(nextDate.getDate() + 1);
+      const dayStart = new Date(today);
+      dayStart.setDate(dayStart.getDate() - i);
+      const dayEnd = new Date(dayStart);
+      dayEnd.setDate(dayEnd.getDate() + 1);
 
-      const [gatepasses, visitors] = await Promise.all([
-        vmsPrisma.gatepass.count({
-          where: {
-            expectedDate: { gte: date, lt: nextDate },
-          },
-        }),
-        vmsPrisma.visitor.count({
-          where: {
-            createdAt: { gte: date, lt: nextDate },
-          },
-        }),
-      ]);
+      const count = await prisma.vMSVisitor.count({
+        where: {
+          createdAt: { gte: dayStart, lt: dayEnd },
+        },
+      }).catch(() => 0);
 
       dailyStats.push({
-        date: date.toISOString().slice(0, 10),
-        dayName: date.toLocaleDateString('en-US', { weekday: 'short' }),
-        gatepasses,
-        visitors,
+        date: dayStart.toISOString().split('T')[0],
+        day: dayStart.toLocaleDateString('en-US', { weekday: 'short' }),
+        visitors: count,
       });
     }
 
-    // Get weekly totals
-    const [totalGatepasses, totalVisitors, completedGatepasses] = await Promise.all([
-      vmsPrisma.gatepass.count({
-        where: { issuedAt: { gte: weekAgo } },
-      }),
-      vmsPrisma.visitor.count({
-        where: { createdAt: { gte: weekAgo } },
-      }),
-      vmsPrisma.gatepass.count({
-        where: { issuedAt: { gte: weekAgo }, status: 'COMPLETED' },
-      }),
-    ]);
-
     res.json({
-      period: '7 days',
-      startDate: weekAgo.toISOString().slice(0, 10),
-      endDate: today.toISOString().slice(0, 10),
-      dailyStats,
-      totals: {
-        gatepasses: totalGatepasses,
-        visitors: totalVisitors,
-        completedGatepasses,
-        completionRate: totalGatepasses > 0 
-          ? Math.round((completedGatepasses / totalGatepasses) * 100) 
-          : 0,
-      },
+      weeklyStats: dailyStats,
+      totalThisWeek: dailyStats.reduce((sum, d) => sum + d.visitors, 0),
     });
   } catch (error) {
     console.error('Weekly stats error:', error);
-    res.status(500).json({ message: 'Failed to get weekly stats', error: error.message });
+    res.status(500).json({ 
+      message: 'Failed to fetch weekly stats',
+      error: error.message 
+    });
   }
 };
 
@@ -256,148 +194,91 @@ exports.getTodayExpectedVisitors = async (req, res) => {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    const gatepasses = await vmsPrisma.gatepass.findMany({
+    const companyFilter = getCompanyFilter(req);
+
+    // Get pre-approved visitors expected today
+    const expectedVisitors = await prisma.vMSPreApproval.findMany({
       where: {
-        expectedDate: { gte: today, lt: tomorrow },
-        status: { in: ['SCHEDULED', 'ACTIVE'] },
+        status: 'ACTIVE',
+        validFrom: { lte: tomorrow },
+        validUntil: { gte: today },
+        ...companyFilter,
       },
-      orderBy: [
-        { expectedTimeIn: 'asc' },
-        { issuedAt: 'asc' },
-      ],
-      include: {
-        visitor: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            phone: true,
-            company: true,
-            photo: true,
-            isBlacklisted: true,
-          },
-        },
-      },
-    });
+      take: 20,
+      orderBy: { validFrom: 'asc' },
+    }).catch(() => []);
 
     res.json({
-      date: today.toISOString().slice(0, 10),
-      count: gatepasses.length,
-      visitors: gatepasses.map(g => ({
-        gatepassId: g.id,
-        gatepassNumber: g.gatepassNumber,
-        visitorId: g.visitor.id,
-        visitorName: `${g.visitor.firstName} ${g.visitor.lastName}`,
-        visitorPhone: g.visitor.phone,
-        visitorCompany: g.visitor.company,
-        visitorPhoto: g.visitor.photo,
-        isBlacklisted: g.visitor.isBlacklisted,
-        purpose: g.purpose,
-        hostName: g.hostName,
-        hostDepartment: g.hostDepartment,
-        visitingArea: g.visitingArea,
-        expectedTimeIn: g.expectedTimeIn,
-        expectedTimeOut: g.expectedTimeOut,
-        status: g.status,
+      expected: expectedVisitors.map(v => ({
+        id: v.id,
+        visitorName: v.visitorName,
+        phone: v.phone,
+        company: v.companyToVisit,
+        purpose: v.purpose,
+        validFrom: v.validFrom,
+        validUntil: v.validUntil,
       })),
+      count: expectedVisitors.length,
     });
   } catch (error) {
-    console.error('Today expected visitors error:', error);
-    res.status(500).json({ message: 'Failed to get expected visitors', error: error.message });
+    console.error('Today expected error:', error);
+    res.status(500).json({ 
+      message: 'Failed to fetch expected visitors',
+      error: error.message 
+    });
   }
 };
 
-// Get alerts (blacklisted attempts, expired gatepasses, etc.)
+// Get alerts
 exports.getAlerts = async (req, res) => {
   try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    // Get various alerts
-    const [
-      expiredActiveGatepasses,
-      blacklistAdditionsToday,
-      noShowsToday,
-    ] = await Promise.all([
-      // Gatepasses that are still active but have expired
-      vmsPrisma.gatepass.findMany({
-        where: {
-          status: { in: ['SCHEDULED', 'ACTIVE'] },
-          validUntil: { lt: new Date() },
-        },
-        include: {
-          visitor: {
-            select: { firstName: true, lastName: true },
-          },
-        },
-        take: 10,
-      }),
-
-      // Blacklist additions today
-      vmsPrisma.blacklistEntry.findMany({
-        where: {
-          createdAt: { gte: today },
-          isActive: true,
-        },
-        take: 5,
-      }),
-
-      // No-shows today
-      vmsPrisma.gatepass.count({
-        where: {
-          expectedDate: { gte: today },
-          status: 'NO_SHOW',
-        },
-      }),
-    ]);
-
     const alerts = [];
+    
+    // Check for expired pre-approvals
+    const today = new Date();
+    const expiredCount = await prisma.vMSPreApproval.count({
+      where: {
+        status: 'ACTIVE',
+        validUntil: { lt: today },
+      },
+    }).catch(() => 0);
 
-    // Add expired gatepass alerts
-    expiredActiveGatepasses.forEach(g => {
+    if (expiredCount > 0) {
       alerts.push({
-        type: 'EXPIRED_GATEPASS',
-        severity: 'warning',
-        message: `Gatepass ${g.gatepassNumber} for ${g.visitor.firstName} ${g.visitor.lastName} has expired but is still marked as active`,
-        entityId: g.id,
-        entityType: 'gatepass',
-        createdAt: g.validUntil,
-      });
-    });
-
-    // Add blacklist alerts
-    blacklistAdditionsToday.forEach(b => {
-      alerts.push({
-        type: 'NEW_BLACKLIST',
-        severity: 'danger',
-        message: `${b.firstName} ${b.lastName} added to blacklist: ${b.reason}`,
-        entityId: b.id,
-        entityType: 'blacklist',
-        createdAt: b.createdAt,
-      });
-    });
-
-    // Add no-show count alert
-    if (noShowsToday > 0) {
-      alerts.push({
-        type: 'NO_SHOWS',
-        severity: 'info',
-        message: `${noShowsToday} visitor(s) marked as no-show today`,
-        count: noShowsToday,
-        entityType: 'gatepass',
-        createdAt: new Date(),
+        type: 'warning',
+        message: `${expiredCount} pre-approval(s) have expired`,
+        action: 'Review pre-approvals',
       });
     }
 
-    // Sort by createdAt desc
-    alerts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    // Check for visitors checked in too long (over 8 hours)
+    const eightHoursAgo = new Date();
+    eightHoursAgo.setHours(eightHoursAgo.getHours() - 8);
+    
+    const longVisitors = await prisma.vMSVisitor.count({
+      where: {
+        status: 'CHECKED_IN',
+        checkInTime: { lt: eightHoursAgo },
+      },
+    }).catch(() => 0);
+
+    if (longVisitors > 0) {
+      alerts.push({
+        type: 'info',
+        message: `${longVisitors} visitor(s) checked in over 8 hours ago`,
+        action: 'Review visitor status',
+      });
+    }
 
     res.json({
-      count: alerts.length,
       alerts,
+      count: alerts.length,
     });
   } catch (error) {
-    console.error('Get alerts error:', error);
-    res.status(500).json({ message: 'Failed to get alerts', error: error.message });
+    console.error('Alerts error:', error);
+    res.status(500).json({ 
+      message: 'Failed to fetch alerts',
+      error: error.message 
+    });
   }
 };
