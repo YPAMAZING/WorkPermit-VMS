@@ -27,7 +27,8 @@ const VMSLogin = () => {
     const result = await login(formData.email, formData.password)
     
     if (result.success) {
-      navigate('/vms/dashboard')
+      // Redirect to VMS admin dashboard (correct path)
+      navigate('/vms/admin/dashboard')
     } else {
       setError(result.error || 'Login failed')
     }
