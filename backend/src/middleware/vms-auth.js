@@ -1,6 +1,10 @@
 // VMS Authentication Middleware
+// Uses VMSUser table (separate from Work Permit users)
+
 const jwt = require('jsonwebtoken');
-const vmsPrisma = require('../config/vms-prisma');
+const { PrismaClient } = require('@prisma/client');
+
+const prisma = new PrismaClient();
 
 // Verify JWT token for VMS
 const vmsAuthMiddleware = async (req, res, next) => {
@@ -16,19 +20,14 @@ const vmsAuthMiddleware = async (req, res, next) => {
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       
-      // Optionally verify this is a VMS token
-      // if (decoded.system !== 'vms') {
-      //   return res.status(401).json({ message: 'Invalid token for VMS system' });
-      // }
-
-      // Get user from VMS database
-      const user = await vmsPrisma.user.findUnique({
+      // Get user from VMS users table (NOT the main users table)
+      const user = await prisma.vMSUser.findUnique({
         where: { id: decoded.userId },
-        include: { role: true },
+        include: { vmsRole: true },
       });
 
       if (!user) {
-        return res.status(401).json({ message: 'User not found' });
+        return res.status(401).json({ message: 'User not found in VMS' });
       }
 
       if (!user.isActive) {
@@ -39,11 +38,11 @@ const vmsAuthMiddleware = async (req, res, next) => {
         return res.status(403).json({ message: 'Account is pending approval' });
       }
 
-      // Parse permissions
+      // Parse permissions from VMS role
       let permissions = [];
-      if (user.role && user.role.permissions) {
+      if (user.vmsRole && user.vmsRole.permissions) {
         try {
-          permissions = JSON.parse(user.role.permissions);
+          permissions = JSON.parse(user.vmsRole.permissions);
         } catch (e) {
           permissions = [];
         }
@@ -53,10 +52,14 @@ const vmsAuthMiddleware = async (req, res, next) => {
       req.user = {
         userId: user.id,
         email: user.email,
-        role: user.role?.name || 'USER',
-        roleName: user.role?.displayName || 'User',
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.vmsRole?.name || 'VMS_USER',
+        roleName: user.vmsRole?.displayName || 'User',
         permissions,
-        isAdmin: user.role?.name === 'ADMIN' || user.role?.name === 'VMS_ADMIN',
+        companyId: user.companyId,
+        isAdmin: user.vmsRole?.name === 'VMS_ADMIN',
+        isFromWorkPermit: user.isFromWorkPermit,
       };
 
       next();
@@ -64,6 +67,7 @@ const vmsAuthMiddleware = async (req, res, next) => {
       if (jwtError.name === 'TokenExpiredError') {
         return res.status(401).json({ message: 'Token expired' });
       }
+      console.error('JWT Error:', jwtError.message);
       return res.status(401).json({ message: 'Invalid token' });
     }
   } catch (error) {
