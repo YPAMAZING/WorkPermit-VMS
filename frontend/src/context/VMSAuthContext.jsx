@@ -102,8 +102,8 @@ export const VMSAuthProvider = ({ children }) => {
       }
 
       try {
-        // Use Work Permit auth (single source of truth)
-        const response = await mainApi.get('/auth/me')
+        // Use VMS auth endpoint (separate vms_users table)
+        const response = await vmsApi.get('/auth/me')
         const userData = response.data.user || response.data
         
         // Add VMS permissions
@@ -122,13 +122,13 @@ export const VMSAuthProvider = ({ children }) => {
     loadUser()
   }, [])
 
-  // Login - Use Work Permit authentication (single login system)
+  // Login - Use VMS authentication (separate user table)
   const login = async (email, password) => {
     try {
       setError(null)
       
-      // Use Work Permit authentication
-      const response = await mainApi.post('/auth/login', { email, password })
+      // Use VMS authentication endpoint (separate vms_users table)
+      const response = await vmsApi.post('/auth/login', { email, password })
       const { token, user: userData } = response.data
       
       setToken(token)
