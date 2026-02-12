@@ -28,7 +28,7 @@ router.get('/', checkPermission('roles.view'), getAllRoles);
 router.get(
   '/:id',
   checkPermission('roles.view'),
-  [param('id').isUUID().withMessage('Invalid role ID')],
+  [param('id').notEmpty().withMessage('Role ID is required')],
   validate,
   getRoleById
 );
@@ -51,7 +51,7 @@ router.put(
   '/:id',
   checkPermission('roles.edit'),
   [
-    param('id').isUUID().withMessage('Invalid role ID'),
+    param('id').notEmpty().withMessage('Role ID is required'),
     body('displayName').optional().trim(),
     body('permissions').optional().isArray().withMessage('Permissions must be an array'),
   ],
@@ -63,7 +63,7 @@ router.put(
 router.delete(
   '/:id',
   checkPermission('roles.delete'),
-  [param('id').isUUID().withMessage('Invalid role ID')],
+  [param('id').notEmpty().withMessage('Role ID is required')],
   validate,
   deleteRole
 );
@@ -71,10 +71,10 @@ router.delete(
 // Assign role to user
 router.post(
   '/assign',
-  checkPermission('users.assign_role'),
+  checkPermission('users.edit'),
   [
-    body('userId').isUUID().withMessage('Invalid user ID'),
-    body('roleId').isUUID().withMessage('Invalid role ID'),
+    body('userId').notEmpty().withMessage('User ID is required'),
+    body('roleId').notEmpty().withMessage('Role ID is required'),
   ],
   validate,
   assignRoleToUser
