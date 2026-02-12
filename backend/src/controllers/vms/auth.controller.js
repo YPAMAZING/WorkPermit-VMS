@@ -1,12 +1,22 @@
 // VMS Authentication Controller
 // Uses SEPARATE VMS database for VMS-specific data
 // Supports SSO from Work Permit system for VMS Admin access
+// 
+// NOTE: If VMS database is not configured, VMS features will be disabled
+// and appropriate error messages will be returned
 
-const vmsPrisma = require('../../config/vms-prisma');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { v4: uuidv4 } = require('uuid');
+
+// Try to load VMS Prisma client
+let vmsPrisma = null;
+try {
+  vmsPrisma = require('../../config/vms-prisma');
+} catch (error) {
+  console.log('⚠️ VMS Prisma client not available for auth controller');
+}
 
 // VMS Full Permissions (for VMS_ADMIN role)
 const VMS_ADMIN_PERMISSIONS = [
@@ -51,9 +61,37 @@ const VMS_ADMIN_PERMISSIONS = [
   'vms.audit.view',
 ];
 
+/**
+ * Check if VMS database is available
+ */
+const isVMSAvailable = () => {
+  return vmsPrisma !== null;
+};
+
+/**
+ * Middleware to check VMS availability
+ */
+const checkVMSAvailable = (req, res, next) => {
+  if (!isVMSAvailable()) {
+    return res.status(503).json({
+      message: 'VMS service is not configured',
+      error: 'VMS_NOT_CONFIGURED',
+      help: 'Please configure VMS_DATABASE_URL in the backend .env file and run Prisma migrations',
+    });
+  }
+  next();
+};
+
 // SSO Login from Work Permit System
 // Called when user clicks "Access VMS" in Work Permit with vms.admin permission
 exports.ssoLogin = async (req, res) => {
+  if (!isVMSAvailable()) {
+    return res.status(503).json({
+      message: 'VMS service is not configured',
+      error: 'VMS_NOT_CONFIGURED',
+    });
+  }
+
   try {
     const { token } = req.query;
 
@@ -199,6 +237,14 @@ exports.ssoLogin = async (req, res) => {
 
 // Regular VMS Login (for VMS-only users)
 exports.login = async (req, res) => {
+  if (!isVMSAvailable()) {
+    return res.status(503).json({
+      message: 'VMS service is not configured',
+      error: 'VMS_NOT_CONFIGURED',
+      help: 'Please configure VMS_DATABASE_URL in the backend .env file',
+    });
+  }
+
   try {
     const { email, password } = req.body;
 
@@ -305,6 +351,13 @@ exports.login = async (req, res) => {
 
 // Register new VMS user
 exports.register = async (req, res) => {
+  if (!isVMSAvailable()) {
+    return res.status(503).json({
+      message: 'VMS service is not configured',
+      error: 'VMS_NOT_CONFIGURED',
+    });
+  }
+
   try {
     const { email, password, firstName, lastName, phone, department, requestedRole } = req.body;
 
@@ -370,6 +423,13 @@ exports.register = async (req, res) => {
 
 // Get current user
 exports.me = async (req, res) => {
+  if (!isVMSAvailable()) {
+    return res.status(503).json({
+      message: 'VMS service is not configured',
+      error: 'VMS_NOT_CONFIGURED',
+    });
+  }
+
   try {
     const user = await vmsPrisma.user.findUnique({
       where: { id: req.user.userId },
@@ -409,6 +469,13 @@ exports.me = async (req, res) => {
 
 // Update profile
 exports.updateProfile = async (req, res) => {
+  if (!isVMSAvailable()) {
+    return res.status(503).json({
+      message: 'VMS service is not configured',
+      error: 'VMS_NOT_CONFIGURED',
+    });
+  }
+
   try {
     const { firstName, lastName, phone, department, profilePicture } = req.body;
 
@@ -446,6 +513,13 @@ exports.updateProfile = async (req, res) => {
 
 // Change password
 exports.changePassword = async (req, res) => {
+  if (!isVMSAvailable()) {
+    return res.status(503).json({
+      message: 'VMS service is not configured',
+      error: 'VMS_NOT_CONFIGURED',
+    });
+  }
+
   try {
     const { currentPassword, newPassword } = req.body;
 
@@ -473,3 +547,8 @@ exports.changePassword = async (req, res) => {
     res.status(500).json({ message: 'Failed to change password', error: error.message });
   }
 };
+
+// Export helper
+exports.isVMSAvailable = isVMSAvailable;
+exports.checkVMSAvailable = checkVMSAvailable;
+exports.VMS_ADMIN_PERMISSIONS = VMS_ADMIN_PERMISSIONS;

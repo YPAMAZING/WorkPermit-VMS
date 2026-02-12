@@ -292,43 +292,68 @@ const updateRole = async (req, res) => {
     const { id } = req.params;
     const { displayName, description, permissions, uiConfig } = req.body;
 
+    console.log('\n' + '='.repeat(60));
+    console.log('📝 UPDATING ROLE');
+    console.log('='.repeat(60));
+    console.log('🆔 Role ID:', id);
+    console.log('📋 Display Name:', displayName);
+    console.log('🔐 Permissions:', JSON.stringify(permissions));
+    console.log('='.repeat(60));
+
     const existing = await prisma.role.findUnique({ where: { id } });
     if (!existing) {
+      console.log('❌ Role not found');
       return res.status(404).json({ message: 'Role not found' });
     }
+
+    console.log('✅ Found existing role:', existing.name);
+
+    // Validate permissions is an array
+    const permArray = Array.isArray(permissions) ? permissions : [];
 
     const role = await prisma.role.update({
       where: { id },
       data: {
-        displayName,
-        description,
-        permissions: JSON.stringify(permissions || []),
+        displayName: displayName || existing.displayName,
+        description: description !== undefined ? description : existing.description,
+        permissions: JSON.stringify(permArray),
         uiConfig: JSON.stringify(uiConfig || {}),
       },
     });
 
+    console.log('✅ Role updated in database');
+
     // 🔄 SYNC VMS ACCESS - When role permissions change, sync all users with this role
+    // This is non-blocking and won't fail the request if VMS sync fails
     try {
-      const syncResult = await syncRoleUsersVMSAccess(id, permissions);
-      console.log(`🔄 VMS Sync Result: ${syncResult.synced}/${syncResult.total} users synced`);
+      const syncResult = await syncRoleUsersVMSAccess(id, permArray);
+      if (syncResult.skipped) {
+        console.log('⚠️ VMS Sync skipped (VMS database not configured)');
+      } else {
+        console.log(`🔄 VMS Sync Result: ${syncResult.synced}/${syncResult.total} users synced`);
+      }
     } catch (syncError) {
-      console.error('VMS Sync error (non-critical):', syncError.message);
+      console.log('⚠️ VMS Sync error (non-critical):', syncError.message);
+      // Don't fail the request - VMS sync is optional
     }
 
-    // Audit log
+    // Audit log (also non-blocking)
     try {
       await createAuditLog({
         userId: req.user.id,
         action: 'ROLE_UPDATED',
         entity: 'Role',
         entityId: role.id,
-        newValue: { displayName, permissions },
+        newValue: { displayName, permissions: permArray },
         ipAddress: req.ip,
         userAgent: req.headers['user-agent'],
       });
     } catch (auditError) {
-      console.error('Audit log error:', auditError.message);
+      console.log('⚠️ Audit log error (non-critical):', auditError.message);
     }
+
+    console.log('✅ Role update completed successfully');
+    console.log('='.repeat(60) + '\n');
 
     res.json({
       message: 'Role updated successfully',
@@ -339,8 +364,8 @@ const updateRole = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Update role error:', error);
-    res.status(500).json({ message: 'Error updating role' });
+    console.error('❌ Update role error:', error);
+    res.status(500).json({ message: 'Error updating role', error: error.message });
   }
 };
 

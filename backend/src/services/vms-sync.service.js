@@ -2,15 +2,27 @@
  * VMS Sync Service
  * Automatically syncs users between Work Permit and VMS databases
  * based on vms.admin permission
+ * 
+ * NOTE: This service attempts to sync to VMS database if configured.
+ * If VMS database is not available, it logs a warning and continues.
  */
 
 const { PrismaClient } = require('@prisma/client');
-const vmsPrisma = require('../config/vms-prisma');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const { v4: uuidv4 } = require('uuid');
 
 const prisma = new PrismaClient();
+
+// Try to load VMS Prisma client - but don't fail if it's not available
+let vmsPrisma = null;
+try {
+  vmsPrisma = require('../config/vms-prisma');
+  console.log('✅ VMS Prisma client loaded');
+} catch (error) {
+  console.log('⚠️ VMS database not configured - VMS sync will be skipped');
+  console.log('   To enable VMS sync, configure VMS_DATABASE_URL in .env');
+}
 
 // VMS Full Permissions (for VMS_ADMIN role)
 const VMS_ADMIN_PERMISSIONS = [
@@ -56,46 +68,71 @@ const VMS_ADMIN_PERMISSIONS = [
 ];
 
 /**
+ * Check if VMS database is available
+ */
+const isVMSAvailable = () => {
+  return vmsPrisma !== null;
+};
+
+/**
  * Get or create VMS_ADMIN role in VMS database
  */
 const getOrCreateVMSAdminRole = async () => {
-  let vmsAdminRole = await vmsPrisma.role.findUnique({
-    where: { name: 'VMS_ADMIN' },
-  });
-
-  if (!vmsAdminRole) {
-    console.log('📋 Creating VMS_ADMIN role in VMS database...');
-    vmsAdminRole = await vmsPrisma.role.create({
-      data: {
-        id: uuidv4(),
-        name: 'VMS_ADMIN',
-        displayName: 'VMS Administrator',
-        description: 'Full VMS system access (synced from Work Permit)',
-        permissions: JSON.stringify(VMS_ADMIN_PERMISSIONS),
-        uiConfig: JSON.stringify({
-          theme: 'admin',
-          primaryColor: '#3b82f6',
-          showAllMenus: true,
-        }),
-        isSystem: true,
-        isActive: true,
-      },
-    });
-    console.log('✅ VMS_ADMIN role created');
+  if (!isVMSAvailable()) {
+    console.log('⚠️ VMS database not available - skipping role creation');
+    return null;
   }
 
-  return vmsAdminRole;
+  try {
+    let vmsAdminRole = await vmsPrisma.role.findUnique({
+      where: { name: 'VMS_ADMIN' },
+    });
+
+    if (!vmsAdminRole) {
+      console.log('📋 Creating VMS_ADMIN role in VMS database...');
+      vmsAdminRole = await vmsPrisma.role.create({
+        data: {
+          id: uuidv4(),
+          name: 'VMS_ADMIN',
+          displayName: 'VMS Administrator',
+          description: 'Full VMS system access (synced from Work Permit)',
+          permissions: JSON.stringify(VMS_ADMIN_PERMISSIONS),
+          uiConfig: JSON.stringify({
+            theme: 'admin',
+            primaryColor: '#3b82f6',
+            showAllMenus: true,
+          }),
+          isSystem: true,
+          isActive: true,
+        },
+      });
+      console.log('✅ VMS_ADMIN role created');
+    }
+
+    return vmsAdminRole;
+  } catch (error) {
+    console.error('⚠️ Error creating VMS_ADMIN role:', error.message);
+    return null;
+  }
 };
 
 /**
  * Add user to VMS database (when vms.admin permission is granted)
  */
 const addUserToVMS = async (workPermitUser) => {
+  if (!isVMSAvailable()) {
+    console.log(`⚠️ VMS database not available - skipping sync for: ${workPermitUser.email}`);
+    return { success: true, skipped: true, message: 'VMS database not configured' };
+  }
+
   try {
     console.log(`\n🔄 Syncing user to VMS: ${workPermitUser.email}`);
 
     // Get VMS_ADMIN role
     const vmsAdminRole = await getOrCreateVMSAdminRole();
+    if (!vmsAdminRole) {
+      return { success: false, error: 'Failed to get/create VMS_ADMIN role' };
+    }
 
     // Check if user already exists in VMS
     let vmsUser = await vmsPrisma.user.findUnique({
@@ -160,6 +197,11 @@ const addUserToVMS = async (workPermitUser) => {
  * Remove/deactivate user from VMS database (when vms.admin permission is removed)
  */
 const removeUserFromVMS = async (workPermitUser) => {
+  if (!isVMSAvailable()) {
+    console.log(`⚠️ VMS database not available - skipping removal for: ${workPermitUser.email}`);
+    return { success: true, skipped: true, message: 'VMS database not configured' };
+  }
+
   try {
     console.log(`\n🔄 Removing VMS access for: ${workPermitUser.email}`);
 
@@ -319,5 +361,6 @@ module.exports = {
   syncUserRoleChange,
   userHasVMSAdmin,
   getOrCreateVMSAdminRole,
+  isVMSAvailable,
   VMS_ADMIN_PERMISSIONS,
 };
