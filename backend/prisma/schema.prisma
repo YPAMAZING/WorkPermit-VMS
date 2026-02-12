@@ -237,6 +237,60 @@ model AnalyticsCache {
 // VMS (Visitor Management System) Models
 // ==========================================
 
+// VMS Users - Completely separate from Work Permit users
+// These are VMS-specific users (security guards, receptionists, etc.)
+model VMSUser {
+  id              String    @id @default(uuid()) @db.VarChar(36)
+  email           String    @unique @db.VarChar(255)
+  password        String    @db.VarChar(255)
+  firstName       String    @db.VarChar(100)
+  lastName        String    @db.VarChar(100)
+  phone           String?   @db.VarChar(20)
+  profilePicture  String?   @db.Text
+  department      String?   @db.VarChar(100)
+  
+  // VMS Role
+  vmsRoleId       String?   @db.VarChar(36)
+  vmsRole         VMSRole?  @relation(fields: [vmsRoleId], references: [id])
+  
+  // Company assignment (for multi-tenant)
+  companyId       String?   @db.VarChar(36)
+  company         VMSCompany? @relation(fields: [companyId], references: [id])
+  
+  // Status
+  isActive        Boolean   @default(true)
+  isApproved      Boolean   @default(true)
+  
+  // For Work Permit admin SSO - links to Work Permit user if this is an admin
+  workPermitUserId String?  @unique @db.VarChar(36)
+  isFromWorkPermit Boolean  @default(false)
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  @@index([email])
+  @@index([companyId])
+  @@index([workPermitUserId])
+  @@map("vms_users")
+}
+
+// VMS Roles - Separate from Work Permit roles
+model VMSRole {
+  id          String    @id @default(uuid()) @db.VarChar(36)
+  name        String    @unique @db.VarChar(50)
+  displayName String    @db.VarChar(100)
+  description String?   @db.Text
+  permissions String    @default("[]") @db.Text  // JSON array of VMS permissions
+  isSystem    Boolean   @default(false)
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  users       VMSUser[]
+  
+  @@map("vms_roles")
+}
+
 model VMSCompany {
   id                  String   @id @default(uuid()) @db.VarChar(36)
   name                String   @unique @db.VarChar(255)
@@ -262,11 +316,14 @@ model VMSCompany {
   
   visitors            VMSVisitor[]
   gatepasses          VMSGatepass[]
-  companyUsers        VMSCompanyUser[]
+  users               VMSUser[]
   
   @@index([name])
   @@map("vms_companies")
 }
+
+// VMSCompanyUser is no longer needed - VMSUser has companyId directly
+// Keeping for backward compatibility but can be removed
 
 model VMSCompanyUser {
   id          String   @id @default(uuid()) @db.VarChar(36)
