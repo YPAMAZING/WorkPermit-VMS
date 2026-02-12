@@ -42,11 +42,12 @@ const PERMISSIONS = [
 ];
 
 // 3 Simple roles
+// NOTE: vms.admin is NOT included by default - must be explicitly assigned to users
 const ROLES = {
   ADMIN: {
     displayName: 'Administrator',
-    description: 'Full system access',
-    permissions: PERMISSIONS.map(p => p.key),
+    description: 'Full Work Permit system access (VMS access must be granted separately)',
+    permissions: PERMISSIONS.filter(p => p.key !== 'vms.admin').map(p => p.key), // All EXCEPT vms.admin
     isSystem: true,
   },
   FIREMAN: {

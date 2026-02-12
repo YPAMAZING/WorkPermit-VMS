@@ -26,12 +26,12 @@ const generateVMSSSOToken = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Check if user has vms.admin permission
+    // Check if user has vms.admin permission (must be explicitly assigned)
     const permissions = user.role ? JSON.parse(user.role.permissions || '[]') : [];
-    const hasVMSAdmin = permissions.includes('vms.admin') || user.role?.name === 'ADMIN';
+    const hasVMSAdmin = permissions.includes('vms.admin'); // NO automatic ADMIN bypass
 
     if (!hasVMSAdmin) {
-      return res.status(403).json({ message: 'You do not have VMS Admin access' });
+      return res.status(403).json({ message: 'You do not have VMS Admin access. Please contact your administrator to grant vms.admin permission.' });
     }
 
     // Generate secure SSO token for VMS
@@ -117,9 +117,9 @@ const verifyVMSSSOToken = async (req, res) => {
       return res.status(401).json({ message: 'User not found or inactive' });
     }
 
-    // Verify user has VMS admin permission
+    // Verify user has VMS admin permission (must be explicitly assigned)
     const permissions = user.role ? JSON.parse(user.role.permissions || '[]') : [];
-    const hasVMSAdmin = permissions.includes('vms.admin') || user.role?.name === 'ADMIN';
+    const hasVMSAdmin = permissions.includes('vms.admin'); // NO automatic ADMIN bypass
 
     if (!hasVMSAdmin) {
       return res.status(403).json({ message: 'User does not have VMS Admin access' });

@@ -48,18 +48,18 @@ const defaultPermissions = [
 ];
 
 // Default roles - SIMPLIFIED (3 main roles only)
+// NOTE: vms.admin is NOT included by default - it must be explicitly assigned
 const defaultRoles = [
   {
     name: 'ADMIN',
     displayName: 'Administrator',
-    description: 'Full system access including VMS',
+    description: 'Full Work Permit system access (VMS access must be granted separately)',
     isSystem: true,
-    permissions: defaultPermissions.map(p => p.key), // All permissions including vms.admin
+    permissions: defaultPermissions.filter(p => p.key !== 'vms.admin').map(p => p.key), // All permissions EXCEPT vms.admin
     uiConfig: {
       theme: 'admin',
       primaryColor: '#3b82f6',
       showAllMenus: true,
-      hasVMSAccess: true, // Shows VMS button in UI
     },
   },
   {
