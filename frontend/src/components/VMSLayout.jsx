@@ -121,25 +121,28 @@ const VMSLayout = () => {
         `}
       >
         {/* Logo */}
-        <div className="flex items-center justify-between h-16 px-4 border-b border-teal-600">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between h-20 px-4 border-b border-teal-600">
+          <div className="flex items-center gap-3 overflow-hidden">
             <img 
               src="/logo.png" 
               alt="Reliable Group Logo" 
-              className="w-10 h-10 object-contain bg-white rounded-lg p-1"
+              className="w-10 h-10 object-contain bg-white rounded-lg p-1 flex-shrink-0"
             />
             {sidebarOpen && (
-              <div>
-                <h1 className="font-bold text-lg">
-                  {user?.companyName || 'Reliable Group'} | Work Permit and VMS
+              <div className="min-w-0">
+                <h1 className="font-bold text-sm leading-tight">
+                  Work Permit
                 </h1>
-                <p className="text-xs text-teal-200">Visitor Management System</p>
+                <h1 className="font-bold text-sm leading-tight">
+                  and VMS
+                </h1>
+                <p className="text-xs text-teal-200 truncate">Visitor Management System</p>
               </div>
             )}
           </div>
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="hidden lg:block p-1 hover:bg-teal-600 rounded"
+            className="hidden lg:block p-1 hover:bg-teal-600 rounded flex-shrink-0"
           >
             <Menu size={20} />
           </button>

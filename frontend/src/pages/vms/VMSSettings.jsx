@@ -151,7 +151,17 @@ const VMSSettings = () => {
 
     setSaving(true)
     try {
-      await companySettingsApi.update(editingCompany.id, editingCompany)
+      // Only send the fields that can be updated
+      const updateData = {
+        displayName: editingCompany.displayName,
+        contactPerson: editingCompany.contactPerson,
+        contactEmail: editingCompany.contactEmail,
+        contactPhone: editingCompany.contactPhone,
+        address: editingCompany.address,
+        requireApproval: editingCompany.requireApproval,
+        autoApproveVisitors: !editingCompany.requireApproval,
+      }
+      await companySettingsApi.update(editingCompany.id, updateData)
       setMessage({ type: 'success', text: 'Company updated successfully' })
       setEditingCompany(null)
       fetchCompanies()

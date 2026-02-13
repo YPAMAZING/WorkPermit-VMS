@@ -206,14 +206,37 @@ exports.updateCompany = async (req, res) => {
     const { id } = req.params;
     const updateData = req.body;
     
+    console.log('Updating company:', id, updateData);
+    
     // Remove fields that shouldn't be updated directly
     delete updateData.id;
     delete updateData.createdAt;
+    delete updateData.updatedAt;
+    delete updateData.name; // Don't allow changing the company code
+    delete updateData._count;
+    delete updateData.totalVisitors;
+    delete updateData.totalGatepasses;
+    delete updateData.totalUsers;
+    delete updateData.approvalStatus;
+    
+    // Ensure only valid fields are updated
+    const validFields = ['displayName', 'description', 'contactPerson', 'contactEmail', 
+                         'contactPhone', 'address', 'logo', 'requireApproval', 
+                         'autoApproveVisitors', 'notifyOnVisitor', 'notificationEmails', 'isActive'];
+    
+    const cleanData = {};
+    for (const field of validFields) {
+      if (updateData[field] !== undefined) {
+        cleanData[field] = updateData[field];
+      }
+    }
     
     const company = await vmsPrisma.vMSCompany.update({
       where: { id },
-      data: updateData,
+      data: cleanData,
     });
+    
+    console.log('Company updated successfully:', company.displayName);
     
     res.json({
       success: true,

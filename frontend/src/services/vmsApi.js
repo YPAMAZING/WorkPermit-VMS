@@ -87,7 +87,7 @@ export const checkInApi = {
   getAll: (params) => vmsApi.get('/checkin/requests', { params }),
   
   // Get live feed (for guard dashboard)
-  getLiveFeed: (since) => vmsApi.get('/checkin/live-feed', { params: { since } }),
+  getLiveFeed: (since) => vmsApi.get('/checkin/live', { params: { since } }),
   
   // Get single request
   getById: (id) => vmsApi.get(`/checkin/requests/${id}`),
@@ -98,8 +98,8 @@ export const checkInApi = {
   // Actions
   approve: (id, note) => vmsApi.post(`/checkin/requests/${id}/approve`, { note }),
   reject: (id, reason) => vmsApi.post(`/checkin/requests/${id}/reject`, { reason }),
-  checkIn: (id) => vmsApi.post(`/checkin/requests/${id}/check-in`),
-  checkOut: (id, securityRemarks) => vmsApi.post(`/checkin/requests/${id}/check-out`, { securityRemarks }),
+  checkIn: (id) => vmsApi.post(`/checkin/requests/${id}/checkin`),
+  checkOut: (id, securityRemarks) => vmsApi.post(`/checkin/requests/${id}/checkout`, { securityRemarks }),
   
   // Search visitor
   searchVisitor: (q) => vmsApi.get('/checkin/search', { params: { q } }),
