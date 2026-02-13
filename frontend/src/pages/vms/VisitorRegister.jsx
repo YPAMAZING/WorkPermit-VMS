@@ -131,8 +131,8 @@ const VisitorRegister = () => {
         // "Other" or manual entry
         setFormData(prev => ({ ...prev, [name]: value, companyId: '' }))
         setCompanySettings({
-          requireApproval: true,
-          autoApproveVisitors: false
+          requireApproval: false,  // Default: approval OFF (auto-approve)
+          autoApproveVisitors: true
         })
       }
     } else {
@@ -274,8 +274,8 @@ const VisitorRegister = () => {
   const handleGenerateGatepass = async () => {
     setLoading(true)
     try {
-      // Check if company requires approval
-      const requiresApproval = companySettings?.requireApproval !== false
+      // Check if company requires approval (default is OFF/auto-approve)
+      const requiresApproval = companySettings?.requireApproval === true
       
       const payload = {
         ...formData,
@@ -316,8 +316,8 @@ const VisitorRegister = () => {
     } catch (error) {
       console.error('Error generating gatepass:', error)
       
-      // Check if company requires approval for mock data
-      const requiresApproval = companySettings?.requireApproval !== false
+      // Check if company requires approval for mock data (default is OFF/auto-approve)
+      const requiresApproval = companySettings?.requireApproval === true
       
       if (requiresApproval) {
         // Show pending approval screen

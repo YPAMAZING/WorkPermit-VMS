@@ -117,8 +117,8 @@ exports.getCompanyByName = async (req, res) => {
         success: true,
         company: null,
         settings: {
-          requireApproval: true, // Default: require approval
-          autoApproveVisitors: false,
+          requireApproval: false, // Default: approval OFF (auto-approve)
+          autoApproveVisitors: true,
         },
       });
     }
@@ -153,8 +153,8 @@ exports.createCompany = async (req, res) => {
       contactEmail,
       contactPhone,
       address,
-      requireApproval = true, // Default: require approval
-      autoApproveVisitors = false,
+      requireApproval = false, // Default: approval OFF (auto-approve)
+      autoApproveVisitors = true,
       notifyOnVisitor = true,
     } = req.body;
     
@@ -370,8 +370,8 @@ exports.syncCompanies = async (req, res) => {
           data: {
             name: companyName,
             displayName: companyName,
-            requireApproval: true, // Default: require approval
-            autoApproveVisitors: false,
+            requireApproval: false, // Default: approval OFF (auto-approve)
+            autoApproveVisitors: true,
             notifyOnVisitor: true,
             isActive: true,
           },
@@ -596,8 +596,8 @@ exports.seedDefaultCompanies = async (req, res) => {
         data: {
           name: companyName,
           displayName: companyName,
-          requireApproval: true,        // Default: visitors need approval
-          autoApproveVisitors: false,   // Default: no auto-approve
+          requireApproval: false,       // Default: approval OFF (auto-approve)
+          autoApproveVisitors: true,    // Default: auto-approve enabled
           notifyOnVisitor: true,        // Default: send notifications
           isActive: true,
         },

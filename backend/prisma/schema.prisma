@@ -302,9 +302,9 @@ model VMSCompany {
   contactPhone        String?  @db.VarChar(20)
   address             String?  @db.Text
   
-  // Approval Settings
-  requireApproval     Boolean  @default(true)  // If false, visitors can directly get gatepass without approval
-  autoApproveVisitors Boolean  @default(false) // If true, visitors are auto-approved
+  // Approval Settings - Default is OFF (auto-approve enabled)
+  requireApproval     Boolean  @default(false) // If false, visitors can directly get gatepass without approval
+  autoApproveVisitors Boolean  @default(true)  // If true, visitors are auto-approved
   
   // Notification Settings
   notifyOnVisitor     Boolean  @default(true)

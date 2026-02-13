@@ -48,7 +48,7 @@ const VMSSettings = () => {
     contactEmail: '',
     contactPhone: '',
     address: '',
-    requireApproval: true,
+    requireApproval: false,
   })
 
   useEffect(() => {
@@ -134,7 +134,7 @@ const VMSSettings = () => {
         contactEmail: '',
         contactPhone: '',
         address: '',
-        requireApproval: true,
+        requireApproval: false,
       })
       fetchCompanies()
     } catch (error) {
