@@ -329,11 +329,11 @@ const VMSSettings = () => {
               </div>
               <div className="flex items-center gap-4 text-sm text-gray-600">
                 <span className="flex items-center gap-2">
-                  <span className="w-3 h-3 bg-orange-500 rounded-full"></span>
+                  <span className="w-3 h-3 bg-green-500 rounded-full"></span>
                   Approval Required: {companies.filter(c => c.requireApproval).length}
                 </span>
                 <span className="flex items-center gap-2">
-                  <span className="w-3 h-3 bg-green-500 rounded-full"></span>
+                  <span className="w-3 h-3 bg-red-500 rounded-full"></span>
                   Auto-Approve: {companies.filter(c => !c.requireApproval).length}
                 </span>
               </div>
@@ -386,10 +386,10 @@ const VMSSettings = () => {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
                         <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
-                          company.requireApproval ? 'bg-orange-100' : 'bg-green-100'
+                          company.requireApproval ? 'bg-green-100' : 'bg-red-100'
                         }`}>
                           <Building size={24} className={
-                            company.requireApproval ? 'text-orange-600' : 'text-green-600'
+                            company.requireApproval ? 'text-green-600' : 'text-red-600'
                           } />
                         </div>
                         <div>
@@ -428,7 +428,7 @@ const VMSSettings = () => {
                           <button
                             onClick={() => handleToggleApproval(company.id, company.requireApproval)}
                             className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors ${
-                              company.requireApproval ? 'bg-orange-500' : 'bg-green-500'
+                              company.requireApproval ? 'bg-green-500' : 'bg-red-500'
                             }`}
                             title={company.requireApproval 
                               ? 'Click to enable auto-approve' 
@@ -445,8 +445,8 @@ const VMSSettings = () => {
                         {/* Status Badge */}
                         <span className={`px-3 py-1 rounded-full text-xs font-medium hidden lg:inline-block ${
                           company.requireApproval
-                            ? 'bg-orange-100 text-orange-700'
-                            : 'bg-green-100 text-green-700'
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-red-100 text-red-700'
                         }`}>
                           {company.requireApproval ? 'Approval Required' : 'Auto-Approve'}
                         </span>
@@ -476,13 +476,13 @@ const VMSSettings = () => {
                     {/* Explanation */}
                     <div className="mt-3 ml-16 text-sm">
                       {company.requireApproval ? (
-                        <p className="flex items-center gap-2 text-orange-600">
-                          <AlertTriangle size={14} />
+                        <p className="flex items-center gap-2 text-green-600">
+                          <CheckCircle size={14} />
                           Visitors must wait for company approval before entry
                         </p>
                       ) : (
-                        <p className="flex items-center gap-2 text-green-600">
-                          <CheckCircle size={14} />
+                        <p className="flex items-center gap-2 text-red-600">
+                          <AlertTriangle size={14} />
                           Visitors are automatically approved upon registration
                         </p>
                       )}
@@ -502,12 +502,12 @@ const VMSSettings = () => {
             How Visitor Registration Works
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="p-4 bg-orange-50 rounded-lg border border-orange-100">
-              <h3 className="font-semibold text-orange-800 mb-2 flex items-center gap-2">
+            <div className="p-4 bg-green-50 rounded-lg border border-green-100">
+              <h3 className="font-semibold text-green-800 mb-2 flex items-center gap-2">
                 <Shield size={18} />
-                Approval Required (ON)
+                Approval Required (ON) - Secure
               </h3>
-              <ol className="text-sm text-orange-700 space-y-2 list-decimal list-inside">
+              <ol className="text-sm text-green-700 space-y-2 list-decimal list-inside">
                 <li>Visitor scans QR code at gate</li>
                 <li>Fills registration form & selects company</li>
                 <li>Request sent to company dashboard</li>
@@ -517,12 +517,12 @@ const VMSSettings = () => {
                 <li>Guard allows entry</li>
               </ol>
             </div>
-            <div className="p-4 bg-green-50 rounded-lg border border-green-100">
-              <h3 className="font-semibold text-green-800 mb-2 flex items-center gap-2">
-                <CheckCircle size={18} />
-                Auto-Approve (OFF)
+            <div className="p-4 bg-red-50 rounded-lg border border-red-100">
+              <h3 className="font-semibold text-red-800 mb-2 flex items-center gap-2">
+                <AlertTriangle size={18} />
+                Auto-Approve (OFF) - Open Access
               </h3>
-              <ol className="text-sm text-green-700 space-y-2 list-decimal list-inside">
+              <ol className="text-sm text-red-700 space-y-2 list-decimal list-inside">
                 <li>Visitor scans QR code at gate</li>
                 <li>Fills registration form & selects company</li>
                 <li>Instantly approved</li>
