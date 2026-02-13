@@ -25,6 +25,18 @@ router.post('/', vmsPermissionMiddleware('vms.visitors.create'), visitorControll
 // Update visitor
 router.put('/:id', vmsPermissionMiddleware('vms.visitors.edit'), visitorController.updateVisitor);
 
+// Approve visitor
+router.post('/:id/approve', vmsPermissionMiddleware('vms.visitors.approve'), visitorController.approveVisitor);
+
+// Reject visitor
+router.post('/:id/reject', vmsPermissionMiddleware('vms.visitors.approve'), visitorController.rejectVisitor);
+
+// Check-in visitor
+router.post('/:id/checkin', vmsPermissionMiddleware('vms.visitors.edit'), visitorController.checkInVisitor);
+
+// Check-out visitor
+router.post('/:id/checkout', vmsPermissionMiddleware('vms.visitors.edit'), visitorController.checkOutVisitor);
+
 // Delete visitor
 router.delete('/:id', vmsPermissionMiddleware('vms.visitors.delete'), visitorController.deleteVisitor);
 

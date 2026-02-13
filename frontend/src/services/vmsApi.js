@@ -114,6 +114,11 @@ export const visitorsApi = {
   create: (data) => vmsApi.post('/visitors', data),
   update: (id, data) => vmsApi.put(`/visitors/${id}`, data),
   delete: (id) => vmsApi.delete(`/visitors/${id}`),
+  // Approval actions
+  approve: (id) => vmsApi.post(`/visitors/${id}/approve`),
+  reject: (id, reason) => vmsApi.post(`/visitors/${id}/reject`, { reason }),
+  checkIn: (id) => vmsApi.post(`/visitors/${id}/checkin`),
+  checkOut: (id) => vmsApi.post(`/visitors/${id}/checkout`),
 }
 
 // Gatepasses API

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useVMSAuth } from '../../context/VMSAuthContext'
-import { checkInApi, visitorsApi } from '../../services/vmsApi'
+import { visitorsApi } from '../../services/vmsApi'
 import {
   Users,
   Clock,
@@ -96,7 +96,7 @@ const CompanyDashboard = () => {
   const handleApprove = async (visitorId) => {
     setActionLoading(visitorId)
     try {
-      await checkInApi.approve(visitorId, 'Approved by company')
+      await visitorsApi.approve(visitorId)
       setMessage({ type: 'success', text: 'Visitor approved successfully!' })
       fetchVisitors()
       setSelectedVisitor(null)
@@ -116,7 +116,7 @@ const CompanyDashboard = () => {
     
     setActionLoading(visitorId)
     try {
-      await checkInApi.reject(visitorId, reason)
+      await visitorsApi.reject(visitorId, reason)
       setMessage({ type: 'success', text: 'Visitor rejected' })
       fetchVisitors()
       setSelectedVisitor(null)
