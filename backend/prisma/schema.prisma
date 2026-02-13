@@ -280,7 +280,7 @@ model VMSRole {
   name        String    @unique @db.VarChar(50)
   displayName String    @db.VarChar(100)
   description String?   @db.Text
-  permissions String    @default("[]") @db.LongText  // JSON array of VMS permissions - LONGTEXT for large permission arrays
+  permissions String?   @db.LongText  // JSON array of VMS permissions - LONGTEXT for large permission arrays
   isSystem    Boolean   @default(false)
   isActive    Boolean   @default(true)
   createdAt   DateTime  @default(now())
