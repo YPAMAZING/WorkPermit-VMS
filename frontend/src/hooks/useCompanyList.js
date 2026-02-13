@@ -126,38 +126,4 @@ export const useCompanyList = (options = {}) => {
   }
 }
 
-/**
- * CompanySelect Component
- * 
- * A reusable dropdown component for selecting a company.
- * Uses the useCompanyList hook internally.
- */
-export const CompanySelectOptions = ({ companies, loading, error, placeholder = 'Select a company' }) => {
-  if (loading) {
-    return <option value="" disabled>Loading companies...</option>
-  }
-
-  if (error) {
-    return <option value="" disabled>Error loading companies</option>
-  }
-
-  if (companies.length === 0) {
-    return <option value="" disabled>No companies available</option>
-  }
-
-  return (
-    <>
-      <option value="">{placeholder}</option>
-      {companies.map(company => (
-        <option key={company.id} value={company.id}>
-          {company.displayName || company.name}
-          {company.requireApproval !== undefined && (
-            company.requireApproval ? ' (Approval Required)' : ' (Auto-Approve)'
-          )}
-        </option>
-      ))}
-    </>
-  )
-}
-
 export default useCompanyList
