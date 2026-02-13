@@ -1,5 +1,5 @@
 // VMS Company Settings Routes
-// Handles company-specific settings including approval-based gatepass feature
+// Handles company-specific settings including approval-based visitor feature
 const express = require('express');
 const router = express.Router();
 const controller = require('../../controllers/vms/company-settings.controller');
@@ -7,7 +7,7 @@ const { vmsAuthMiddleware } = require('../../middleware/vms-auth');
 
 // Public routes (for visitor registration to check company settings)
 router.get('/by-name/:name', controller.getCompanyByName);
-router.get('/by-code/:code', controller.getCompanyByCode);
+router.get('/dropdown', controller.getCompaniesForDropdown);  // Public dropdown list
 
 // Protected routes (require authentication)
 router.use(vmsAuthMiddleware);

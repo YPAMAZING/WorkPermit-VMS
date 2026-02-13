@@ -1,11 +1,11 @@
 // VMS Company Settings Controller
-// Handles company-specific settings including approval-based gatepass feature
+// Handles company-specific settings including approval-based visitor feature
 const vmsPrisma = require('../../config/vms-prisma');
 
 // Get all VMS companies with settings
 exports.getAllCompanies = async (req, res) => {
   try {
-    const companies = await vmsPrisma.company.findMany({
+    const companies = await vmsPrisma.vMSCompany.findMany({
       orderBy: { name: 'asc' },
       include: {
         _count: {
@@ -20,7 +20,21 @@ exports.getAllCompanies = async (req, res) => {
     res.json({
       success: true,
       companies: companies.map(c => ({
-        ...c,
+        id: c.id,
+        name: c.name,
+        displayName: c.displayName,
+        description: c.description,
+        contactPerson: c.contactPerson,
+        contactEmail: c.contactEmail,
+        contactPhone: c.contactPhone,
+        address: c.address,
+        logo: c.logo,
+        requireApproval: c.requireApproval,
+        autoApproveVisitors: c.autoApproveVisitors,
+        notifyOnVisitor: c.notifyOnVisitor,
+        isActive: c.isActive,
+        createdAt: c.createdAt,
+        updatedAt: c.updatedAt,
         totalVisitors: c._count.visitors,
         totalGatepasses: c._count.gatepasses,
       })),
@@ -36,7 +50,7 @@ exports.getCompanyById = async (req, res) => {
   try {
     const { id } = req.params;
     
-    const company = await vmsPrisma.company.findUnique({
+    const company = await vmsPrisma.vMSCompany.findUnique({
       where: { id },
       include: {
         _count: {
@@ -46,7 +60,6 @@ exports.getCompanyById = async (req, res) => {
             users: true,
           },
         },
-        departments: true,
       },
     });
     
@@ -57,7 +70,21 @@ exports.getCompanyById = async (req, res) => {
     res.json({
       success: true,
       company: {
-        ...company,
+        id: company.id,
+        name: company.name,
+        displayName: company.displayName,
+        description: company.description,
+        contactPerson: company.contactPerson,
+        contactEmail: company.contactEmail,
+        contactPhone: company.contactPhone,
+        address: company.address,
+        logo: company.logo,
+        requireApproval: company.requireApproval,
+        autoApproveVisitors: company.autoApproveVisitors,
+        notifyOnVisitor: company.notifyOnVisitor,
+        isActive: company.isActive,
+        createdAt: company.createdAt,
+        updatedAt: company.updatedAt,
         totalVisitors: company._count.visitors,
         totalGatepasses: company._count.gatepasses,
         totalUsers: company._count.users,
@@ -75,7 +102,7 @@ exports.getCompanyByName = async (req, res) => {
     const { name } = req.params;
     const decodedName = decodeURIComponent(name);
     
-    const company = await vmsPrisma.company.findFirst({
+    const company = await vmsPrisma.vMSCompany.findFirst({
       where: { 
         OR: [
           { name: decodedName },
@@ -90,10 +117,8 @@ exports.getCompanyByName = async (req, res) => {
         success: true,
         company: null,
         settings: {
-          requireGatepassApproval: true, // Default: require approval
-          autoApprove: false,
-          requireIdProof: true,
-          requirePhoto: true,
+          requireApproval: true, // Default: require approval
+          autoApproveVisitors: false,
         },
       });
     }
@@ -102,57 +127,17 @@ exports.getCompanyByName = async (req, res) => {
       success: true,
       company: {
         id: company.id,
-        code: company.code,
         name: company.name,
         displayName: company.displayName,
       },
       settings: {
-        requireGatepassApproval: company.requireGatepassApproval,
-        autoApprove: company.autoApprove,
-        requireIdProof: company.requireIdProof,
-        requirePhoto: company.requirePhoto,
+        requireApproval: company.requireApproval,
+        autoApproveVisitors: company.autoApproveVisitors,
       },
     });
   } catch (error) {
     console.error('Error fetching company settings:', error);
     res.status(500).json({ message: 'Failed to fetch company settings', error: error.message });
-  }
-};
-
-// Get company by code (for QR check-in)
-exports.getCompanyByCode = async (req, res) => {
-  try {
-    const { code } = req.params;
-    
-    const company = await vmsPrisma.company.findUnique({
-      where: { code },
-    });
-    
-    if (!company) {
-      return res.status(404).json({ message: 'Company not found' });
-    }
-    
-    res.json({
-      success: true,
-      company: {
-        id: company.id,
-        code: company.code,
-        name: company.name,
-        displayName: company.displayName,
-        logo: company.logo,
-        welcomeMessage: company.welcomeMessage,
-        primaryColor: company.primaryColor,
-      },
-      settings: {
-        requireGatepassApproval: company.requireGatepassApproval,
-        autoApprove: company.autoApprove,
-        requireIdProof: company.requireIdProof,
-        requirePhoto: company.requirePhoto,
-      },
-    });
-  } catch (error) {
-    console.error('Error fetching company by code:', error);
-    res.status(500).json({ message: 'Failed to fetch company', error: error.message });
   }
 };
 
@@ -164,27 +149,21 @@ exports.createCompany = async (req, res) => {
       displayName,
       description,
       logo,
+      contactPerson,
+      contactEmail,
+      contactPhone,
       address,
-      phone,
-      email,
-      website,
-      requireGatepassApproval = true, // Default: require approval
-      autoApprove = false,
-      requireIdProof = true,
-      requirePhoto = true,
-      notifyHost = true,
+      requireApproval = true, // Default: require approval
+      autoApproveVisitors = false,
+      notifyOnVisitor = true,
     } = req.body;
     
-    // Generate unique code
-    const code = name.toUpperCase().replace(/[^A-Z0-9]/g, '').substring(0, 10) + 
-                 '-' + Date.now().toString(36).toUpperCase();
-    
     // Check if company already exists
-    const existing = await vmsPrisma.company.findFirst({
+    const existing = await vmsPrisma.vMSCompany.findFirst({
       where: { 
         OR: [
           { name },
-          { code },
+          { displayName: displayName || name },
         ]
       },
     });
@@ -193,22 +172,20 @@ exports.createCompany = async (req, res) => {
       return res.status(400).json({ message: 'Company with this name already exists' });
     }
     
-    const company = await vmsPrisma.company.create({
+    const company = await vmsPrisma.vMSCompany.create({
       data: {
-        code,
         name,
         displayName: displayName || name,
         description,
         logo,
+        contactPerson,
+        contactEmail,
+        contactPhone,
         address,
-        phone,
-        email,
-        website,
-        requireGatepassApproval,
-        autoApprove,
-        requireIdProof,
-        requirePhoto,
-        notifyHost,
+        requireApproval,
+        autoApproveVisitors: !requireApproval ? true : autoApproveVisitors,
+        notifyOnVisitor,
+        isActive: true,
       },
     });
     
@@ -231,10 +208,9 @@ exports.updateCompany = async (req, res) => {
     
     // Remove fields that shouldn't be updated directly
     delete updateData.id;
-    delete updateData.code;
     delete updateData.createdAt;
     
-    const company = await vmsPrisma.company.update({
+    const company = await vmsPrisma.vMSCompany.update({
       where: { id },
       data: updateData,
     });
@@ -254,42 +230,52 @@ exports.updateCompany = async (req, res) => {
 };
 
 // Toggle approval requirement for a company
-// This is the main feature: enable/disable approval-based gatepass
+// This is the main feature: enable/disable approval-based visitor entry
 exports.toggleApprovalRequirement = async (req, res) => {
   try {
     const { id } = req.params;
-    const { requireGatepassApproval } = req.body;
+    const { requireApproval } = req.body;
     
-    if (typeof requireGatepassApproval !== 'boolean') {
-      return res.status(400).json({ message: 'requireGatepassApproval must be a boolean' });
+    if (typeof requireApproval !== 'boolean') {
+      return res.status(400).json({ message: 'requireApproval must be a boolean' });
     }
     
-    const company = await vmsPrisma.company.update({
+    const company = await vmsPrisma.vMSCompany.update({
       where: { id },
       data: {
-        requireGatepassApproval,
+        requireApproval,
         // If no approval required, auto-approve can be true
-        autoApprove: !requireGatepassApproval,
+        autoApproveVisitors: !requireApproval,
       },
     });
     
-    // Log the change
-    await vmsPrisma.auditLog.create({
-      data: {
-        userId: req.user?.userId,
-        action: requireGatepassApproval ? 'ENABLE_APPROVAL' : 'DISABLE_APPROVAL',
-        entity: 'company',
-        entityId: company.id,
-        newValue: JSON.stringify({ requireGatepassApproval }),
-      },
-    });
+    // Try to log the change, but don't fail if audit log doesn't exist
+    try {
+      await vmsPrisma.auditLog.create({
+        data: {
+          userId: req.user?.userId,
+          action: requireApproval ? 'ENABLE_APPROVAL' : 'DISABLE_APPROVAL',
+          entity: 'company',
+          entityId: company.id,
+          newValue: JSON.stringify({ requireApproval }),
+        },
+      });
+    } catch (auditError) {
+      console.log('Audit log not available:', auditError.message);
+    }
     
     res.json({
       success: true,
-      message: requireGatepassApproval 
-        ? `Approval-based gatepass enabled for ${company.displayName}. Visitors will need approval before getting gatepass.`
-        : `Approval-based gatepass disabled for ${company.displayName}. Visitors can directly get gatepass (like Vodafone).`,
-      company,
+      message: requireApproval 
+        ? `Approval enabled for ${company.displayName}. Visitors will need approval before entry.`
+        : `Approval disabled for ${company.displayName}. Visitors will be auto-approved.`,
+      company: {
+        id: company.id,
+        name: company.name,
+        displayName: company.displayName,
+        requireApproval: company.requireApproval,
+        autoApproveVisitors: company.autoApproveVisitors,
+      },
     });
   } catch (error) {
     console.error('Error toggling approval:', error);
@@ -306,7 +292,7 @@ exports.deleteCompany = async (req, res) => {
     const { id } = req.params;
     
     // Check if company has visitors or gatepasses
-    const company = await vmsPrisma.company.findUnique({
+    const company = await vmsPrisma.vMSCompany.findUnique({
       where: { id },
       include: {
         _count: {
@@ -330,7 +316,7 @@ exports.deleteCompany = async (req, res) => {
       });
     }
     
-    await vmsPrisma.company.delete({
+    await vmsPrisma.vMSCompany.delete({
       where: { id },
     });
     
@@ -368,7 +354,7 @@ exports.syncCompanies = async (req, res) => {
       }
       
       // Check if company exists
-      const existing = await vmsPrisma.company.findFirst({
+      const existing = await vmsPrisma.vMSCompany.findFirst({
         where: { 
           OR: [
             { name: companyName },
@@ -380,18 +366,13 @@ exports.syncCompanies = async (req, res) => {
       if (existing) {
         results.existing++;
       } else {
-        // Generate unique code
-        const code = companyName.toUpperCase().replace(/[^A-Z0-9]/g, '').substring(0, 10) + 
-                     '-' + Math.random().toString(36).substring(2, 6).toUpperCase();
-        
-        await vmsPrisma.company.create({
+        await vmsPrisma.vMSCompany.create({
           data: {
-            code,
             name: companyName,
             displayName: companyName,
-            requireGatepassApproval: true, // Default: require approval
-            autoApprove: false,
-            notifyHost: true,
+            requireApproval: true, // Default: require approval
+            autoApproveVisitors: false,
+            notifyOnVisitor: true,
             isActive: true,
           },
         });
@@ -413,15 +394,16 @@ exports.syncCompanies = async (req, res) => {
 // Get companies with approval settings for admin view
 exports.getCompaniesWithApprovalSettings = async (req, res) => {
   try {
-    const companies = await vmsPrisma.company.findMany({
-      orderBy: { name: 'asc' },
+    const companies = await vmsPrisma.vMSCompany.findMany({
+      orderBy: { displayName: 'asc' },
       select: {
         id: true,
-        code: true,
         name: true,
         displayName: true,
-        requireGatepassApproval: true,
-        autoApprove: true,
+        contactEmail: true,
+        contactPhone: true,
+        requireApproval: true,
+        autoApproveVisitors: true,
         isActive: true,
         _count: {
           select: {
@@ -436,15 +418,16 @@ exports.getCompaniesWithApprovalSettings = async (req, res) => {
       success: true,
       companies: companies.map(c => ({
         id: c.id,
-        code: c.code,
         name: c.name,
         displayName: c.displayName,
-        requireGatepassApproval: c.requireGatepassApproval,
-        autoApprove: c.autoApprove,
+        contactEmail: c.contactEmail,
+        contactPhone: c.contactPhone,
+        requireApproval: c.requireApproval,
+        autoApproveVisitors: c.autoApproveVisitors,
         isActive: c.isActive,
         totalVisitors: c._count.visitors,
         totalGatepasses: c._count.gatepasses,
-        approvalStatus: c.requireGatepassApproval ? 'Requires Approval' : 'Direct Gatepass',
+        approvalStatus: c.requireApproval ? 'Requires Approval' : 'Auto-Approve',
       })),
     });
   } catch (error) {
@@ -465,19 +448,19 @@ exports.bulkUpdateApprovalSettings = async (req, res) => {
     const results = [];
     
     for (const update of updates) {
-      const { companyId, requireGatepassApproval } = update;
+      const { companyId, requireApproval } = update;
       
-      if (!companyId || typeof requireGatepassApproval !== 'boolean') {
+      if (!companyId || typeof requireApproval !== 'boolean') {
         results.push({ companyId, success: false, error: 'Invalid data' });
         continue;
       }
       
       try {
-        const company = await vmsPrisma.company.update({
+        const company = await vmsPrisma.vMSCompany.update({
           where: { id: companyId },
           data: {
-            requireGatepassApproval,
-            autoApprove: !requireGatepassApproval,
+            requireApproval,
+            autoApproveVisitors: !requireApproval,
           },
         });
         results.push({ companyId, success: true, companyName: company.displayName });
@@ -497,5 +480,29 @@ exports.bulkUpdateApprovalSettings = async (req, res) => {
   } catch (error) {
     console.error('Error bulk updating approval settings:', error);
     res.status(500).json({ message: 'Failed to update settings', error: error.message });
+  }
+};
+
+// Get all companies for dropdown selection (public - used in forms)
+exports.getCompaniesForDropdown = async (req, res) => {
+  try {
+    const companies = await vmsPrisma.vMSCompany.findMany({
+      where: { isActive: true },
+      orderBy: { displayName: 'asc' },
+      select: {
+        id: true,
+        name: true,
+        displayName: true,
+        requireApproval: true,
+      },
+    });
+    
+    res.json({
+      success: true,
+      companies,
+    });
+  } catch (error) {
+    console.error('Error fetching companies for dropdown:', error);
+    res.status(500).json({ message: 'Failed to fetch companies', error: error.message });
   }
 };

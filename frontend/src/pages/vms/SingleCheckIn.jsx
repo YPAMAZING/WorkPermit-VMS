@@ -37,8 +37,15 @@ const SingleCheckIn = () => {
   const fetchCompanies = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_URL}/vms/checkin/companies`);
-      setCompanies(response.data.companies || []);
+      // Try the new company-settings/dropdown API first, fall back to checkin/companies
+      try {
+        const response = await axios.get(`${API_URL}/vms/company-settings/dropdown`);
+        setCompanies(response.data.companies || []);
+      } catch {
+        // Fallback to old endpoint
+        const response = await axios.get(`${API_URL}/vms/checkin/companies`);
+        setCompanies(response.data.companies || []);
+      }
     } catch (err) {
       console.error('Error fetching companies:', err);
       setError('Failed to load companies. Please refresh the page.');
@@ -250,6 +257,10 @@ const SingleCheckIn = () => {
                           {company.description && (
                             <div className="text-sm text-gray-500 truncate">{company.description}</div>
                           )}
+                          {/* Show approval status */}
+                          <div className={`text-xs mt-1 ${company.requireApproval ? 'text-orange-600' : 'text-green-600'}`}>
+                            {company.requireApproval ? '⏳ Requires Approval' : '✓ Auto-Approve'}
+                          </div>
                         </div>
                         <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />

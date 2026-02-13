@@ -17,7 +17,8 @@ import {
   AlertCircle,
   Image,
   RefreshCw,
-  X
+  X,
+  Shield
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { vmsAPI, companySettingsApi } from '../../services/vmsApi'
@@ -41,6 +42,10 @@ const VisitorRegister = () => {
   const [showIdDocCamera, setShowIdDocCamera] = useState(false)
   const [idDocCameraActive, setIdDocCameraActive] = useState(false)
   
+  // Company list from API
+  const [companies, setCompanies] = useState([])
+  const [companiesLoading, setCompaniesLoading] = useState(true)
+  
   // Company settings for approval-based flow
   const [companySettings, setCompanySettings] = useState(null)
   const [loadingCompanySettings, setLoadingCompanySettings] = useState(false)
@@ -51,6 +56,7 @@ const VisitorRegister = () => {
     email: '',
     companyFrom: '',
     companyToVisit: '',
+    companyId: '', // Store company ID for API
     personToMeet: '',
     purpose: '',
     idProofType: 'aadhaar',
@@ -61,62 +67,25 @@ const VisitorRegister = () => {
 
   const [errors, setErrors] = useState({})
 
-  const companies = [
-    'Adani Enterprises',
-    'Aquity Solutions',
-    'AWFIS Solutions Spaces',
-    'Azelis',
-    'Baker Huges Oilfield Services',
-    'Bharat Serum & Vaccines',
-    'Birla Management Centre',
-    'Brueckner Group India',
-    'Clariant Chemicals',
-    'Clover Infotech',
-    'Covestro',
-    'Creative IT',
-    'DSP Integrated Services',
-    'ECI Telecom',
-    'EFC',
-    'EFC Office Infra',
-    'EFC Office Spaces',
-    'EFC Tech Spaces',
-    'ESDS',
-    'Garmercy Tech Park',
-    'Godrej',
-    'Hansa Direct',
-    'HCL Technologies',
-    'Hindustan Fields Services',
-    'Holcim Services',
-    'Home Credit',
-    'Icra',
-    'Inchcap Shipping Services',
-    'Indian Commodity Exchange',
-    'Invenio Business Solution',
-    'ISSGF',
-    'Jacobs Solutions',
-    'Kyndryl Solutions',
-    'Lupin',
-    'Maersk Global Service Centre',
-    'Magic Bus',
-    'NMDC Data Centre',
-    'Nouryon Chemicals',
-    'Quess Corp',
-    'RBL Bank',
-    'Reliance General Insurance',
-    'Rubicon Maritime India',
-    'Sify Infinity Spaces',
-    'Spocto Business Solutions',
-    'Suki Solution',
-    'Sulzer Tech',
-    'Sutherland Global Services',
-    'Taldar Hotels & Resorts',
-    'Tata Consulting Engineering',
-    'Technics Reunidas',
-    'Universal Sompo',
-    'Vodafone Idea',
-    'Yes Bank',
-    'Other'
-  ]
+  // Fetch companies from API on mount
+  useEffect(() => {
+    const fetchCompanies = async () => {
+      try {
+        setCompaniesLoading(true)
+        const response = await companySettingsApi.getDropdown()
+        const companyList = response.data.companies || []
+        setCompanies(companyList)
+      } catch (error) {
+        console.error('Failed to fetch companies:', error)
+        // Fallback to empty list - user can still type "Other"
+        setCompanies([])
+        toast.error('Failed to load companies')
+      } finally {
+        setCompaniesLoading(false)
+      }
+    }
+    fetchCompanies()
+  }, [])
 
   const purposes = [
     'Meeting',
@@ -139,35 +108,39 @@ const VisitorRegister = () => {
 
   const handleChange = async (e) => {
     const { name, value } = e.target
-    setFormData(prev => ({ ...prev, [name]: value }))
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }))
+    
+    // Handle company selection specially
+    if (name === 'companyToVisit') {
+      // Find the selected company from the list
+      const selectedCompany = companies.find(c => 
+        c.displayName === value || c.name === value || c.id === value
+      )
+      
+      if (selectedCompany) {
+        setFormData(prev => ({ 
+          ...prev, 
+          companyToVisit: selectedCompany.displayName || selectedCompany.name,
+          companyId: selectedCompany.id
+        }))
+        // Set company settings directly from the company data
+        setCompanySettings({
+          requireApproval: selectedCompany.requireApproval,
+          autoApproveVisitors: !selectedCompany.requireApproval
+        })
+      } else {
+        // "Other" or manual entry
+        setFormData(prev => ({ ...prev, [name]: value, companyId: '' }))
+        setCompanySettings({
+          requireApproval: true,
+          autoApproveVisitors: false
+        })
+      }
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }))
     }
     
-    // When company is selected, fetch company settings
-    if (name === 'companyToVisit' && value && value !== 'Other') {
-      fetchCompanySettings(value)
-    }
-  }
-  
-  // Fetch company settings to check if approval is required
-  const fetchCompanySettings = async (companyName) => {
-    setLoadingCompanySettings(true)
-    try {
-      const response = await companySettingsApi.getByName(companyName)
-      if (response.data.success) {
-        setCompanySettings(response.data.settings)
-        console.log('Company settings:', response.data.settings)
-      }
-    } catch (error) {
-      console.error('Error fetching company settings:', error)
-      // Use default settings if API fails
-      setCompanySettings({
-        requireGatepassApproval: true,
-        autoApprove: false
-      })
-    } finally {
-      setLoadingCompanySettings(false)
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: '' }))
     }
   }
 
@@ -302,7 +275,7 @@ const VisitorRegister = () => {
     setLoading(true)
     try {
       // Check if company requires approval
-      const requiresApproval = companySettings?.requireGatepassApproval !== false
+      const requiresApproval = companySettings?.requireApproval !== false
       
       const payload = {
         ...formData,
@@ -344,7 +317,7 @@ const VisitorRegister = () => {
       console.error('Error generating gatepass:', error)
       
       // Check if company requires approval for mock data
-      const requiresApproval = companySettings?.requireGatepassApproval !== false
+      const requiresApproval = companySettings?.requireApproval !== false
       
       if (requiresApproval) {
         // Show pending approval screen
@@ -601,14 +574,43 @@ const VisitorRegister = () => {
                     name="companyToVisit"
                     value={formData.companyToVisit}
                     onChange={handleChange}
-                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-teal-500 ${errors.companyToVisit ? 'border-red-500' : 'border-gray-200'}`}
+                    disabled={companiesLoading}
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-teal-500 disabled:bg-gray-100 ${errors.companyToVisit ? 'border-red-500' : 'border-gray-200'}`}
                   >
-                    <option value="">Select company</option>
-                    {companies.map(c => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
+                    {companiesLoading ? (
+                      <option value="">Loading companies...</option>
+                    ) : (
+                      <>
+                        <option value="">Select company</option>
+                        {companies.map(c => (
+                          <option key={c.id} value={c.displayName || c.name}>
+                            {c.displayName || c.name}
+                          </option>
+                        ))}
+                        <option value="Other">Other</option>
+                      </>
+                    )}
                   </select>
                   {errors.companyToVisit && <p className="text-red-500 text-xs mt-1">{errors.companyToVisit}</p>}
+                  
+                  {/* Show approval status */}
+                  {formData.companyToVisit && companySettings && (
+                    <div className={`mt-2 text-sm flex items-center gap-2 ${
+                      companySettings.requireApproval ? 'text-orange-600' : 'text-green-600'
+                    }`}>
+                      {companySettings.requireApproval ? (
+                        <>
+                          <Shield size={14} />
+                          Approval required - you will wait for company approval
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle size={14} />
+                          Auto-approve - you will get a gatepass immediately
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Person to Meet - Optional */}

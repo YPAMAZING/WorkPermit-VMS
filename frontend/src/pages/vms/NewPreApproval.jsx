@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useVMSAuth } from '../../context/VMSAuthContext'
-import { preapprovedApi, companySettingsApi } from '../../services/vmsApi'
+import { preapprovedApi } from '../../services/vmsApi'
+import useCompanyList from '../../hooks/useCompanyList'
 import {
   UserCheck,
   ArrowLeft,
@@ -14,14 +15,23 @@ import {
   FileText,
   Clock,
   AlertCircle,
+  Shield,
+  CheckCircle,
 } from 'lucide-react'
 
 const NewPreApproval = () => {
   const navigate = useNavigate()
   const { user } = useVMSAuth()
   const [loading, setLoading] = useState(false)
-  const [companies, setCompanies] = useState([])
   const [error, setError] = useState('')
+  
+  // Use the reusable hook for company list
+  const { 
+    companies, 
+    loading: companiesLoading, 
+    error: companiesError,
+    getCompanyById 
+  } = useCompanyList({ withApprovalStatus: true })
   
   const [formData, setFormData] = useState({
     visitorName: '',
@@ -46,18 +56,8 @@ const NewPreApproval = () => {
     { value: 'OTHER', label: 'Other' },
   ]
 
-  useEffect(() => {
-    fetchCompanies()
-  }, [])
-
-  const fetchCompanies = async () => {
-    try {
-      const response = await companySettingsApi.getAll()
-      setCompanies(response.data.companies || response.data || [])
-    } catch (error) {
-      console.error('Failed to fetch companies:', error)
-    }
-  }
+  // Get selected company info
+  const selectedCompany = formData.companyId ? getCompanyById(formData.companyId) : null
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -228,15 +228,42 @@ const NewPreApproval = () => {
                 name="companyId"
                 value={formData.companyId}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                disabled={companiesLoading}
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:bg-gray-100"
               >
-                <option value="">Select a company</option>
-                {companies.map(company => (
-                  <option key={company.id} value={company.id}>
-                    {company.displayName || company.name}
-                  </option>
-                ))}
+                {companiesLoading ? (
+                  <option value="">Loading companies...</option>
+                ) : companiesError ? (
+                  <option value="">Error loading companies</option>
+                ) : (
+                  <>
+                    <option value="">Select a company</option>
+                    {companies.map(company => (
+                      <option key={company.id} value={company.id}>
+                        {company.displayName || company.name}
+                      </option>
+                    ))}
+                  </>
+                )}
               </select>
+              {/* Show approval status hint */}
+              {selectedCompany && (
+                <div className={`mt-2 text-sm flex items-center gap-2 ${
+                  selectedCompany.requireApproval ? 'text-orange-600' : 'text-green-600'
+                }`}>
+                  {selectedCompany.requireApproval ? (
+                    <>
+                      <Shield size={14} />
+                      This company requires approval for visitors
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle size={14} />
+                      Visitors to this company are auto-approved
+                    </>
+                  )}
+                </div>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">

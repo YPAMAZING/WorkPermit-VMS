@@ -156,7 +156,7 @@ export const blacklistApi = {
   delete: (id) => vmsApi.delete(`/blacklist/${id}`),
 }
 
-// Company Settings API (Approval-based gatepass feature)
+// Company Settings API (Approval-based visitor feature)
 export const companySettingsApi = {
   // Get all companies with settings
   getAll: () => vmsApi.get('/company-settings'),
@@ -170,8 +170,8 @@ export const companySettingsApi = {
   // Get company settings by name (public - for visitor registration)
   getByName: (name) => publicApi.get(`/company-settings/by-name/${encodeURIComponent(name)}`),
   
-  // Get company settings by code (public - for QR check-in)
-  getByCode: (code) => publicApi.get(`/company-settings/by-code/${code}`),
+  // Get companies for dropdown (public - for forms)
+  getDropdown: () => publicApi.get('/company-settings/dropdown'),
   
   // Create new company
   create: (data) => vmsApi.post('/company-settings', data),
@@ -180,8 +180,8 @@ export const companySettingsApi = {
   update: (id, data) => vmsApi.put(`/company-settings/${id}`, data),
   
   // Toggle approval requirement (main feature)
-  toggleApproval: (id, requireGatepassApproval) => 
-    vmsApi.post(`/company-settings/${id}/toggle-approval`, { requireGatepassApproval }),
+  toggleApproval: (id, requireApproval) => 
+    vmsApi.post(`/company-settings/${id}/toggle-approval`, { requireApproval }),
   
   // Bulk update approval settings
   bulkUpdateApproval: (updates) => 
