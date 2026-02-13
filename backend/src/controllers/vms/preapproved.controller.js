@@ -1,6 +1,8 @@
 // VMS Pre-approved Visitors Controller
-const vmsPrisma = require('../../config/vms-prisma');
-const { v4: uuidv4 } = require('uuid');
+// Uses correct Prisma model names for VMS tables
+
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 
 // Get all pre-approved visitors with pagination and filters
 exports.getPreApprovedVisitors = async (req, res) => {
@@ -10,8 +12,7 @@ exports.getPreApprovedVisitors = async (req, res) => {
       limit = 10,
       search,
       status,
-      hostName,
-      sortBy = 'approvedAt',
+      sortBy = 'createdAt',
       sortOrder = 'desc',
     } = req.query;
 
@@ -23,12 +24,10 @@ exports.getPreApprovedVisitors = async (req, res) => {
 
     if (search) {
       where.OR = [
-        { firstName: { contains: search } },
-        { lastName: { contains: search } },
+        { visitorName: { contains: search } },
         { phone: { contains: search } },
         { email: { contains: search } },
-        { company: { contains: search } },
-        { hostName: { contains: search } },
+        { companyFrom: { contains: search } },
       ];
     }
 
@@ -36,39 +35,34 @@ exports.getPreApprovedVisitors = async (req, res) => {
       where.status = status;
     }
 
-    if (hostName) {
-      where.hostName = { contains: hostName };
-    }
-
     // Get entries with pagination
     const [entries, total] = await Promise.all([
-      vmsPrisma.preApprovedVisitor.findMany({
+      prisma.vMSPreApproval.findMany({
         where,
         skip,
         take,
         orderBy: { [sortBy]: sortOrder },
-        include: {
-          visitor: {
-            select: {
-              id: true,
-              photo: true,
-              visitorCode: true,
-            },
-          },
-          approvedBy: {
-            select: { firstName: true, lastName: true },
-          },
-        },
       }),
-      vmsPrisma.preApprovedVisitor.count({ where }),
+      prisma.vMSPreApproval.count({ where }),
     ]);
 
     res.json({
       entries: entries.map(e => ({
-        ...e,
-        approvedByName: e.approvedBy ? `${e.approvedBy.firstName} ${e.approvedBy.lastName}` : null,
-        visitorPhoto: e.visitor?.photo,
-        visitorCode: e.visitor?.visitorCode,
+        id: e.id,
+        visitorName: e.visitorName,
+        phone: e.phone,
+        email: e.email,
+        companyFrom: e.companyFrom,
+        companyId: e.companyId,
+        purpose: e.purpose,
+        validFrom: e.validFrom,
+        validUntil: e.validUntil,
+        status: e.status,
+        usedAt: e.usedAt,
+        sharedVia: e.sharedVia,
+        sharedAt: e.sharedAt,
+        createdAt: e.createdAt,
+        createdBy: e.createdBy,
       })),
       pagination: {
         page: parseInt(page),
@@ -88,14 +82,8 @@ exports.getPreApprovedVisitor = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const entry = await vmsPrisma.preApprovedVisitor.findUnique({
+    const entry = await prisma.vMSPreApproval.findUnique({
       where: { id },
-      include: {
-        visitor: true,
-        approvedBy: {
-          select: { firstName: true, lastName: true, email: true },
-        },
-      },
     });
 
     if (!entry) {
@@ -112,32 +100,19 @@ exports.getPreApprovedVisitor = async (req, res) => {
 // Check if visitor is pre-approved
 exports.checkPreApproval = async (req, res) => {
   try {
-    const { phone, visitorId } = req.query;
+    const { phone } = req.query;
 
-    const now = new Date();
-    const orConditions = [];
-    if (phone) orConditions.push({ phone });
-    if (visitorId) orConditions.push({ visitorId });
-
-    if (orConditions.length === 0) {
-      return res.status(400).json({ message: 'Phone or visitorId is required' });
+    if (!phone) {
+      return res.status(400).json({ message: 'Phone is required' });
     }
 
-    const entry = await vmsPrisma.preApprovedVisitor.findFirst({
+    const now = new Date();
+    const entry = await prisma.vMSPreApproval.findFirst({
       where: {
-        OR: orConditions,
+        phone,
         status: 'ACTIVE',
         validFrom: { lte: now },
         validUntil: { gte: now },
-        OR: [
-          { isMultiEntry: true },
-          { usedEntries: { lt: vmsPrisma.raw('maxEntries') } },
-        ],
-      },
-      include: {
-        approvedBy: {
-          select: { firstName: true, lastName: true },
-        },
       },
     });
 
@@ -146,14 +121,10 @@ exports.checkPreApproval = async (req, res) => {
         isPreApproved: true,
         entry: {
           id: entry.id,
-          hostName: entry.hostName,
-          hostDepartment: entry.hostDepartment,
+          visitorName: entry.visitorName,
           purpose: entry.purpose,
-          visitingArea: entry.visitingArea,
           validUntil: entry.validUntil,
-          isMultiEntry: entry.isMultiEntry,
-          remainingEntries: entry.maxEntries - entry.usedEntries,
-          approvedByName: entry.approvedBy ? `${entry.approvedBy.firstName} ${entry.approvedBy.lastName}` : null,
+          companyId: entry.companyId,
         },
       });
     } else {
@@ -169,29 +140,28 @@ exports.checkPreApproval = async (req, res) => {
 exports.createPreApprovedVisitor = async (req, res) => {
   try {
     const {
-      visitorId,
-      firstName,
-      lastName,
+      visitorName,
       phone,
       email,
-      company,
+      companyFrom,
+      companyId,
       purpose,
-      hostName,
-      hostDepartment,
-      hostPhone,
-      hostEmail,
       validFrom,
       validUntil,
-      visitingArea,
-      isMultiEntry,
-      maxEntries,
       remarks,
     } = req.body;
 
-    // Check for existing active pre-approval
-    const existing = await vmsPrisma.preApprovedVisitor.findFirst({
+    // Validation
+    if (!visitorName || !phone || !companyId || !purpose || !validFrom || !validUntil) {
+      return res.status(400).json({ 
+        message: 'Missing required fields: visitorName, phone, companyId, purpose, validFrom, validUntil' 
+      });
+    }
+
+    // Check for existing active pre-approval with same phone
+    const existing = await prisma.vMSPreApproval.findFirst({
       where: {
-        phone,
+        phone: phone.replace(/\D/g, ''),
         status: 'ACTIVE',
         validUntil: { gte: new Date() },
       },
@@ -199,60 +169,24 @@ exports.createPreApprovedVisitor = async (req, res) => {
 
     if (existing) {
       return res.status(400).json({
-        message: 'An active pre-approval already exists for this visitor',
+        message: 'An active pre-approval already exists for this phone number',
         existingEntryId: existing.id,
       });
     }
 
-    // Check blacklist
-    const blacklistEntry = await vmsPrisma.blacklistEntry.findFirst({
-      where: {
-        phone,
-        isActive: true,
-      },
-    });
-
-    if (blacklistEntry) {
-      return res.status(400).json({
-        message: 'Cannot pre-approve a blacklisted visitor',
-        reason: blacklistEntry.reason,
-      });
-    }
-
     // Create pre-approval
-    const entry = await vmsPrisma.preApprovedVisitor.create({
+    const entry = await prisma.vMSPreApproval.create({
       data: {
-        visitorId,
-        firstName,
-        lastName,
-        phone,
-        email,
-        company,
+        visitorName,
+        phone: phone.replace(/\D/g, ''),
+        email: email || null,
+        companyFrom: companyFrom || null,
+        companyId,
         purpose,
-        hostName,
-        hostDepartment,
-        hostPhone,
-        hostEmail,
         validFrom: new Date(validFrom),
         validUntil: new Date(validUntil),
-        visitingArea,
-        isMultiEntry: isMultiEntry || false,
-        maxEntries: maxEntries || 1,
-        usedEntries: 0,
         status: 'ACTIVE',
-        remarks,
-        approvedById: req.user?.userId,
-      },
-    });
-
-    // Log action
-    await vmsPrisma.auditLog.create({
-      data: {
-        userId: req.user?.userId,
-        action: 'PREAPPROVE_CREATE',
-        entity: 'preapproved',
-        entityId: entry.id,
-        newValue: JSON.stringify(entry),
+        createdBy: req.user?.userId || 'system',
       },
     });
 
@@ -271,20 +205,16 @@ exports.updatePreApprovedVisitor = async (req, res) => {
   try {
     const { id } = req.params;
     const {
+      visitorName,
+      phone,
+      email,
+      companyFrom,
       purpose,
-      hostName,
-      hostDepartment,
-      hostPhone,
-      hostEmail,
       validFrom,
       validUntil,
-      visitingArea,
-      isMultiEntry,
-      maxEntries,
-      remarks,
     } = req.body;
 
-    const existing = await vmsPrisma.preApprovedVisitor.findUnique({ where: { id } });
+    const existing = await prisma.vMSPreApproval.findUnique({ where: { id } });
     if (!existing) {
       return res.status(404).json({ message: 'Pre-approved visitor not found' });
     }
@@ -293,32 +223,16 @@ exports.updatePreApprovedVisitor = async (req, res) => {
       return res.status(400).json({ message: 'Cannot update inactive pre-approval' });
     }
 
-    const entry = await vmsPrisma.preApprovedVisitor.update({
+    const entry = await prisma.vMSPreApproval.update({
       where: { id },
       data: {
+        visitorName,
+        phone: phone ? phone.replace(/\D/g, '') : undefined,
+        email,
+        companyFrom,
         purpose,
-        hostName,
-        hostDepartment,
-        hostPhone,
-        hostEmail,
         validFrom: validFrom ? new Date(validFrom) : undefined,
         validUntil: validUntil ? new Date(validUntil) : undefined,
-        visitingArea,
-        isMultiEntry,
-        maxEntries,
-        remarks,
-      },
-    });
-
-    // Log action
-    await vmsPrisma.auditLog.create({
-      data: {
-        userId: req.user?.userId,
-        action: 'PREAPPROVE_UPDATE',
-        entity: 'preapproved',
-        entityId: entry.id,
-        oldValue: JSON.stringify(existing),
-        newValue: JSON.stringify(entry),
       },
     });
 
@@ -337,7 +251,7 @@ exports.usePreApproval = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const existing = await vmsPrisma.preApprovedVisitor.findUnique({ where: { id } });
+    const existing = await prisma.vMSPreApproval.findUnique({ where: { id } });
     if (!existing) {
       return res.status(404).json({ message: 'Pre-approved visitor not found' });
     }
@@ -351,35 +265,17 @@ exports.usePreApproval = async (req, res) => {
       return res.status(400).json({ message: 'Pre-approval is not valid at this time' });
     }
 
-    // Increment used entries
-    const newUsedEntries = existing.usedEntries + 1;
-    const newStatus = existing.isMultiEntry && newUsedEntries < existing.maxEntries 
-      ? 'ACTIVE' 
-      : 'USED';
-
-    const entry = await vmsPrisma.preApprovedVisitor.update({
+    const entry = await prisma.vMSPreApproval.update({
       where: { id },
       data: {
-        usedEntries: newUsedEntries,
-        status: newStatus,
-      },
-    });
-
-    // Log action
-    await vmsPrisma.auditLog.create({
-      data: {
-        userId: req.user?.userId,
-        action: 'PREAPPROVE_USE',
-        entity: 'preapproved',
-        entityId: entry.id,
-        newValue: JSON.stringify({ usedEntries: newUsedEntries, status: newStatus }),
+        status: 'USED',
+        usedAt: now,
       },
     });
 
     res.json({
       message: 'Pre-approval used successfully',
       entry,
-      remainingEntries: existing.maxEntries - newUsedEntries,
     });
   } catch (error) {
     console.error('Use pre-approval error:', error);
@@ -393,7 +289,7 @@ exports.cancelPreApproval = async (req, res) => {
     const { id } = req.params;
     const { reason } = req.body;
 
-    const existing = await vmsPrisma.preApprovedVisitor.findUnique({ where: { id } });
+    const existing = await prisma.vMSPreApproval.findUnique({ where: { id } });
     if (!existing) {
       return res.status(404).json({ message: 'Pre-approved visitor not found' });
     }
@@ -402,24 +298,10 @@ exports.cancelPreApproval = async (req, res) => {
       return res.status(400).json({ message: 'Only active pre-approvals can be cancelled' });
     }
 
-    const entry = await vmsPrisma.preApprovedVisitor.update({
+    const entry = await prisma.vMSPreApproval.update({
       where: { id },
       data: {
         status: 'CANCELLED',
-        remarks: existing.remarks 
-          ? `${existing.remarks}\n\nCancelled: ${reason || 'No reason provided'}` 
-          : `Cancelled: ${reason || 'No reason provided'}`,
-      },
-    });
-
-    // Log action
-    await vmsPrisma.auditLog.create({
-      data: {
-        userId: req.user?.userId,
-        action: 'PREAPPROVE_CANCEL',
-        entity: 'preapproved',
-        entityId: entry.id,
-        newValue: JSON.stringify({ reason }),
       },
     });
 
@@ -438,23 +320,12 @@ exports.deletePreApprovedVisitor = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const existing = await vmsPrisma.preApprovedVisitor.findUnique({ where: { id } });
+    const existing = await prisma.vMSPreApproval.findUnique({ where: { id } });
     if (!existing) {
       return res.status(404).json({ message: 'Pre-approved visitor not found' });
     }
 
-    await vmsPrisma.preApprovedVisitor.delete({ where: { id } });
-
-    // Log action
-    await vmsPrisma.auditLog.create({
-      data: {
-        userId: req.user?.userId,
-        action: 'PREAPPROVE_DELETE',
-        entity: 'preapproved',
-        entityId: id,
-        oldValue: JSON.stringify(existing),
-      },
-    });
+    await prisma.vMSPreApproval.delete({ where: { id } });
 
     res.json({ message: 'Pre-approval deleted successfully' });
   } catch (error) {
@@ -467,6 +338,10 @@ exports.deletePreApprovedVisitor = async (req, res) => {
 exports.getPreApprovalStats = async (req, res) => {
   try {
     const now = new Date();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
 
     const [
       total,
@@ -476,18 +351,21 @@ exports.getPreApprovalStats = async (req, res) => {
       cancelled,
       upcomingToday,
     ] = await Promise.all([
-      vmsPrisma.preApprovedVisitor.count(),
-      vmsPrisma.preApprovedVisitor.count({ where: { status: 'ACTIVE' } }),
-      vmsPrisma.preApprovedVisitor.count({ where: { status: 'USED' } }),
-      vmsPrisma.preApprovedVisitor.count({ where: { status: 'EXPIRED' } }),
-      vmsPrisma.preApprovedVisitor.count({ where: { status: 'CANCELLED' } }),
-      vmsPrisma.preApprovedVisitor.count({
+      prisma.vMSPreApproval.count(),
+      prisma.vMSPreApproval.count({ where: { status: 'ACTIVE' } }),
+      prisma.vMSPreApproval.count({ where: { status: 'USED' } }),
+      prisma.vMSPreApproval.count({ 
+        where: { 
+          status: 'ACTIVE',
+          validUntil: { lt: now }
+        } 
+      }),
+      prisma.vMSPreApproval.count({ where: { status: 'CANCELLED' } }),
+      prisma.vMSPreApproval.count({
         where: {
           status: 'ACTIVE',
-          validFrom: {
-            gte: new Date(now.setHours(0, 0, 0, 0)),
-            lt: new Date(now.setHours(23, 59, 59, 999)),
-          },
+          validFrom: { lte: tomorrow },
+          validUntil: { gte: today },
         },
       }),
     ]);

@@ -30,6 +30,15 @@ const VMSDashboard = lazy(() => import('./pages/vms/VMSDashboard'))
 const VMSVisitors = lazy(() => import('./pages/vms/VMSVisitors'))
 const VMSGatepasses = lazy(() => import('./pages/vms/VMSGatepasses'))
 
+// VMS Admin pages - lazy loaded
+const PreApprovedList = lazy(() => import('./pages/vms/PreApprovedList'))
+const NewPreApproval = lazy(() => import('./pages/vms/NewPreApproval'))
+const PreApprovalDetail = lazy(() => import('./pages/vms/PreApprovalDetail'))
+const BlacklistList = lazy(() => import('./pages/vms/BlacklistList'))
+const AddToBlacklist = lazy(() => import('./pages/vms/AddToBlacklist'))
+const VMSReports = lazy(() => import('./pages/vms/VMSReports'))
+const VMSSettings = lazy(() => import('./pages/vms/VMSSettings'))
+
 // VMS QR Check-in (NEW) - Public pages
 const PublicCheckIn = lazy(() => import('./pages/vms/PublicCheckIn'))
 const SingleCheckIn = lazy(() => import('./pages/vms/SingleCheckIn'))
@@ -305,27 +314,38 @@ function App() {
         <Route index element={<Navigate to="/vms/admin/dashboard" replace />} />
         <Route path="dashboard" element={<VMSDashboard />} />
         <Route path="visitors" element={<VMSVisitors />} />
+        
+        {/* Gatepasses - Note: Gatepasses are created via visitor registration flow */}
         <Route path="gatepasses" element={<VMSGatepasses />} />
-        <Route path="gatepasses/new" element={<div className="p-4">New Gatepass - Coming Soon</div>} />
-        <Route path="gatepasses/:id" element={<div className="p-4">Gatepass Details - Coming Soon</div>} />
-        <Route path="gatepasses/:id/edit" element={<div className="p-4">Edit Gatepass - Coming Soon</div>} />
-        <Route path="gatepasses/scan" element={<div className="p-4">Scan QR - Coming Soon</div>} />
+        <Route path="gatepasses/:id" element={<div className="p-4">Gatepass Details - View visitor's gatepass</div>} />
+        <Route path="gatepasses/scan" element={<GuardDashboard />} />
         
         {/* Guard/Reception Live Dashboard */}
         <Route path="guard" element={<GuardDashboard />} />
         <Route path="security" element={<GuardDashboard />} />
         <Route path="reception" element={<GuardDashboard />} />
         
-        {/* Company Management (for multi-tenant) */}
-        <Route path="companies" element={<div className="p-4">Company Management - Coming Soon</div>} />
-        <Route path="company" element={<div className="p-4">Company Settings - Coming Soon</div>} />
-        <Route path="company/qr" element={<div className="p-4">Company QR Code - Coming Soon</div>} />
+        {/* Pre-approved Visitors */}
+        <Route path="preapproved" element={<PreApprovedList />} />
+        <Route path="preapproved/new" element={<NewPreApproval />} />
+        <Route path="preapproved/:id" element={<PreApprovalDetail />} />
+        <Route path="preapproved/:id/edit" element={<NewPreApproval />} />
         
-        {/* Other VMS routes */}
-        <Route path="preapproved" element={<div className="p-4">Pre-approved Visitors - Coming Soon</div>} />
-        <Route path="blacklist" element={<div className="p-4">Blacklist - Coming Soon</div>} />
-        <Route path="reports" element={<div className="p-4">Reports - Coming Soon</div>} />
-        <Route path="settings" element={<div className="p-4">Settings - Coming Soon</div>} />
+        {/* Blacklist Management */}
+        <Route path="blacklist" element={<BlacklistList />} />
+        <Route path="blacklist/new" element={<AddToBlacklist />} />
+        <Route path="blacklist/:id" element={<div className="p-4">Blacklist Entry Details</div>} />
+        
+        {/* Reports & Analytics */}
+        <Route path="reports" element={<VMSReports />} />
+        
+        {/* Settings */}
+        <Route path="settings" element={<VMSSettings />} />
+        
+        {/* Company Management (for multi-tenant) */}
+        <Route path="companies" element={<VMSSettings />} />
+        <Route path="company" element={<VMSSettings />} />
+        <Route path="company/qr" element={<div className="p-4">Company QR Code - Coming Soon</div>} />
       </Route>
 
       {/* Legacy routes - redirect to new structure */}

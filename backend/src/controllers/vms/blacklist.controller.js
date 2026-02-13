@@ -1,6 +1,21 @@
 // VMS Blacklist Controller
-const vmsPrisma = require('../../config/vms-prisma');
-const { v4: uuidv4 } = require('uuid');
+// Uses correct Prisma model names for VMS tables
+
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
+
+// Blacklist reasons
+const BLACKLIST_REASONS = [
+  'MISCONDUCT',
+  'THEFT',
+  'VIOLENCE',
+  'FRAUD',
+  'TRESPASSING',
+  'HARASSMENT',
+  'POLICY_VIOLATION',
+  'SECURITY_THREAT',
+  'OTHER'
+];
 
 // Get all blacklist entries with pagination and filters
 exports.getBlacklist = async (req, res) => {
@@ -23,11 +38,10 @@ exports.getBlacklist = async (req, res) => {
 
     if (search) {
       where.OR = [
-        { firstName: { contains: search } },
-        { lastName: { contains: search } },
+        { visitorName: { contains: search } },
         { phone: { contains: search } },
         { email: { contains: search } },
-        { idProofNumber: { contains: search } },
+        { idNumber: { contains: search } },
       ];
     }
 
@@ -41,24 +55,33 @@ exports.getBlacklist = async (req, res) => {
 
     // Get entries with pagination
     const [entries, total] = await Promise.all([
-      vmsPrisma.blacklistEntry.findMany({
+      prisma.vMSBlacklist.findMany({
         where,
         skip,
         take,
         orderBy: { [sortBy]: sortOrder },
-        include: {
-          createdBy: {
-            select: { firstName: true, lastName: true },
-          },
-        },
       }),
-      vmsPrisma.blacklistEntry.count({ where }),
+      prisma.vMSBlacklist.count({ where }),
     ]);
 
     res.json({
       entries: entries.map(e => ({
-        ...e,
-        createdByName: e.createdBy ? `${e.createdBy.firstName} ${e.createdBy.lastName}` : null,
+        id: e.id,
+        visitorName: e.visitorName,
+        phone: e.phone,
+        email: e.email,
+        idType: e.idType,
+        idNumber: e.idNumber,
+        reason: e.reason,
+        description: e.description,
+        isActive: e.isActive,
+        isPermanent: e.isPermanent,
+        expiresAt: e.expiresAt,
+        addedBy: e.addedBy,
+        createdAt: e.createdAt,
+        removedAt: e.removedAt,
+        removedBy: e.removedBy,
+        removalReason: e.removalReason,
       })),
       pagination: {
         page: parseInt(page),
@@ -69,7 +92,7 @@ exports.getBlacklist = async (req, res) => {
     });
   } catch (error) {
     console.error('Get blacklist error:', error);
-    res.status(500).json({ message: 'Failed to get blacklist', error: error.message });
+    res.status(500).json({ message: 'Failed to get blacklist entries', error: error.message });
   }
 };
 
@@ -78,13 +101,8 @@ exports.getBlacklistEntry = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const entry = await vmsPrisma.blacklistEntry.findUnique({
+    const entry = await prisma.vMSBlacklist.findUnique({
       where: { id },
-      include: {
-        createdBy: {
-          select: { firstName: true, lastName: true },
-        },
-      },
     });
 
     if (!entry) {
@@ -98,27 +116,26 @@ exports.getBlacklistEntry = async (req, res) => {
   }
 };
 
-// Check if person is blacklisted
+// Check if visitor is blacklisted
 exports.checkBlacklist = async (req, res) => {
   try {
-    const { phone, email, idProofNumber } = req.query;
+    const { phone, idNumber } = req.query;
 
-    const orConditions = [];
-    if (phone) orConditions.push({ phone });
-    if (email) orConditions.push({ email });
-    if (idProofNumber) orConditions.push({ idProofNumber });
-
-    if (orConditions.length === 0) {
-      return res.status(400).json({ message: 'At least one identifier is required' });
+    if (!phone && !idNumber) {
+      return res.status(400).json({ message: 'Phone or ID number is required' });
     }
 
-    const entry = await vmsPrisma.blacklistEntry.findFirst({
+    const orConditions = [];
+    if (phone) orConditions.push({ phone: phone.replace(/\D/g, '') });
+    if (idNumber) orConditions.push({ idNumber });
+
+    const entry = await prisma.vMSBlacklist.findFirst({
       where: {
         OR: orConditions,
         isActive: true,
         OR: [
-          { expiresAt: null },
-          { expiresAt: { gt: new Date() } },
+          { isPermanent: true },
+          { expiresAt: { gte: new Date() } },
         ],
       },
     });
@@ -126,9 +143,14 @@ exports.checkBlacklist = async (req, res) => {
     if (entry) {
       res.json({
         isBlacklisted: true,
-        reason: entry.reason,
-        reasonDetails: entry.reasonDetails,
-        incidentDate: entry.incidentDate,
+        entry: {
+          id: entry.id,
+          visitorName: entry.visitorName,
+          reason: entry.reason,
+          description: entry.description,
+          isPermanent: entry.isPermanent,
+          expiresAt: entry.expiresAt,
+        },
       });
     } else {
       res.json({ isBlacklisted: false });
@@ -143,29 +165,35 @@ exports.checkBlacklist = async (req, res) => {
 exports.addToBlacklist = async (req, res) => {
   try {
     const {
-      visitorId,
-      firstName,
-      lastName,
+      visitorName,
       phone,
       email,
-      idProofType,
-      idProofNumber,
-      photo,
+      idType,
+      idNumber,
       reason,
-      reasonDetails,
-      incidentDate,
-      incidentLocation,
+      description,
+      isPermanent = true,
       expiresAt,
+      visitorId,
     } = req.body;
 
+    // Validation
+    if (!visitorName || !phone || !reason) {
+      return res.status(400).json({ 
+        message: 'Missing required fields: visitorName, phone, reason' 
+      });
+    }
+
+    if (!BLACKLIST_REASONS.includes(reason)) {
+      return res.status(400).json({ 
+        message: `Invalid reason. Must be one of: ${BLACKLIST_REASONS.join(', ')}` 
+      });
+    }
+
     // Check if already blacklisted
-    const existing = await vmsPrisma.blacklistEntry.findFirst({
+    const existing = await prisma.vMSBlacklist.findFirst({
       where: {
-        OR: [
-          phone ? { phone } : undefined,
-          idProofNumber ? { idProofNumber } : undefined,
-          visitorId ? { visitorId } : undefined,
-        ].filter(Boolean),
+        phone: phone.replace(/\D/g, ''),
         isActive: true,
       },
     });
@@ -178,45 +206,20 @@ exports.addToBlacklist = async (req, res) => {
     }
 
     // Create blacklist entry
-    const entry = await vmsPrisma.blacklistEntry.create({
+    const entry = await prisma.vMSBlacklist.create({
       data: {
-        visitorId,
-        firstName,
-        lastName,
-        phone,
-        email,
-        idProofType,
-        idProofNumber,
-        photo,
+        visitorName,
+        phone: phone.replace(/\D/g, ''),
+        email: email || null,
+        idType: idType || null,
+        idNumber: idNumber || null,
         reason,
-        reasonDetails,
-        incidentDate: incidentDate ? new Date(incidentDate) : null,
-        incidentLocation,
-        expiresAt: expiresAt ? new Date(expiresAt) : null,
+        description: description || null,
+        isPermanent,
+        expiresAt: !isPermanent && expiresAt ? new Date(expiresAt) : null,
+        visitorId: visitorId || null,
+        addedBy: req.user?.userId || 'system',
         isActive: true,
-        createdById: req.user?.userId,
-      },
-    });
-
-    // If visitorId is provided, update the visitor record
-    if (visitorId) {
-      await vmsPrisma.visitor.update({
-        where: { id: visitorId },
-        data: {
-          isBlacklisted: true,
-          blacklistReason: reason,
-        },
-      });
-    }
-
-    // Log action
-    await vmsPrisma.auditLog.create({
-      data: {
-        userId: req.user?.userId,
-        action: 'BLACKLIST_ADD',
-        entity: 'blacklist',
-        entityId: entry.id,
-        newValue: JSON.stringify(entry),
       },
     });
 
@@ -235,51 +238,34 @@ exports.updateBlacklistEntry = async (req, res) => {
   try {
     const { id } = req.params;
     const {
+      visitorName,
+      phone,
+      email,
+      idType,
+      idNumber,
       reason,
-      reasonDetails,
-      incidentDate,
-      incidentLocation,
+      description,
+      isPermanent,
       expiresAt,
-      isActive,
     } = req.body;
 
-    const existing = await vmsPrisma.blacklistEntry.findUnique({ where: { id } });
+    const existing = await prisma.vMSBlacklist.findUnique({ where: { id } });
     if (!existing) {
       return res.status(404).json({ message: 'Blacklist entry not found' });
     }
 
-    const entry = await vmsPrisma.blacklistEntry.update({
+    const entry = await prisma.vMSBlacklist.update({
       where: { id },
       data: {
+        visitorName,
+        phone: phone ? phone.replace(/\D/g, '') : undefined,
+        email,
+        idType,
+        idNumber,
         reason,
-        reasonDetails,
-        incidentDate: incidentDate ? new Date(incidentDate) : undefined,
-        incidentLocation,
-        expiresAt: expiresAt ? new Date(expiresAt) : null,
-        isActive,
-      },
-    });
-
-    // Update associated visitor if exists
-    if (existing.visitorId) {
-      await vmsPrisma.visitor.update({
-        where: { id: existing.visitorId },
-        data: {
-          isBlacklisted: isActive ?? true,
-          blacklistReason: isActive === false ? null : reason,
-        },
-      });
-    }
-
-    // Log action
-    await vmsPrisma.auditLog.create({
-      data: {
-        userId: req.user?.userId,
-        action: 'BLACKLIST_UPDATE',
-        entity: 'blacklist',
-        entityId: entry.id,
-        oldValue: JSON.stringify(existing),
-        newValue: JSON.stringify(entry),
+        description,
+        isPermanent,
+        expiresAt: !isPermanent && expiresAt ? new Date(expiresAt) : null,
       },
     });
 
@@ -293,47 +279,28 @@ exports.updateBlacklistEntry = async (req, res) => {
   }
 };
 
-// Remove from blacklist (soft delete - deactivate)
+// Remove from blacklist (soft delete)
 exports.removeFromBlacklist = async (req, res) => {
   try {
     const { id } = req.params;
     const { reason } = req.body;
 
-    const existing = await vmsPrisma.blacklistEntry.findUnique({ where: { id } });
+    const existing = await prisma.vMSBlacklist.findUnique({ where: { id } });
     if (!existing) {
       return res.status(404).json({ message: 'Blacklist entry not found' });
     }
 
-    const entry = await vmsPrisma.blacklistEntry.update({
+    if (!existing.isActive) {
+      return res.status(400).json({ message: 'Entry is already removed from blacklist' });
+    }
+
+    const entry = await prisma.vMSBlacklist.update({
       where: { id },
       data: {
         isActive: false,
-        reasonDetails: existing.reasonDetails 
-          ? `${existing.reasonDetails}\n\nRemoved: ${reason || 'No reason provided'}` 
-          : `Removed: ${reason || 'No reason provided'}`,
-      },
-    });
-
-    // Update associated visitor if exists
-    if (existing.visitorId) {
-      await vmsPrisma.visitor.update({
-        where: { id: existing.visitorId },
-        data: {
-          isBlacklisted: false,
-          blacklistReason: null,
-        },
-      });
-    }
-
-    // Log action
-    await vmsPrisma.auditLog.create({
-      data: {
-        userId: req.user?.userId,
-        action: 'BLACKLIST_REMOVE',
-        entity: 'blacklist',
-        entityId: entry.id,
-        oldValue: JSON.stringify(existing),
-        newValue: JSON.stringify({ reason }),
+        removedAt: new Date(),
+        removedBy: req.user?.userId || 'system',
+        removalReason: reason || 'Removed by admin',
       },
     });
 
@@ -352,34 +319,12 @@ exports.deleteBlacklistEntry = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const existing = await vmsPrisma.blacklistEntry.findUnique({ where: { id } });
+    const existing = await prisma.vMSBlacklist.findUnique({ where: { id } });
     if (!existing) {
       return res.status(404).json({ message: 'Blacklist entry not found' });
     }
 
-    // Update associated visitor if exists
-    if (existing.visitorId) {
-      await vmsPrisma.visitor.update({
-        where: { id: existing.visitorId },
-        data: {
-          isBlacklisted: false,
-          blacklistReason: null,
-        },
-      });
-    }
-
-    await vmsPrisma.blacklistEntry.delete({ where: { id } });
-
-    // Log action
-    await vmsPrisma.auditLog.create({
-      data: {
-        userId: req.user?.userId,
-        action: 'BLACKLIST_DELETE',
-        entity: 'blacklist',
-        entityId: id,
-        oldValue: JSON.stringify(existing),
-      },
-    });
+    await prisma.vMSBlacklist.delete({ where: { id } });
 
     res.json({ message: 'Blacklist entry deleted successfully' });
   } catch (error) {
@@ -391,40 +336,30 @@ exports.deleteBlacklistEntry = async (req, res) => {
 // Get blacklist statistics
 exports.getBlacklistStats = async (req, res) => {
   try {
+    const now = new Date();
+    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
     const [
       total,
       active,
-      byReason,
-      recentAdditions,
+      removed,
+      thisMonth,
     ] = await Promise.all([
-      vmsPrisma.blacklistEntry.count(),
-      vmsPrisma.blacklistEntry.count({ where: { isActive: true } }),
-      vmsPrisma.blacklistEntry.groupBy({
-        by: ['reason'],
-        where: { isActive: true },
-        _count: { reason: true },
-      }),
-      vmsPrisma.blacklistEntry.findMany({
-        where: { isActive: true },
-        orderBy: { createdAt: 'desc' },
-        take: 5,
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          phone: true,
-          reason: true,
-          createdAt: true,
-        },
+      prisma.vMSBlacklist.count(),
+      prisma.vMSBlacklist.count({ where: { isActive: true } }),
+      prisma.vMSBlacklist.count({ where: { isActive: false } }),
+      prisma.vMSBlacklist.count({ 
+        where: { 
+          createdAt: { gte: thisMonthStart } 
+        } 
       }),
     ]);
 
     res.json({
       total,
       active,
-      inactive: total - active,
-      byReason: byReason.map(r => ({ reason: r.reason, count: r._count.reason })),
-      recentAdditions,
+      removed,
+      thisMonth,
     });
   } catch (error) {
     console.error('Get blacklist stats error:', error);
@@ -432,17 +367,7 @@ exports.getBlacklistStats = async (req, res) => {
   }
 };
 
-// Blacklist reasons enum
-exports.getBlacklistReasons = (req, res) => {
-  const reasons = [
-    { value: 'THEFT', label: 'Theft' },
-    { value: 'MISBEHAVIOR', label: 'Misbehavior' },
-    { value: 'SECURITY_THREAT', label: 'Security Threat' },
-    { value: 'FRAUD', label: 'Fraud' },
-    { value: 'TRESPASSING', label: 'Trespassing' },
-    { value: 'VIOLENCE', label: 'Violence' },
-    { value: 'HARASSMENT', label: 'Harassment' },
-    { value: 'OTHER', label: 'Other' },
-  ];
-  res.json(reasons);
+// Get blacklist reasons
+exports.getBlacklistReasons = async (req, res) => {
+  res.json({ reasons: BLACKLIST_REASONS });
 };

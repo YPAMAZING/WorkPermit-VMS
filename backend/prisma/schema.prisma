@@ -446,3 +446,35 @@ model VMSPreApproval {
   @@index([status])
   @@map("vms_pre_approvals")
 }
+
+model VMSBlacklist {
+  id              String   @id @default(uuid()) @db.VarChar(36)
+  visitorName     String   @db.VarChar(255)
+  phone           String   @db.VarChar(20)
+  email           String?  @db.VarChar(255)
+  idType          String?  @db.VarChar(50)
+  idNumber        String?  @db.VarChar(100)
+  
+  reason          String   @db.VarChar(50)   // MISCONDUCT, THEFT, VIOLENCE, FRAUD, etc.
+  description     String?  @db.Text
+  
+  isActive        Boolean  @default(true)
+  isPermanent     Boolean  @default(true)
+  expiresAt       DateTime?
+  
+  // Removal info
+  removedAt       DateTime?
+  removedBy       String?  @db.VarChar(36)
+  removalReason   String?  @db.Text
+  
+  addedBy         String   @db.VarChar(36)
+  visitorId       String?  @db.VarChar(36)   // Link to visitor if exists
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([phone])
+  @@index([isActive])
+  @@index([reason])
+  @@map("vms_blacklist")
+}
