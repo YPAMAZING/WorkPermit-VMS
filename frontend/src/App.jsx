@@ -38,6 +38,8 @@ const BlacklistList = lazy(() => import('./pages/vms/BlacklistList'))
 const AddToBlacklist = lazy(() => import('./pages/vms/AddToBlacklist'))
 const VMSReports = lazy(() => import('./pages/vms/VMSReports'))
 const VMSSettings = lazy(() => import('./pages/vms/VMSSettings'))
+const CompanyDashboard = lazy(() => import('./pages/vms/CompanyDashboard'))
+const VMSUserManagement = lazy(() => import('./pages/vms/VMSUserManagement'))
 
 // VMS QR Check-in (NEW) - Public pages
 const PublicCheckIn = lazy(() => import('./pages/vms/PublicCheckIn'))
@@ -341,6 +343,12 @@ function App() {
         
         {/* Settings */}
         <Route path="settings" element={<VMSSettings />} />
+        
+        {/* User Management - For admins to create company users */}
+        <Route path="users" element={<VMSUserManagement />} />
+        
+        {/* Company Dashboard - For company users to approve/reject visitors */}
+        <Route path="company-dashboard" element={<CompanyDashboard />} />
         
         {/* Company Management (for multi-tenant) */}
         <Route path="companies" element={<VMSSettings />} />

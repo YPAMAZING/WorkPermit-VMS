@@ -16,6 +16,8 @@ import {
   Bell,
   Search,
   QrCode,
+  Building2,
+  UserCog,
 } from 'lucide-react'
 
 const VMSLayout = () => {
@@ -37,6 +39,13 @@ const VMSLayout = () => {
       path: '/vms/admin/dashboard',
       icon: LayoutDashboard,
       permission: 'vms.dashboard.view',
+    },
+    {
+      name: 'Company Dashboard',
+      path: '/vms/admin/company-dashboard',
+      icon: Building2,
+      permission: 'vms.visitors.approve',
+      description: 'Approve/Reject visitors for your company',
     },
     {
       name: 'Visitors',
@@ -67,6 +76,13 @@ const VMSLayout = () => {
       path: '/vms/admin/reports',
       icon: BarChart3,
       permission: 'vms.reports.view',
+    },
+    {
+      name: 'User Management',
+      path: '/vms/admin/users',
+      icon: UserCog,
+      permission: 'vms.users.manage',
+      adminOnly: true,
     },
     {
       name: 'Settings',
