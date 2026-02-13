@@ -140,11 +140,18 @@ const VMSDashboard = () => {
             Refresh
           </button>
           <button
-            onClick={() => navigate('/vms/admin/gatepasses/new')}
+            onClick={() => navigate('/vms/admin/preapproved/new')}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+          >
+            <UserCheck size={18} />
+            Pre-approve Visitor
+          </button>
+          <button
+            onClick={() => navigate('/vms/admin/guard')}
             className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
           >
             <FileText size={18} />
-            New Gatepass
+            Reception Desk
           </button>
         </div>
       </div>
