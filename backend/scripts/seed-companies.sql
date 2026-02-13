@@ -1,0 +1,63 @@
+-- SQL Script to seed default companies
+-- Run this directly in MySQL if the API fails
+-- Usage: mysql -u root -p workpermit_db < seed-companies.sql
+
+-- Insert companies with approval OFF by default
+INSERT IGNORE INTO vms_companies (id, name, displayName, requireApproval, autoApproveVisitors, notifyOnVisitor, isActive, createdAt, updatedAt) VALUES
+(UUID(), 'Adani Enterprises', 'Adani Enterprises', 0, 1, 1, 1, NOW(), NOW()),
+(UUID(), 'Aquity Solutions', 'Aquity Solutions', 0, 1, 1, 1, NOW(), NOW()),
+(UUID(), 'AWFIS Solutions Spaces', 'AWFIS Solutions Spaces', 0, 1, 1, 1, NOW(), NOW()),
+(UUID(), 'Azelis', 'Azelis', 0, 1, 1, 1, NOW(), NOW()),
+(UUID(), 'Baker Huges Oilfield Services', 'Baker Huges Oilfield Services', 0, 1, 1, 1, NOW(), NOW()),
+(UUID(), 'Bharat Serum & Vaccines', 'Bharat Serum & Vaccines', 0, 1, 1, 1, NOW(), NOW()),
+(UUID(), 'Birla Management Centre', 'Birla Management Centre', 0, 1, 1, 1, NOW(), NOW()),
+(UUID(), 'Brueckner Group India', 'Brueckner Group India', 0, 1, 1, 1, NOW(), NOW()),
+(UUID(), 'Clariant Chemicals', 'Clariant Chemicals', 0, 1, 1, 1, NOW(), NOW()),
+(UUID(), 'Clover Infotech', 'Clover Infotech', 0, 1, 1, 1, NOW(), NOW()),
+(UUID(), 'Covestro', 'Covestro', 0, 1, 1, 1, NOW(), NOW()),
+(UUID(), 'Creative IT', 'Creative IT', 0, 1, 1, 1, NOW(), NOW()),
+(UUID(), 'DSP Integrated Services', 'DSP Integrated Services', 0, 1, 1, 1, NOW(), NOW()),
+(UUID(), 'ECI Telecom', 'ECI Telecom', 0, 1, 1, 1, NOW(), NOW()),
+(UUID(), 'EFC', 'EFC', 0, 1, 1, 1, NOW(), NOW()),
+(UUID(), 'EFC Office Infra', 'EFC Office Infra', 0, 1, 1, 1, NOW(), NOW()),
+(UUID(), 'EFC Office Spaces', 'EFC Office Spaces', 0, 1, 1, 1, NOW(), NOW()),
+(UUID(), 'EFC Tech Spaces', 'EFC Tech Spaces', 0, 1, 1, 1, NOW(), NOW()),
+(UUID(), 'ESDS', 'ESDS', 0, 1, 1, 1, NOW(), NOW()),
+(UUID(), 'Garmercy Tech Park', 'Garmercy Tech Park', 0, 1, 1, 1, NOW(), NOW()),
+(UUID(), 'Godrej', 'Godrej', 0, 1, 1, 1, NOW(), NOW()),
+(UUID(), 'Hansa Direct', 'Hansa Direct', 0, 1, 1, 1, NOW(), NOW()),
+(UUID(), 'HCL Technologies', 'HCL Technologies', 0, 1, 1, 1, NOW(), NOW()),
+(UUID(), 'Hindustan Fields Services', 'Hindustan Fields Services', 0, 1, 1, 1, NOW(), NOW()),
+(UUID(), 'Holcim Services', 'Holcim Services', 0, 1, 1, 1, NOW(), NOW()),
+(UUID(), 'Home Credit', 'Home Credit', 0, 1, 1, 1, NOW(), NOW()),
+(UUID(), 'Icra', 'Icra', 0, 1, 1, 1, NOW(), NOW()),
+(UUID(), 'Inchcap Shipping Services', 'Inchcap Shipping Services', 0, 1, 1, 1, NOW(), NOW()),
+(UUID(), 'Indian Commodity Exchange', 'Indian Commodity Exchange', 0, 1, 1, 1, NOW(), NOW()),
+(UUID(), 'Invenio Business Solution', 'Invenio Business Solution', 0, 1, 1, 1, NOW(), NOW()),
+(UUID(), 'ISSGF', 'ISSGF', 0, 1, 1, 1, NOW(), NOW()),
+(UUID(), 'Jacobs Solutions', 'Jacobs Solutions', 0, 1, 1, 1, NOW(), NOW()),
+(UUID(), 'Kyndryl Solutions', 'Kyndryl Solutions', 0, 1, 1, 1, NOW(), NOW()),
+(UUID(), 'Lupin', 'Lupin', 0, 1, 1, 1, NOW(), NOW()),
+(UUID(), 'Maersk Global Service Centre', 'Maersk Global Service Centre', 0, 1, 1, 1, NOW(), NOW()),
+(UUID(), 'Magic Bus', 'Magic Bus', 0, 1, 1, 1, NOW(), NOW()),
+(UUID(), 'NMDC Data Centre', 'NMDC Data Centre', 0, 1, 1, 1, NOW(), NOW()),
+(UUID(), 'Nouryon Chemicals', 'Nouryon Chemicals', 0, 1, 1, 1, NOW(), NOW()),
+(UUID(), 'Quess Corp', 'Quess Corp', 0, 1, 1, 1, NOW(), NOW()),
+(UUID(), 'RBL Bank', 'RBL Bank', 0, 1, 1, 1, NOW(), NOW()),
+(UUID(), 'Reliance General Insurance', 'Reliance General Insurance', 0, 1, 1, 1, NOW(), NOW()),
+(UUID(), 'Rubicon Maritime India', 'Rubicon Maritime India', 0, 1, 1, 1, NOW(), NOW()),
+(UUID(), 'Sify Infinity Spaces', 'Sify Infinity Spaces', 0, 1, 1, 1, NOW(), NOW()),
+(UUID(), 'Spocto Business Solutions', 'Spocto Business Solutions', 0, 1, 1, 1, NOW(), NOW()),
+(UUID(), 'Suki Solution', 'Suki Solution', 0, 1, 1, 1, NOW(), NOW()),
+(UUID(), 'Sulzer Tech', 'Sulzer Tech', 0, 1, 1, 1, NOW(), NOW()),
+(UUID(), 'Sutherland Global Services', 'Sutherland Global Services', 0, 1, 1, 1, NOW(), NOW()),
+(UUID(), 'Taldar Hotels & Resorts', 'Taldar Hotels & Resorts', 0, 1, 1, 1, NOW(), NOW()),
+(UUID(), 'Tata Consulting Engineering', 'Tata Consulting Engineering', 0, 1, 1, 1, NOW(), NOW()),
+(UUID(), 'Technics Reunidas', 'Technics Reunidas', 0, 1, 1, 1, NOW(), NOW()),
+(UUID(), 'Universal Sompo', 'Universal Sompo', 0, 1, 1, 1, NOW(), NOW()),
+(UUID(), 'Vodafone Idea', 'Vodafone Idea', 0, 1, 1, 1, NOW(), NOW()),
+(UUID(), 'Yes Bank', 'Yes Bank', 0, 1, 1, 1, NOW(), NOW());
+
+-- Verify the insert
+SELECT COUNT(*) as total_companies FROM vms_companies;
+SELECT name, requireApproval, autoApproveVisitors FROM vms_companies LIMIT 10;
