@@ -110,7 +110,7 @@ const VMSGatepasses = () => {
         </div>
         {canCreateGatepasses && (
           <button
-            onClick={() => navigate('/vms/gatepasses/new')}
+            onClick={() => navigate('/vms/admin/gatepasses/new')}
             className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
           >
             <Plus size={18} />
@@ -221,7 +221,7 @@ const VMSGatepasses = () => {
             <p>No gatepasses found</p>
             {canCreateGatepasses && (
               <button
-                onClick={() => navigate('/vms/gatepasses/new')}
+                onClick={() => navigate('/vms/admin/gatepasses/new')}
                 className="mt-4 text-teal-600 hover:text-teal-700"
               >
                 Create your first gatepass
@@ -314,7 +314,7 @@ const VMSGatepasses = () => {
                         <td className="px-4 py-4">
                           <div className="flex items-center justify-end gap-2">
                             <button
-                              onClick={() => navigate(`/vms/gatepasses/${gp.id}`)}
+                              onClick={() => navigate(`/vms/admin/gatepasses/${gp.id}`)}
                               className="p-2 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
                               title="View"
                             >
@@ -345,7 +345,7 @@ const VMSGatepasses = () => {
                             )}
                             {canEditGatepasses && ['SCHEDULED'].includes(gp.status) && (
                               <button
-                                onClick={() => navigate(`/vms/gatepasses/${gp.id}/edit`)}
+                                onClick={() => navigate(`/vms/admin/gatepasses/${gp.id}/edit`)}
                                 className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                                 title="Edit"
                               >

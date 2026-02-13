@@ -306,6 +306,10 @@ function App() {
         <Route path="dashboard" element={<VMSDashboard />} />
         <Route path="visitors" element={<VMSVisitors />} />
         <Route path="gatepasses" element={<VMSGatepasses />} />
+        <Route path="gatepasses/new" element={<div className="p-4">New Gatepass - Coming Soon</div>} />
+        <Route path="gatepasses/:id" element={<div className="p-4">Gatepass Details - Coming Soon</div>} />
+        <Route path="gatepasses/:id/edit" element={<div className="p-4">Edit Gatepass - Coming Soon</div>} />
+        <Route path="gatepasses/scan" element={<div className="p-4">Scan QR - Coming Soon</div>} />
         
         {/* Guard/Reception Live Dashboard */}
         <Route path="guard" element={<GuardDashboard />} />

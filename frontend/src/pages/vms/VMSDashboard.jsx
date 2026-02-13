@@ -140,7 +140,7 @@ const VMSDashboard = () => {
             Refresh
           </button>
           <button
-            onClick={() => navigate('/vms/gatepasses/new')}
+            onClick={() => navigate('/vms/admin/gatepasses/new')}
             className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
           >
             <FileText size={18} />
@@ -188,7 +188,7 @@ const VMSDashboard = () => {
           <div className="flex items-center justify-between p-5 border-b border-gray-100">
             <h2 className="text-lg font-semibold text-gray-800">Recent Gatepasses</h2>
             <button
-              onClick={() => navigate('/vms/gatepasses')}
+              onClick={() => navigate('/vms/admin/gatepasses')}
               className="text-sm text-teal-600 hover:text-teal-700 flex items-center gap-1"
             >
               View all <ArrowRight size={16} />
@@ -200,7 +200,7 @@ const VMSDashboard = () => {
                 <div
                   key={gp.id}
                   className="p-4 hover:bg-gray-50 cursor-pointer transition-colors"
-                  onClick={() => navigate(`/vms/gatepasses/${gp.id}`)}
+                  onClick={() => navigate(`/vms/admin/gatepasses/${gp.id}`)}
                 >
                   <div className="flex items-center gap-4">
                     <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center overflow-hidden">

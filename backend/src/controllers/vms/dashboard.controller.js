@@ -1,5 +1,5 @@
 // VMS Dashboard Controller
-// Uses correct Prisma model names for VMS tables
+// Uses correct Prisma model names for VMS tables and returns data in expected frontend format
 
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
@@ -18,7 +18,7 @@ const getCompanyFilter = (req) => {
   return {};
 };
 
-// Get dashboard overview
+// Get dashboard overview - Returns data in format expected by frontend VMSDashboard component
 exports.getDashboardOverview = async (req, res) => {
   try {
     const today = new Date();
@@ -31,22 +31,34 @@ exports.getDashboardOverview = async (req, res) => {
 
     // Get all stats in parallel using correct model names
     const [
-      // Today's gatepasses
-      todayGatepasses,
+      // Today's gatepasses by status
+      todayGatepassesTotal,
+      scheduledGatepasses,
       activeGatepasses,
+      completedGatepasses,
+      cancelledGatepasses,
       
       // Visitor stats  
       totalVisitors,
       newVisitorsToday,
-      checkedInToday,
+      
+      // Blacklist count
+      activeBlacklist,
       
       // Pre-approved
       activePreApprovals,
+      preApprovalsValidToday,
       
-      // Recent gatepasses
+      // Purpose breakdown for today
+      purposeBreakdown,
+      
+      // Recent gatepasses (last 10)
       recentGatepasses,
+      
+      // Recent visitors
+      recentVisitors,
     ] = await Promise.all([
-      // Today's gatepasses count
+      // Today's total gatepasses
       prisma.vMSGatepass.count({
         where: { 
           createdAt: { gte: today, lt: tomorrow },
@@ -54,27 +66,61 @@ exports.getDashboardOverview = async (req, res) => {
         },
       }).catch(() => 0),
       
-      // Active gatepasses
+      // Scheduled gatepasses (validFrom > now)
       prisma.vMSGatepass.count({
         where: { 
           status: 'ACTIVE',
+          validFrom: { gt: new Date() },
+          ...companyFilter 
+        },
+      }).catch(() => 0),
+      
+      // Active gatepasses (currently valid)
+      prisma.vMSGatepass.count({
+        where: { 
+          status: 'ACTIVE',
+          validFrom: { lte: new Date() },
+          validUntil: { gte: new Date() },
+          ...companyFilter 
+        },
+      }).catch(() => 0),
+
+      // Completed (used) gatepasses today
+      prisma.vMSGatepass.count({
+        where: { 
+          status: 'USED',
+          usedAt: { gte: today, lt: tomorrow },
+          ...companyFilter 
+        },
+      }).catch(() => 0),
+
+      // Cancelled gatepasses today
+      prisma.vMSGatepass.count({
+        where: { 
+          status: 'CANCELLED',
+          cancelledAt: { gte: today, lt: tomorrow },
           ...companyFilter 
         },
       }).catch(() => 0),
 
       // Total visitors
-      prisma.vMSVisitor.count().catch(() => 0),
+      prisma.vMSVisitor.count({
+        where: companyFilter,
+      }).catch(() => 0),
 
       // New visitors today
       prisma.vMSVisitor.count({
-        where: { createdAt: { gte: today, lt: tomorrow } },
+        where: { 
+          createdAt: { gte: today, lt: tomorrow },
+          ...companyFilter 
+        },
       }).catch(() => 0),
       
-      // Checked in today
+      // Active blacklist entries (count visitors with BLACKLISTED status)
       prisma.vMSVisitor.count({
         where: { 
-          status: 'CHECKED_IN',
-          checkInTime: { gte: today, lt: tomorrow }
+          status: 'BLACKLISTED',
+          ...companyFilter 
         },
       }).catch(() => 0),
 
@@ -87,48 +133,106 @@ exports.getDashboardOverview = async (req, res) => {
         },
       }).catch(() => 0),
 
+      // Pre-approvals valid today
+      prisma.vMSPreApproval.count({
+        where: { 
+          status: 'ACTIVE',
+          validFrom: { lte: tomorrow },
+          validUntil: { gte: today },
+          ...companyFilter 
+        },
+      }).catch(() => 0),
+
+      // Purpose breakdown - group gatepasses by visitor purpose
+      prisma.vMSVisitor.groupBy({
+        by: ['purpose'],
+        where: {
+          createdAt: { gte: today, lt: tomorrow },
+          ...companyFilter,
+        },
+        _count: { purpose: true },
+      }).catch(() => []),
+
       // Recent gatepasses (last 10)
       prisma.vMSGatepass.findMany({
         take: 10,
         orderBy: { createdAt: 'desc' },
+        where: companyFilter,
         include: {
           visitor: {
             select: {
               visitorName: true,
               phone: true,
+              companyFrom: true,
               companyToVisit: true,
+              personToMeet: true,
+              photo: true,
             }
           }
         },
-        ...companyFilter,
+      }).catch(() => []),
+
+      // Recent visitors
+      prisma.vMSVisitor.findMany({
+        take: 10,
+        orderBy: { createdAt: 'desc' },
+        where: companyFilter,
       }).catch(() => []),
     ]);
 
+    // Format response to match frontend expectations
     res.json({
-      todayGatepasses: {
-        total: todayGatepasses,
-        scheduled: 0,
-        active: activeGatepasses,
-        completed: 0,
+      // Today's gatepass stats (frontend expects overview.today.gatepasses)
+      today: {
+        gatepasses: {
+          total: todayGatepassesTotal,
+          scheduled: scheduledGatepasses,
+          active: activeGatepasses,
+          completed: completedGatepasses,
+          cancelled: cancelledGatepasses,
+        },
+        newVisitors: newVisitorsToday,
+        preApprovalsValid: preApprovalsValidToday,
       },
-      visitors: {
-        total: totalVisitors,
-        newToday: newVisitorsToday,
-        checkedIn: checkedInToday,
+      
+      // Summary stats (frontend expects overview.summary)
+      summary: {
+        totalVisitors: totalVisitors,
+        activePreApprovals: activePreApprovals,
+        activeBlacklist: activeBlacklist,
       },
-      preApproved: {
-        active: activePreApprovals,
-        validToday: activePreApprovals,
-      },
-      blacklisted: 0,
+      
+      // Purpose breakdown (frontend expects overview.purposeBreakdown)
+      purposeBreakdown: purposeBreakdown.map(item => ({
+        purpose: item.purpose || 'OTHER',
+        count: item._count.purpose,
+      })),
+      
+      // Recent gatepasses (frontend expects overview.recentGatepasses)
       recentGatepasses: recentGatepasses.map(gp => ({
         id: gp.id,
         gatepassNumber: gp.gatepassNumber,
         visitorName: gp.visitor?.visitorName || 'Unknown',
-        phone: gp.visitor?.phone || '',
-        company: gp.visitor?.companyToVisit || '',
+        visitorPhoto: gp.visitor?.photo || null,
+        visitorCompany: gp.visitor?.companyFrom || '',
+        hostName: gp.visitor?.personToMeet || '',
+        companyToVisit: gp.visitor?.companyToVisit || '',
         status: gp.status,
+        validFrom: gp.validFrom,
+        validUntil: gp.validUntil,
         createdAt: gp.createdAt,
+      })),
+      
+      // Recent visitors
+      recentVisitors: recentVisitors.map(v => ({
+        id: v.id,
+        visitorName: v.visitorName,
+        phone: v.phone,
+        companyFrom: v.companyFrom,
+        companyToVisit: v.companyToVisit,
+        purpose: v.purpose,
+        status: v.status,
+        createdAt: v.createdAt,
       })),
     });
   } catch (error) {
@@ -146,36 +250,68 @@ exports.getWeeklyStats = async (req, res) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    // Get last 7 days
-    const weekAgo = new Date(today);
-    weekAgo.setDate(weekAgo.getDate() - 7);
-
     const companyFilter = getCompanyFilter(req);
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-    // Get daily visitor counts for the week
+    // Get daily stats for the week
     const dailyStats = [];
+    let totalGatepasses = 0;
+    let totalVisitors = 0;
+    let completedGatepasses = 0;
+
     for (let i = 6; i >= 0; i--) {
       const dayStart = new Date(today);
       dayStart.setDate(dayStart.getDate() - i);
       const dayEnd = new Date(dayStart);
       dayEnd.setDate(dayEnd.getDate() + 1);
 
-      const count = await prisma.vMSVisitor.count({
-        where: {
-          createdAt: { gte: dayStart, lt: dayEnd },
-        },
-      }).catch(() => 0);
+      // Count gatepasses and visitors for this day
+      const [gatepassCount, visitorCount, completedCount] = await Promise.all([
+        prisma.vMSGatepass.count({
+          where: {
+            createdAt: { gte: dayStart, lt: dayEnd },
+            ...companyFilter,
+          },
+        }).catch(() => 0),
+        prisma.vMSVisitor.count({
+          where: {
+            createdAt: { gte: dayStart, lt: dayEnd },
+            ...companyFilter,
+          },
+        }).catch(() => 0),
+        prisma.vMSGatepass.count({
+          where: {
+            status: 'USED',
+            usedAt: { gte: dayStart, lt: dayEnd },
+            ...companyFilter,
+          },
+        }).catch(() => 0),
+      ]);
+
+      totalGatepasses += gatepassCount;
+      totalVisitors += visitorCount;
+      completedGatepasses += completedCount;
 
       dailyStats.push({
         date: dayStart.toISOString().split('T')[0],
-        day: dayStart.toLocaleDateString('en-US', { weekday: 'short' }),
-        visitors: count,
+        dayName: dayNames[dayStart.getDay()],
+        gatepasses: gatepassCount,
+        visitors: visitorCount,
       });
     }
 
+    // Calculate completion rate
+    const completionRate = totalGatepasses > 0 
+      ? Math.round((completedGatepasses / totalGatepasses) * 100) 
+      : 0;
+
     res.json({
-      weeklyStats: dailyStats,
-      totalThisWeek: dailyStats.reduce((sum, d) => sum + d.visitors, 0),
+      dailyStats,
+      totals: {
+        gatepasses: totalGatepasses,
+        visitors: totalVisitors,
+        completionRate,
+      },
     });
   } catch (error) {
     console.error('Weekly stats error:', error);
@@ -213,7 +349,7 @@ exports.getTodayExpectedVisitors = async (req, res) => {
         id: v.id,
         visitorName: v.visitorName,
         phone: v.phone,
-        company: v.companyToVisit,
+        companyFrom: v.companyFrom,
         purpose: v.purpose,
         validFrom: v.validFrom,
         validUntil: v.validUntil,
@@ -233,9 +369,9 @@ exports.getTodayExpectedVisitors = async (req, res) => {
 exports.getAlerts = async (req, res) => {
   try {
     const alerts = [];
+    const today = new Date();
     
     // Check for expired pre-approvals
-    const today = new Date();
     const expiredCount = await prisma.vMSPreApproval.count({
       where: {
         status: 'ACTIVE',
@@ -246,8 +382,10 @@ exports.getAlerts = async (req, res) => {
     if (expiredCount > 0) {
       alerts.push({
         type: 'warning',
+        severity: 'warning',
         message: `${expiredCount} pre-approval(s) have expired`,
         action: 'Review pre-approvals',
+        createdAt: new Date(),
       });
     }
 
@@ -265,8 +403,31 @@ exports.getAlerts = async (req, res) => {
     if (longVisitors > 0) {
       alerts.push({
         type: 'info',
+        severity: 'warning',
         message: `${longVisitors} visitor(s) checked in over 8 hours ago`,
         action: 'Review visitor status',
+        createdAt: new Date(),
+      });
+    }
+
+    // Check for expiring gatepasses (within next hour)
+    const oneHourLater = new Date();
+    oneHourLater.setHours(oneHourLater.getHours() + 1);
+    
+    const expiringGatepasses = await prisma.vMSGatepass.count({
+      where: {
+        status: 'ACTIVE',
+        validUntil: { gte: today, lte: oneHourLater },
+      },
+    }).catch(() => 0);
+
+    if (expiringGatepasses > 0) {
+      alerts.push({
+        type: 'info',
+        severity: 'info',
+        message: `${expiringGatepasses} gatepass(es) expiring within the next hour`,
+        action: 'Review active gatepasses',
+        createdAt: new Date(),
       });
     }
 
