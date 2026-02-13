@@ -48,8 +48,8 @@ model Role {
   name        String   @unique @db.VarChar(50)
   displayName String   @db.VarChar(100)
   description String?  @db.Text
-  permissions String   @default("[]") @db.Text
-  uiConfig    String   @default("{}") @db.Text
+  permissions String?  @db.Text
+  uiConfig    String?  @db.Text
   isSystem    Boolean  @default(false)
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
@@ -85,11 +85,11 @@ model PermitRequest {
   endDate          DateTime
   status           String    @default("PENDING") @db.VarChar(20)
   priority         String    @default("MEDIUM") @db.VarChar(20)
-  hazards          String    @default("[]") @db.Text
-  precautions      String    @default("[]") @db.Text
-  equipment        String    @default("[]") @db.Text
-  measures         String    @default("[]") @db.Text
-  workers          String    @default("[]") @db.Text
+  hazards          String?   @db.Text
+  precautions      String?   @db.Text
+  equipment        String?   @db.Text
+  measures         String?   @db.Text
+  workers          String?   @db.Text
   vendorDetails    String?   @db.Text
   contractorName   String?   @db.VarChar(255)
   contractorPhone  String?   @db.VarChar(20)
@@ -99,7 +99,7 @@ model PermitRequest {
   isExtended       Boolean   @default(false)
   extendedUntil    DateTime?
   closedAt         DateTime?
-  closureChecklist String    @default("[]") @db.Text
+  closureChecklist String?   @db.Text
   safetyRemarks    String?   @db.Text
   remarksAddedBy   String?   @db.VarChar(36)
   remarksAddedAt   DateTime?
