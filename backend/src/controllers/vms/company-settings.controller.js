@@ -394,6 +394,8 @@ exports.syncCompanies = async (req, res) => {
 // Get companies with approval settings for admin view
 exports.getCompaniesWithApprovalSettings = async (req, res) => {
   try {
+    console.log('Fetching companies with approval settings...');
+    
     const companies = await vmsPrisma.vMSCompany.findMany({
       orderBy: { displayName: 'asc' },
       select: {
@@ -414,6 +416,8 @@ exports.getCompaniesWithApprovalSettings = async (req, res) => {
       },
     });
     
+    console.log(`Found ${companies.length} companies`);
+    
     res.json({
       success: true,
       companies: companies.map(c => ({
@@ -422,8 +426,8 @@ exports.getCompaniesWithApprovalSettings = async (req, res) => {
         displayName: c.displayName,
         contactEmail: c.contactEmail,
         contactPhone: c.contactPhone,
-        requireApproval: c.requireApproval,
-        autoApproveVisitors: c.autoApproveVisitors,
+        requireApproval: c.requireApproval ?? false,  // Default to false if undefined
+        autoApproveVisitors: c.autoApproveVisitors ?? true,  // Default to true if undefined
         isActive: c.isActive,
         totalVisitors: c._count.visitors,
         totalGatepasses: c._count.gatepasses,
@@ -432,7 +436,11 @@ exports.getCompaniesWithApprovalSettings = async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching companies with approval settings:', error);
-    res.status(500).json({ message: 'Failed to fetch companies', error: error.message });
+    res.status(500).json({ 
+      message: 'Failed to fetch companies', 
+      error: error.message,
+      hint: 'Run "npx prisma generate" and "npx prisma db push" on the server'
+    });
   }
 };
 
@@ -568,52 +576,69 @@ const DEFAULT_COMPANIES = [
 // POST /api/vms/company-settings/seed-defaults
 exports.seedDefaultCompanies = async (req, res) => {
   try {
+    console.log('Starting to seed default companies...');
+    
     const results = {
       created: 0,
       existing: 0,
+      failed: 0,
       companies: [],
+      errors: [],
     };
 
     for (const companyName of DEFAULT_COMPANIES) {
-      // Check if company already exists
-      const existing = await vmsPrisma.vMSCompany.findFirst({
-        where: {
-          OR: [
-            { name: companyName },
-            { displayName: companyName },
-          ],
-        },
-      });
+      try {
+        // Check if company already exists
+        const existing = await vmsPrisma.vMSCompany.findFirst({
+          where: {
+            OR: [
+              { name: companyName },
+              { displayName: companyName },
+            ],
+          },
+        });
 
-      if (existing) {
-        results.existing++;
-        results.companies.push({ name: companyName, status: 'exists', id: existing.id });
-        continue;
+        if (existing) {
+          results.existing++;
+          results.companies.push({ name: companyName, status: 'exists', id: existing.id });
+          continue;
+        }
+
+        // Create the company with minimal fields for better compatibility
+        const company = await vmsPrisma.vMSCompany.create({
+          data: {
+            name: companyName,
+            displayName: companyName,
+            requireApproval: false,       // Default: approval OFF (auto-approve)
+            autoApproveVisitors: true,    // Default: auto-approve enabled
+            notifyOnVisitor: true,        // Default: send notifications
+            isActive: true,
+          },
+        });
+
+        results.created++;
+        results.companies.push({ name: companyName, status: 'created', id: company.id });
+        console.log(`Created company: ${companyName}`);
+      } catch (companyError) {
+        console.error(`Failed to create company ${companyName}:`, companyError.message);
+        results.failed++;
+        results.errors.push({ name: companyName, error: companyError.message });
       }
-
-      // Create the company
-      const company = await vmsPrisma.vMSCompany.create({
-        data: {
-          name: companyName,
-          displayName: companyName,
-          requireApproval: false,       // Default: approval OFF (auto-approve)
-          autoApproveVisitors: true,    // Default: auto-approve enabled
-          notifyOnVisitor: true,        // Default: send notifications
-          isActive: true,
-        },
-      });
-
-      results.created++;
-      results.companies.push({ name: companyName, status: 'created', id: company.id });
     }
 
+    console.log(`Seeding complete: ${results.created} created, ${results.existing} existing, ${results.failed} failed`);
+    
     res.json({
       success: true,
-      message: `Seeded ${results.created} companies (${results.existing} already existed)`,
+      message: `Seeded ${results.created} companies (${results.existing} already existed, ${results.failed} failed)`,
       results,
     });
   } catch (error) {
     console.error('Error seeding default companies:', error);
-    res.status(500).json({ message: 'Failed to seed companies', error: error.message });
+    res.status(500).json({ 
+      message: 'Failed to seed companies', 
+      error: error.message,
+      hint: 'Make sure to run "npx prisma generate" and "npx prisma db push" after pulling changes'
+    });
   }
 };

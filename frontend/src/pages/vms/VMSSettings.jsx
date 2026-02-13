@@ -224,7 +224,7 @@ const VMSSettings = () => {
             <RefreshCw size={18} />
             Refresh
           </button>
-          {isAdmin && companies.length === 0 && (
+          {isAdmin && (
             <button
               onClick={handleSeedDefaults}
               disabled={seeding}
