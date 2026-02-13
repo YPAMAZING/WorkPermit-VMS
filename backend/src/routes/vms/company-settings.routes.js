@@ -37,6 +37,9 @@ router.post('/bulk-update-approval', controller.bulkUpdateApprovalSettings);
 // Sync companies from frontend list
 router.post('/sync', controller.syncCompanies);
 
+// Seed default companies (adds all predefined companies)
+router.post('/seed-defaults', controller.seedDefaultCompanies);
+
 // Delete company
 router.delete('/:id', controller.deleteCompany);
 

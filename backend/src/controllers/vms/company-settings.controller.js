@@ -506,3 +506,114 @@ exports.getCompaniesForDropdown = async (req, res) => {
     res.status(500).json({ message: 'Failed to fetch companies', error: error.message });
   }
 };
+
+// Predefined list of companies to seed
+const DEFAULT_COMPANIES = [
+  'Adani Enterprises',
+  'Aquity Solutions',
+  'AWFIS Solutions Spaces',
+  'Azelis',
+  'Baker Huges Oilfield Services',
+  'Bharat Serum & Vaccines',
+  'Birla Management Centre',
+  'Brueckner Group India',
+  'Clariant Chemicals',
+  'Clover Infotech',
+  'Covestro',
+  'Creative IT',
+  'DSP Integrated Services',
+  'ECI Telecom',
+  'EFC',
+  'EFC Office Infra',
+  'EFC Office Spaces',
+  'EFC Tech Spaces',
+  'ESDS',
+  'Garmercy Tech Park',
+  'Godrej',
+  'Hansa Direct',
+  'HCL Technologies',
+  'Hindustan Fields Services',
+  'Holcim Services',
+  'Home Credit',
+  'Icra',
+  'Inchcap Shipping Services',
+  'Indian Commodity Exchange',
+  'Invenio Business Solution',
+  'ISSGF',
+  'Jacobs Solutions',
+  'Kyndryl Solutions',
+  'Lupin',
+  'Maersk Global Service Centre',
+  'Magic Bus',
+  'NMDC Data Centre',
+  'Nouryon Chemicals',
+  'Quess Corp',
+  'RBL Bank',
+  'Reliance General Insurance',
+  'Rubicon Maritime India',
+  'Sify Infinity Spaces',
+  'Spocto Business Solutions',
+  'Suki Solution',
+  'Sulzer Tech',
+  'Sutherland Global Services',
+  'Taldar Hotels & Resorts',
+  'Tata Consulting Engineering',
+  'Technics Reunidas',
+  'Universal Sompo',
+  'Vodafone Idea',
+  'Yes Bank',
+];
+
+// Seed default companies (admin only)
+// POST /api/vms/company-settings/seed-defaults
+exports.seedDefaultCompanies = async (req, res) => {
+  try {
+    const results = {
+      created: 0,
+      existing: 0,
+      companies: [],
+    };
+
+    for (const companyName of DEFAULT_COMPANIES) {
+      // Check if company already exists
+      const existing = await vmsPrisma.vMSCompany.findFirst({
+        where: {
+          OR: [
+            { name: companyName },
+            { displayName: companyName },
+          ],
+        },
+      });
+
+      if (existing) {
+        results.existing++;
+        results.companies.push({ name: companyName, status: 'exists', id: existing.id });
+        continue;
+      }
+
+      // Create the company
+      const company = await vmsPrisma.vMSCompany.create({
+        data: {
+          name: companyName,
+          displayName: companyName,
+          requireApproval: true,        // Default: visitors need approval
+          autoApproveVisitors: false,   // Default: no auto-approve
+          notifyOnVisitor: true,        // Default: send notifications
+          isActive: true,
+        },
+      });
+
+      results.created++;
+      results.companies.push({ name: companyName, status: 'created', id: company.id });
+    }
+
+    res.json({
+      success: true,
+      message: `Seeded ${results.created} companies (${results.existing} already existed)`,
+      results,
+    });
+  } catch (error) {
+    console.error('Error seeding default companies:', error);
+    res.status(500).json({ message: 'Failed to seed companies', error: error.message });
+  }
+};

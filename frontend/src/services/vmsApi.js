@@ -191,6 +191,9 @@ export const companySettingsApi = {
   syncCompanies: (companies) => 
     vmsApi.post('/company-settings/sync', { companies }),
   
+  // Seed default companies (add all predefined companies)
+  seedDefaults: () => vmsApi.post('/company-settings/seed-defaults'),
+  
   // Delete company
   delete: (id) => vmsApi.delete(`/company-settings/${id}`),
 }

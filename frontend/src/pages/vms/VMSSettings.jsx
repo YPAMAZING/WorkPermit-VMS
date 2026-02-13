@@ -25,12 +25,14 @@ import {
   Phone,
   Mail,
   X,
+  Database,
 } from 'lucide-react'
 
 const VMSSettings = () => {
   const { isAdmin, user } = useVMSAuth()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [seeding, setSeeding] = useState(false)
   const [companies, setCompanies] = useState([])
   const [filteredCompanies, setFilteredCompanies] = useState([])
   const [searchQuery, setSearchQuery] = useState('')
@@ -176,6 +178,28 @@ const VMSSettings = () => {
     }
   }
 
+  const handleSeedDefaults = async () => {
+    if (!window.confirm('This will add all predefined companies to the system. Continue?')) {
+      return
+    }
+
+    setSeeding(true)
+    try {
+      const response = await companySettingsApi.seedDefaults()
+      const { results } = response.data
+      setMessage({ 
+        type: 'success', 
+        text: `Successfully added ${results.created} companies (${results.existing} already existed)` 
+      })
+      fetchCompanies()
+    } catch (error) {
+      console.error('Failed to seed companies:', error)
+      setMessage({ type: 'error', text: error.response?.data?.message || 'Failed to seed companies' })
+    } finally {
+      setSeeding(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -200,6 +224,25 @@ const VMSSettings = () => {
             <RefreshCw size={18} />
             Refresh
           </button>
+          {isAdmin && companies.length === 0 && (
+            <button
+              onClick={handleSeedDefaults}
+              disabled={seeding}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+            >
+              {seeding ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                  Adding...
+                </>
+              ) : (
+                <>
+                  <Database size={18} />
+                  Load Default Companies
+                </>
+              )}
+            </button>
+          )}
           {isAdmin && (
             <button
               onClick={() => setShowAddCompany(true)}
@@ -314,8 +357,27 @@ const VMSSettings = () => {
                 <Building size={48} className="mx-auto mb-3 text-gray-300" />
                 <p>{searchQuery ? 'No companies match your search' : 'No companies configured'}</p>
                 <p className="text-sm text-gray-400 mt-1">
-                  {searchQuery ? 'Try a different search term' : 'Add a company to get started'}
+                  {searchQuery ? 'Try a different search term' : 'Add a company or load default companies to get started'}
                 </p>
+                {!searchQuery && isAdmin && (
+                  <button
+                    onClick={handleSeedDefaults}
+                    disabled={seeding}
+                    className="mt-4 inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                  >
+                    {seeding ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                        Adding Companies...
+                      </>
+                    ) : (
+                      <>
+                        <Database size={18} />
+                        Load 53 Default Companies
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
             ) : (
               <div className="divide-y divide-gray-100">
