@@ -53,7 +53,6 @@ const NewPreApproval = () => {
     { value: 'MEETING', label: 'Meeting' },
     { value: 'INTERVIEW', label: 'Interview' },
     { value: 'VENDOR_CLIENT', label: 'Vendor/Client Visit' },
-    { value: 'CONTRACTOR', label: 'Contractor Work' },
     { value: 'OTHER', label: 'Other' },
   ]
 

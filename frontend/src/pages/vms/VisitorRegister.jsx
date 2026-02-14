@@ -91,7 +91,6 @@ const VisitorRegister = () => {
     'Meeting',
     'Interview',
     'Vendor/Client Visit',
-    'Contractor Work',
     'Other'
   ]
 
