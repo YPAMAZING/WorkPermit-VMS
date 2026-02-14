@@ -1,4 +1,4 @@
-const vmsDb = require('../../config/vms-prisma');
+const vmsPrisma = require('../../config/vms-prisma');
 const QRCode = require('qrcode');
 const { v4: uuidv4 } = require('uuid');
 
@@ -20,6 +20,14 @@ const generateVisitorCode = () => {
   return code;
 };
 
+// Generate gatepass number
+const generateGatepassNumber = () => {
+  const date = new Date();
+  const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
+  const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+  return `GP-${dateStr}-${random}`;
+};
+
 // ================================
 // PUBLIC ENDPOINTS
 // ================================
@@ -27,24 +35,19 @@ const generateVisitorCode = () => {
 // Get all active companies (for single QR check-in)
 exports.getAllActiveCompanies = async (req, res) => {
   try {
-    const companies = await vmsDb.company.findMany({
+    const companies = await vmsPrisma.vMSCompany.findMany({
       where: { isActive: true },
       select: {
         id: true,
-        code: true,
         name: true,
         displayName: true,
         description: true,
         logo: true,
-        primaryColor: true,
-        welcomeMessage: true,
-        termsAndConditions: true,
-        requireIdProof: true,
-        requirePhoto: true,
-        departments: {
-          where: { isActive: true },
-          select: { id: true, name: true, floor: true, building: true }
-        }
+        contactPerson: true,
+        contactEmail: true,
+        contactPhone: true,
+        requireApproval: true,
+        autoApproveVisitors: true,
       },
       orderBy: { displayName: 'asc' }
     });
@@ -52,33 +55,34 @@ exports.getAllActiveCompanies = async (req, res) => {
     res.json({ companies });
   } catch (error) {
     console.error('Get all companies error:', error);
-    res.status(500).json({ message: 'Failed to fetch companies' });
+    res.status(500).json({ message: 'Failed to fetch companies', error: error.message });
   }
 };
 
-// Get company info by code (for QR form)
+// Get company info by code/name (for QR form)
 exports.getCompanyByCode = async (req, res) => {
   try {
     const { companyCode } = req.params;
     
-    const company = await vmsDb.company.findUnique({
-      where: { code: companyCode },
+    // Try to find by name or displayName (since we don't have a code field)
+    const company = await vmsPrisma.vMSCompany.findFirst({
+      where: {
+        OR: [
+          { name: companyCode },
+          { displayName: companyCode }
+        ]
+      },
       select: {
         id: true,
-        code: true,
         name: true,
         displayName: true,
         logo: true,
-        primaryColor: true,
-        welcomeMessage: true,
-        termsAndConditions: true,
-        requireIdProof: true,
-        requirePhoto: true,
+        contactPerson: true,
+        contactEmail: true,
+        contactPhone: true,
+        requireApproval: true,
+        autoApproveVisitors: true,
         isActive: true,
-        departments: {
-          where: { isActive: true },
-          select: { id: true, name: true, floor: true, building: true }
-        }
       }
     });
     
@@ -93,7 +97,7 @@ exports.getCompanyByCode = async (req, res) => {
     res.json(company);
   } catch (error) {
     console.error('Get company by code error:', error);
-    res.status(500).json({ message: 'Failed to fetch company information' });
+    res.status(500).json({ message: 'Failed to fetch company information', error: error.message });
   }
 };
 
@@ -102,42 +106,50 @@ exports.submitCheckInRequest = async (req, res) => {
   try {
     const {
       companyCode,
+      companyId,
+      visitorName,
       firstName,
       lastName,
       email,
       phone,
+      companyFrom,
       visitorCompany,
-      designation,
+      personToMeet,
       idProofType,
       idProofNumber,
-      idProofImage,
+      idDocumentImage,
       photo,
       purpose,
-      purposeDetails,
-      hostName,
-      hostDepartment,
-      hostPhone,
-      hostEmail,
-      hasVehicle,
       vehicleNumber,
-      vehicleType,
-      itemsCarried,
+      numberOfVisitors,
     } = req.body;
     
     // Validate required fields
-    if (!companyCode || !firstName || !lastName || !phone || !purpose) {
+    if (!phone || !purpose) {
       return res.status(400).json({ 
-        message: 'Missing required fields: companyCode, firstName, lastName, phone, purpose' 
+        message: 'Missing required fields: phone, purpose' 
       });
     }
     
-    // Find company
-    const company = await vmsDb.company.findUnique({
-      where: { code: companyCode }
-    });
+    // Find company by ID or code
+    let company;
+    if (companyId) {
+      company = await vmsPrisma.vMSCompany.findUnique({
+        where: { id: companyId }
+      });
+    } else if (companyCode) {
+      company = await vmsPrisma.vMSCompany.findFirst({
+        where: {
+          OR: [
+            { name: companyCode },
+            { displayName: companyCode }
+          ]
+        }
+      });
+    }
     
     if (!company) {
-      return res.status(404).json({ message: 'Invalid company code' });
+      return res.status(404).json({ message: 'Invalid company' });
     }
     
     if (!company.isActive) {
@@ -145,13 +157,11 @@ exports.submitCheckInRequest = async (req, res) => {
     }
     
     // Check if visitor is blacklisted
-    const blacklisted = await vmsDb.blacklistEntry.findFirst({
+    const blacklisted = await vmsPrisma.vMSBlacklist.findFirst({
       where: {
         OR: [
-          { companyId: company.id, phone, isActive: true },
-          { isGlobal: true, phone, isActive: true },
-          { companyId: company.id, idProofNumber, isActive: true },
-          { isGlobal: true, idProofNumber, isActive: true },
+          { phone, isActive: true },
+          ...(idProofNumber ? [{ idNumber: idProofNumber, isActive: true }] : [])
         ]
       }
     });
@@ -164,41 +174,33 @@ exports.submitCheckInRequest = async (req, res) => {
     }
     
     // Check for duplicate pending request
-    const existingPending = await vmsDb.checkInRequest.findFirst({
+    const existingPending = await vmsPrisma.vMSVisitor.findFirst({
       where: {
         companyId: company.id,
         phone,
         status: { in: ['PENDING', 'APPROVED'] },
-        expiresAt: { gt: new Date() }
+        createdAt: { gte: new Date(Date.now() - 4 * 60 * 60 * 1000) } // Within 4 hours
       }
     });
     
     if (existingPending) {
       return res.status(400).json({ 
         message: 'You already have a pending check-in request',
-        requestNumber: existingPending.requestNumber
+        requestNumber: existingPending.id
       });
     }
     
-    // Create request number
-    const requestNumber = generateRequestNumber();
-    
-    // Set expiry (4 hours from now)
-    const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + 4);
-    
-    // Determine initial status
+    // Determine initial status based on company settings
     let status = 'PENDING';
-    if (company.autoApprove) {
+    if (company.autoApproveVisitors || !company.requireApproval) {
       status = 'APPROVED';
     }
     
     // Check if pre-approved
-    const preApproved = await vmsDb.preApprovedVisitor.findFirst({
+    const preApproved = await vmsPrisma.vMSPreApproval.findFirst({
       where: {
-        companyId: company.id,
         phone,
-        status: 'ACTIVE',
+        status: 'APPROVED',
         validFrom: { lte: new Date() },
         validUntil: { gte: new Date() }
       }
@@ -208,64 +210,76 @@ exports.submitCheckInRequest = async (req, res) => {
       status = 'APPROVED';
     }
     
-    // Create check-in request
-    const checkInRequest = await vmsDb.checkInRequest.create({
+    // Construct visitor name
+    const fullName = visitorName || `${firstName || ''} ${lastName || ''}`.trim() || 'Unknown Visitor';
+    
+    // Create visitor record
+    const visitor = await vmsPrisma.vMSVisitor.create({
       data: {
-        requestNumber,
-        companyId: company.id,
-        visitorName: `${firstName} ${lastName}`,
-        firstName,
-        lastName,
-        email,
+        visitorName: fullName,
         phone,
-        visitorPhone: phone,
-        visitorEmail: email,
-        visitorCompany,
-        designation,
-        idProofType,
-        idProofNumber,
-        idProofImage,
-        photo,
+        email,
+        companyFrom: companyFrom || visitorCompany,
+        companyToVisit: company.displayName || company.name,
+        companyId: company.id,
+        personToMeet: personToMeet || 'Reception',
         purpose,
-        visitPurpose: purpose,
-        purposeDetails,
-        hostName,
-        hostDepartment,
-        department: hostDepartment,
-        hostPhone,
-        hostEmail,
-        hasVehicle: hasVehicle === true,
+        idProofType: idProofType || 'NONE',
+        idProofNumber,
+        idDocumentImage,
+        photo,
         vehicleNumber,
-        vehicleType,
-        itemsCarried: JSON.stringify(itemsCarried || []),
+        numberOfVisitors: numberOfVisitors || 1,
         status,
-        expiresAt,
-        deviceInfo: req.headers['user-agent'],
-        ipAddress: req.ip || req.connection.remoteAddress,
+        entryType: preApproved ? 'PRE_APPROVED' : 'WALK_IN',
       }
     });
     
-    // If pre-approved, update used entries
+    // If pre-approved, update used entries (if tracking)
     if (preApproved) {
-      await vmsDb.preApprovedVisitor.update({
-        where: { id: preApproved.id },
-        data: { usedEntries: { increment: 1 } }
+      // Optional: track usage
+    }
+    
+    // If auto-approved, create gatepass
+    let gatepass = null;
+    if (status === 'APPROVED' || status === 'CHECKED_IN') {
+      const gatepassNumber = generateGatepassNumber();
+      const qrData = JSON.stringify({ gatepassNumber, visitorId: visitor.id });
+      const qrCode = await QRCode.toDataURL(qrData);
+      
+      gatepass = await vmsPrisma.vMSGatepass.create({
+        data: {
+          gatepassNumber,
+          visitorId: visitor.id,
+          companyId: company.id,
+          validFrom: new Date(),
+          validUntil: new Date(new Date().setHours(23, 59, 59, 999)),
+          status: 'ACTIVE',
+          qrCode,
+        }
+      });
+      
+      // Update visitor with gatepass reference
+      await vmsPrisma.vMSVisitor.update({
+        where: { id: visitor.id },
+        data: { status: 'APPROVED' }
       });
     }
     
     res.status(201).json({
       success: true,
-      requestNumber,
+      requestNumber: visitor.id,
+      visitorId: visitor.id,
       status,
+      gatepass,
       message: status === 'APPROVED' 
         ? 'Your visit has been approved! Please show this confirmation to security.'
         : 'Your check-in request has been submitted. Please wait for approval.',
       companyName: company.displayName || company.name,
-      expiresAt,
     });
   } catch (error) {
     console.error('Submit check-in request error:', error);
-    res.status(500).json({ message: 'Failed to submit check-in request' });
+    res.status(500).json({ message: 'Failed to submit check-in request', error: error.message });
   }
 };
 
@@ -274,33 +288,37 @@ exports.getCheckInStatus = async (req, res) => {
   try {
     const { requestNumber } = req.params;
     
-    const request = await vmsDb.checkInRequest.findUnique({
-      where: { requestNumber },
+    const visitor = await vmsPrisma.vMSVisitor.findUnique({
+      where: { id: requestNumber },
       include: {
         company: {
           select: { name: true, displayName: true, logo: true }
+        },
+        gatepasses: {
+          take: 1,
+          orderBy: { createdAt: 'desc' }
         }
       }
     });
     
-    if (!request) {
+    if (!visitor) {
       return res.status(404).json({ message: 'Request not found' });
     }
     
     res.json({
-      requestNumber: request.requestNumber,
-      status: request.status,
-      visitorName: `${request.firstName} ${request.lastName}`,
-      companyName: request.company.displayName || request.company.name,
-      submittedAt: request.submittedAt,
-      expiresAt: request.expiresAt,
-      processedAt: request.processedAt,
-      checkInAt: request.checkInAt,
-      checkOutAt: request.checkOutAt,
+      requestNumber: visitor.id,
+      status: visitor.status,
+      visitorName: visitor.visitorName,
+      companyName: visitor.company?.displayName || visitor.company?.name || visitor.companyToVisit,
+      submittedAt: visitor.createdAt,
+      approvedAt: visitor.approvedAt,
+      checkInTime: visitor.checkInTime,
+      checkOutTime: visitor.checkOutTime,
+      gatepass: visitor.gatepasses?.[0] || null,
     });
   } catch (error) {
     console.error('Get check-in status error:', error);
-    res.status(500).json({ message: 'Failed to fetch status' });
+    res.status(500).json({ message: 'Failed to fetch status', error: error.message });
   }
 };
 
@@ -311,29 +329,42 @@ exports.getCheckInStatus = async (req, res) => {
 // Get pending requests for guard dashboard
 exports.getPendingRequests = async (req, res) => {
   try {
-    const companyId = req.user.companyId;
+    const user = req.user;
+    const companyId = user?.companyId;
     
-    const requests = await vmsDb.checkInRequest.findMany({
-      where: {
-        companyId,
-        status: 'PENDING',
-        expiresAt: { gt: new Date() }
+    const where = {
+      status: 'PENDING',
+      createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } // Last 24 hours
+    };
+    
+    // If user is company-scoped, filter by company
+    if (companyId && !['ADMIN', 'VMS_ADMIN', 'admin', 'FIREMAN'].includes(user.role)) {
+      where.companyId = companyId;
+    }
+    
+    const requests = await vmsPrisma.vMSVisitor.findMany({
+      where,
+      include: {
+        company: {
+          select: { name: true, displayName: true }
+        }
       },
-      orderBy: { submittedAt: 'desc' },
+      orderBy: { createdAt: 'desc' },
       take: 50
     });
     
     res.json(requests);
   } catch (error) {
     console.error('Get pending requests error:', error);
-    res.status(500).json({ message: 'Failed to fetch pending requests' });
+    res.status(500).json({ message: 'Failed to fetch pending requests', error: error.message });
   }
 };
 
 // Get all requests with filters
 exports.getAllRequests = async (req, res) => {
   try {
-    const companyId = req.user.companyId;
+    const user = req.user;
+    const companyId = user?.companyId;
     const { 
       status, 
       search, 
@@ -342,7 +373,12 @@ exports.getAllRequests = async (req, res) => {
       limit = 20 
     } = req.query;
     
-    const where = { companyId };
+    const where = {};
+    
+    // If user is company-scoped, filter by company
+    if (companyId && !['ADMIN', 'VMS_ADMIN', 'admin', 'FIREMAN'].includes(user.role)) {
+      where.companyId = companyId;
+    }
     
     if (status && status !== 'all') {
       where.status = status;
@@ -350,11 +386,10 @@ exports.getAllRequests = async (req, res) => {
     
     if (search) {
       where.OR = [
-        { firstName: { contains: search } },
-        { lastName: { contains: search } },
+        { visitorName: { contains: search } },
         { phone: { contains: search } },
-        { requestNumber: { contains: search } },
-        { hostName: { contains: search } },
+        { companyFrom: { contains: search } },
+        { personToMeet: { contains: search } },
       ];
     }
     
@@ -363,17 +398,22 @@ exports.getAllRequests = async (req, res) => {
       startDate.setHours(0, 0, 0, 0);
       const endDate = new Date(date);
       endDate.setHours(23, 59, 59, 999);
-      where.submittedAt = { gte: startDate, lte: endDate };
+      where.createdAt = { gte: startDate, lte: endDate };
     }
     
     const [requests, total] = await Promise.all([
-      vmsDb.checkInRequest.findMany({
+      vmsPrisma.vMSVisitor.findMany({
         where,
-        orderBy: { submittedAt: 'desc' },
+        include: {
+          company: {
+            select: { name: true, displayName: true }
+          }
+        },
+        orderBy: { createdAt: 'desc' },
         skip: (parseInt(page) - 1) * parseInt(limit),
         take: parseInt(limit),
       }),
-      vmsDb.checkInRequest.count({ where })
+      vmsPrisma.vMSVisitor.count({ where })
     ]);
     
     res.json({
@@ -387,51 +427,73 @@ exports.getAllRequests = async (req, res) => {
     });
   } catch (error) {
     console.error('Get all requests error:', error);
-    res.status(500).json({ message: 'Failed to fetch requests' });
+    res.status(500).json({ message: 'Failed to fetch requests', error: error.message });
   }
 };
 
 // Get live feed (for guard dashboard - real-time updates)
 exports.getLiveFeed = async (req, res) => {
   try {
-    const companyId = req.user.companyId;
-    const { since } = req.query; // Timestamp to get updates since
+    const user = req.user;
+    const companyId = user?.companyId;
+    const { since } = req.query;
     
-    const where = {
-      companyId,
-      expiresAt: { gt: new Date() }
-    };
+    const baseWhere = {};
     
-    if (since) {
-      where.updatedAt = { gt: new Date(since) };
+    // If user is company-scoped, filter by company
+    if (companyId && !['ADMIN', 'VMS_ADMIN', 'admin', 'FIREMAN'].includes(user.role)) {
+      baseWhere.companyId = companyId;
     }
     
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
     const [pending, approved, checkedIn, recent] = await Promise.all([
-      // Pending requests
-      vmsDb.checkInRequest.findMany({
-        where: { ...where, status: 'PENDING' },
-        orderBy: { submittedAt: 'desc' },
+      // Pending requests (last 24 hours)
+      vmsPrisma.vMSVisitor.findMany({
+        where: { 
+          ...baseWhere, 
+          status: 'PENDING',
+          createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) }
+        },
+        include: {
+          company: { select: { name: true, displayName: true } }
+        },
+        orderBy: { createdAt: 'desc' },
         take: 20
       }),
       // Approved (ready for entry)
-      vmsDb.checkInRequest.findMany({
-        where: { ...where, status: 'APPROVED' },
-        orderBy: { processedAt: 'desc' },
+      vmsPrisma.vMSVisitor.findMany({
+        where: { 
+          ...baseWhere, 
+          status: 'APPROVED',
+          createdAt: { gte: today }
+        },
+        include: {
+          company: { select: { name: true, displayName: true } }
+        },
+        orderBy: { approvedAt: 'desc' },
         take: 20
       }),
       // Currently inside (checked in but not out)
-      vmsDb.checkInRequest.findMany({
-        where: { companyId, status: 'CHECKED_IN' },
-        orderBy: { checkInAt: 'desc' },
+      vmsPrisma.vMSVisitor.findMany({
+        where: { ...baseWhere, status: 'CHECKED_IN' },
+        include: {
+          company: { select: { name: true, displayName: true } }
+        },
+        orderBy: { checkInTime: 'desc' },
         take: 50
       }),
-      // Recent activity (last 2 hours)
-      vmsDb.checkInRequest.findMany({
+      // Recent activity (today)
+      vmsPrisma.vMSVisitor.findMany({
         where: {
-          companyId,
-          submittedAt: { gte: new Date(Date.now() - 2 * 60 * 60 * 1000) }
+          ...baseWhere,
+          createdAt: { gte: today }
         },
-        orderBy: { submittedAt: 'desc' },
+        include: {
+          company: { select: { name: true, displayName: true } }
+        },
+        orderBy: { createdAt: 'desc' },
         take: 30
       })
     ]);
@@ -450,7 +512,7 @@ exports.getLiveFeed = async (req, res) => {
     });
   } catch (error) {
     console.error('Get live feed error:', error);
-    res.status(500).json({ message: 'Failed to fetch live feed' });
+    res.status(500).json({ message: 'Failed to fetch live feed', error: error.message });
   }
 };
 
@@ -458,25 +520,34 @@ exports.getLiveFeed = async (req, res) => {
 exports.getRequestById = async (req, res) => {
   try {
     const { id } = req.params;
-    const companyId = req.user.companyId;
+    const user = req.user;
+    const companyId = user?.companyId;
     
-    const request = await vmsDb.checkInRequest.findFirst({
-      where: { id, companyId },
+    const where = { id };
+    
+    // If user is company-scoped, ensure they can only see their company's visitors
+    if (companyId && !['ADMIN', 'VMS_ADMIN', 'admin', 'FIREMAN'].includes(user.role)) {
+      where.companyId = companyId;
+    }
+    
+    const visitor = await vmsPrisma.vMSVisitor.findFirst({
+      where,
       include: {
-        processedBy: {
-          select: { firstName: true, lastName: true }
-        }
+        company: {
+          select: { name: true, displayName: true }
+        },
+        gatepasses: true
       }
     });
     
-    if (!request) {
+    if (!visitor) {
       return res.status(404).json({ message: 'Request not found' });
     }
     
-    res.json(request);
+    res.json(visitor);
   } catch (error) {
     console.error('Get request by ID error:', error);
-    res.status(500).json({ message: 'Failed to fetch request' });
+    res.status(500).json({ message: 'Failed to fetch request', error: error.message });
   }
 };
 
@@ -485,35 +556,58 @@ exports.approveRequest = async (req, res) => {
   try {
     const { id } = req.params;
     const { note } = req.body;
-    const companyId = req.user.companyId;
+    const user = req.user;
+    const companyId = user?.companyId;
     
-    const request = await vmsDb.checkInRequest.findFirst({
-      where: { id, companyId, status: 'PENDING' }
-    });
+    const where = { id, status: 'PENDING' };
     
-    if (!request) {
+    // If user is company-scoped, ensure they can only approve their company's visitors
+    if (companyId && !['ADMIN', 'VMS_ADMIN', 'admin', 'FIREMAN'].includes(user.role)) {
+      where.companyId = companyId;
+    }
+    
+    const visitor = await vmsPrisma.vMSVisitor.findFirst({ where });
+    
+    if (!visitor) {
       return res.status(404).json({ message: 'Request not found or already processed' });
     }
     
-    // Update request
-    const updated = await vmsDb.checkInRequest.update({
+    // Update visitor status
+    const updated = await vmsPrisma.vMSVisitor.update({
       where: { id },
       data: {
         status: 'APPROVED',
-        processedById: req.user.id,
-        processedAt: new Date(),
-        processingNote: note,
+        approvedBy: user?.id,
+        approvedAt: new Date(),
+      }
+    });
+    
+    // Create gatepass
+    const gatepassNumber = generateGatepassNumber();
+    const qrData = JSON.stringify({ gatepassNumber, visitorId: visitor.id });
+    const qrCode = await QRCode.toDataURL(qrData);
+    
+    const gatepass = await vmsPrisma.vMSGatepass.create({
+      data: {
+        gatepassNumber,
+        visitorId: visitor.id,
+        companyId: visitor.companyId,
+        validFrom: new Date(),
+        validUntil: new Date(new Date().setHours(23, 59, 59, 999)),
+        status: 'ACTIVE',
+        qrCode,
       }
     });
     
     res.json({
       success: true,
       message: 'Visitor approved for entry',
-      request: updated
+      visitor: updated,
+      gatepass
     });
   } catch (error) {
     console.error('Approve request error:', error);
-    res.status(500).json({ message: 'Failed to approve request' });
+    res.status(500).json({ message: 'Failed to approve request', error: error.message });
   }
 };
 
@@ -522,26 +616,30 @@ exports.rejectRequest = async (req, res) => {
   try {
     const { id } = req.params;
     const { reason } = req.body;
-    const companyId = req.user.companyId;
+    const user = req.user;
+    const companyId = user?.companyId;
     
     if (!reason) {
       return res.status(400).json({ message: 'Rejection reason is required' });
     }
     
-    const request = await vmsDb.checkInRequest.findFirst({
-      where: { id, companyId, status: 'PENDING' }
-    });
+    const where = { id, status: 'PENDING' };
     
-    if (!request) {
+    // If user is company-scoped, ensure they can only reject their company's visitors
+    if (companyId && !['ADMIN', 'VMS_ADMIN', 'admin', 'FIREMAN'].includes(user.role)) {
+      where.companyId = companyId;
+    }
+    
+    const visitor = await vmsPrisma.vMSVisitor.findFirst({ where });
+    
+    if (!visitor) {
       return res.status(404).json({ message: 'Request not found or already processed' });
     }
     
-    const updated = await vmsDb.checkInRequest.update({
+    const updated = await vmsPrisma.vMSVisitor.update({
       where: { id },
       data: {
         status: 'REJECTED',
-        processedById: req.user.id,
-        processedAt: new Date(),
         rejectionReason: reason,
       }
     });
@@ -549,11 +647,11 @@ exports.rejectRequest = async (req, res) => {
     res.json({
       success: true,
       message: 'Visitor entry rejected',
-      request: updated
+      visitor: updated
     });
   } catch (error) {
     console.error('Reject request error:', error);
-    res.status(500).json({ message: 'Failed to reject request' });
+    res.status(500).json({ message: 'Failed to reject request', error: error.message });
   }
 };
 
@@ -561,110 +659,48 @@ exports.rejectRequest = async (req, res) => {
 exports.markCheckedIn = async (req, res) => {
   try {
     const { id } = req.params;
-    const companyId = req.user.companyId;
+    const user = req.user;
+    const companyId = user?.companyId;
     
-    const request = await vmsDb.checkInRequest.findFirst({
-      where: { id, companyId, status: 'APPROVED' }
-    });
+    const where = { id, status: 'APPROVED' };
     
-    if (!request) {
+    // If user is company-scoped, filter by company
+    if (companyId && !['ADMIN', 'VMS_ADMIN', 'admin', 'FIREMAN'].includes(user.role)) {
+      where.companyId = companyId;
+    }
+    
+    const visitor = await vmsPrisma.vMSVisitor.findFirst({ where });
+    
+    if (!visitor) {
       return res.status(404).json({ message: 'Request not found or not approved' });
     }
     
-    // Create or update visitor record
-    let visitor = await vmsDb.visitor.findFirst({
-      where: { companyId, phone: request.phone }
-    });
-    
-    if (!visitor) {
-      visitor = await vmsDb.visitor.create({
-        data: {
-          companyId,
-          visitorCode: generateVisitorCode(),
-          firstName: request.firstName,
-          lastName: request.lastName,
-          email: request.email,
-          phone: request.phone,
-          visitorCompany: request.visitorCompany,
-          designation: request.designation,
-          idProofType: request.idProofType,
-          idProofNumber: request.idProofNumber,
-          idProofImage: request.idProofImage,
-          photo: request.photo,
-          totalVisits: 1,
-          lastVisitDate: new Date(),
-        }
-      });
-    } else {
-      await vmsDb.visitor.update({
-        where: { id: visitor.id },
-        data: {
-          totalVisits: { increment: 1 },
-          lastVisitDate: new Date(),
-          // Update photo/ID if provided
-          ...(request.photo && { photo: request.photo }),
-          ...(request.idProofImage && { idProofImage: request.idProofImage }),
-        }
-      });
-    }
-    
-    // Create gatepass
-    const gatepassNumber = `GP-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
-    
-    const validUntil = new Date();
-    validUntil.setHours(23, 59, 59, 999); // Valid until end of day
-    
-    const qrData = JSON.stringify({ gatepassNumber, visitorId: visitor.id });
-    const qrCode = await QRCode.toDataURL(qrData);
-    
-    const gatepass = await vmsDb.gatepass.create({
-      data: {
-        companyId,
-        gatepassNumber,
-        visitorId: visitor.id,
-        checkInRequestId: id,
-        purpose: request.purpose,
-        purposeDetails: request.purposeDetails,
-        hostName: request.hostName,
-        hostDepartment: request.hostDepartment,
-        hostPhone: request.hostPhone,
-        hostEmail: request.hostEmail,
-        expectedDate: new Date(),
-        validFrom: new Date(),
-        validUntil,
-        actualCheckIn: new Date(),
-        status: 'ACTIVE',
-        qrCode,
-        qrCodeData: qrData,
-        vehicleNumber: request.vehicleNumber,
-        vehicleType: request.vehicleType,
-        itemsCarried: request.itemsCarried,
-        issuedById: req.user.id,
-        approvedById: req.user.id,
-      }
-    });
-    
-    // Update check-in request
-    const updated = await vmsDb.checkInRequest.update({
+    // Update visitor status
+    const updated = await vmsPrisma.vMSVisitor.update({
       where: { id },
       data: {
         status: 'CHECKED_IN',
-        checkInAt: new Date(),
         checkInTime: new Date(),
-        gatepassId: gatepass.id,
+      }
+    });
+    
+    // Update gatepass if exists
+    await vmsPrisma.vMSGatepass.updateMany({
+      where: { visitorId: id },
+      data: { 
+        status: 'ACTIVE',
+        checkInTime: new Date()
       }
     });
     
     res.json({
       success: true,
       message: 'Visitor checked in successfully',
-      request: updated,
-      gatepass,
-      visitor
+      visitor: updated
     });
   } catch (error) {
     console.error('Mark checked in error:', error);
-    res.status(500).json({ message: 'Failed to check in visitor' });
+    res.status(500).json({ message: 'Failed to check in visitor', error: error.message });
   }
 };
 
@@ -673,55 +709,66 @@ exports.markCheckedOut = async (req, res) => {
   try {
     const { id } = req.params;
     const { securityRemarks } = req.body;
-    const companyId = req.user.companyId;
+    const user = req.user;
+    const companyId = user?.companyId;
     
-    const request = await vmsDb.checkInRequest.findFirst({
-      where: { id, companyId, status: 'CHECKED_IN' }
-    });
+    const where = { id, status: 'CHECKED_IN' };
     
-    if (!request) {
+    // If user is company-scoped, filter by company
+    if (companyId && !['ADMIN', 'VMS_ADMIN', 'admin', 'FIREMAN'].includes(user.role)) {
+      where.companyId = companyId;
+    }
+    
+    const visitor = await vmsPrisma.vMSVisitor.findFirst({ where });
+    
+    if (!visitor) {
       return res.status(404).json({ message: 'Request not found or not checked in' });
     }
     
-    // Update check-in request
-    const updated = await vmsDb.checkInRequest.update({
+    // Update visitor
+    const updated = await vmsPrisma.vMSVisitor.update({
       where: { id },
       data: {
         status: 'CHECKED_OUT',
-        checkOutAt: new Date(),
         checkOutTime: new Date(),
       }
     });
     
-    // Update gatepass if exists
-    if (request.gatepassId) {
-      await vmsDb.gatepass.update({
-        where: { id: request.gatepassId },
-        data: {
-          status: 'COMPLETED',
-          actualCheckOut: new Date(),
-          securityRemarks,
-        }
-      });
-    }
+    // Update gatepass
+    await vmsPrisma.vMSGatepass.updateMany({
+      where: { visitorId: id },
+      data: {
+        status: 'COMPLETED',
+        checkOutTime: new Date(),
+      }
+    });
     
     res.json({
       success: true,
       message: 'Visitor checked out successfully',
-      request: updated
+      visitor: updated
     });
   } catch (error) {
     console.error('Mark checked out error:', error);
-    res.status(500).json({ message: 'Failed to check out visitor' });
+    res.status(500).json({ message: 'Failed to check out visitor', error: error.message });
   }
 };
 
 // Get check-in statistics
 exports.getCheckInStats = async (req, res) => {
   try {
-    const companyId = req.user.companyId;
+    const user = req.user;
+    const companyId = user?.companyId;
+    
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    
+    const baseWhere = {};
+    
+    // If user is company-scoped, filter by company
+    if (companyId && !['ADMIN', 'VMS_ADMIN', 'admin', 'FIREMAN'].includes(user.role)) {
+      baseWhere.companyId = companyId;
+    }
     
     const [
       todayTotal,
@@ -732,26 +779,26 @@ exports.getCheckInStats = async (req, res) => {
       todayRejected,
       currentlyInside
     ] = await Promise.all([
-      vmsDb.checkInRequest.count({
-        where: { companyId, submittedAt: { gte: today } }
+      vmsPrisma.vMSVisitor.count({
+        where: { ...baseWhere, createdAt: { gte: today } }
       }),
-      vmsDb.checkInRequest.count({
-        where: { companyId, submittedAt: { gte: today }, status: 'PENDING' }
+      vmsPrisma.vMSVisitor.count({
+        where: { ...baseWhere, createdAt: { gte: today }, status: 'PENDING' }
       }),
-      vmsDb.checkInRequest.count({
-        where: { companyId, submittedAt: { gte: today }, status: 'APPROVED' }
+      vmsPrisma.vMSVisitor.count({
+        where: { ...baseWhere, createdAt: { gte: today }, status: 'APPROVED' }
       }),
-      vmsDb.checkInRequest.count({
-        where: { companyId, submittedAt: { gte: today }, status: 'CHECKED_IN' }
+      vmsPrisma.vMSVisitor.count({
+        where: { ...baseWhere, createdAt: { gte: today }, status: 'CHECKED_IN' }
       }),
-      vmsDb.checkInRequest.count({
-        where: { companyId, submittedAt: { gte: today }, status: 'CHECKED_OUT' }
+      vmsPrisma.vMSVisitor.count({
+        where: { ...baseWhere, createdAt: { gte: today }, status: 'CHECKED_OUT' }
       }),
-      vmsDb.checkInRequest.count({
-        where: { companyId, submittedAt: { gte: today }, status: 'REJECTED' }
+      vmsPrisma.vMSVisitor.count({
+        where: { ...baseWhere, createdAt: { gte: today }, status: 'REJECTED' }
       }),
-      vmsDb.checkInRequest.count({
-        where: { companyId, status: 'CHECKED_IN' }
+      vmsPrisma.vMSVisitor.count({
+        where: { ...baseWhere, status: 'CHECKED_IN' }
       })
     ]);
     
@@ -768,29 +815,39 @@ exports.getCheckInStats = async (req, res) => {
     });
   } catch (error) {
     console.error('Get check-in stats error:', error);
-    res.status(500).json({ message: 'Failed to fetch statistics' });
+    res.status(500).json({ message: 'Failed to fetch statistics', error: error.message });
   }
 };
 
 // Search visitor by phone/name
 exports.searchVisitor = async (req, res) => {
   try {
-    const companyId = req.user.companyId;
+    const user = req.user;
+    const companyId = user?.companyId;
     const { q } = req.query;
     
     if (!q || q.length < 3) {
       return res.json([]);
     }
     
-    const visitors = await vmsDb.visitor.findMany({
-      where: {
-        companyId,
-        OR: [
-          { phone: { contains: q } },
-          { firstName: { contains: q } },
-          { lastName: { contains: q } },
-          { email: { contains: q } },
-        ]
+    const where = {
+      OR: [
+        { phone: { contains: q } },
+        { visitorName: { contains: q } },
+        { email: { contains: q } },
+        { companyFrom: { contains: q } },
+      ]
+    };
+    
+    // If user is company-scoped, filter by company
+    if (companyId && !['ADMIN', 'VMS_ADMIN', 'admin', 'FIREMAN'].includes(user.role)) {
+      where.companyId = companyId;
+    }
+    
+    const visitors = await vmsPrisma.vMSVisitor.findMany({
+      where,
+      include: {
+        company: { select: { name: true, displayName: true } }
       },
       take: 10
     });
@@ -798,6 +855,6 @@ exports.searchVisitor = async (req, res) => {
     res.json(visitors);
   } catch (error) {
     console.error('Search visitor error:', error);
-    res.status(500).json({ message: 'Failed to search visitors' });
+    res.status(500).json({ message: 'Failed to search visitors', error: error.message });
   }
 };

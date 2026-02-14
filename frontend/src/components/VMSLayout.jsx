@@ -30,7 +30,7 @@ const VMSLayout = () => {
 
   const handleLogout = () => {
     logout()
-    navigate('/vms/login')
+    navigate('/select-system')
   }
 
   const navItems = [
