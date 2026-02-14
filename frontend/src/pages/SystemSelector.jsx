@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { 
@@ -9,13 +9,22 @@ import {
   FileText,
   UserCheck,
   QrCode,
-  ShieldAlert
+  ShieldAlert,
+  LogIn
 } from 'lucide-react'
 
 const SystemSelector = () => {
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { user, loading } = useAuth()
   const [hoveredCard, setHoveredCard] = useState(null)
+  
+  // Check if VMS token exists (separate from main auth)
+  const [hasVMSToken, setHasVMSToken] = useState(false)
+  
+  useEffect(() => {
+    const vmsToken = localStorage.getItem('vms_token')
+    setHasVMSToken(!!vmsToken)
+  }, [])
 
   const systems = [
     {
@@ -24,6 +33,7 @@ const SystemSelector = () => {
       description: 'Manage work permits, approvals, safety measures, and compliance documentation',
       icon: ClipboardCheck,
       path: '/workpermit/dashboard',
+      loginPath: '/login',
       color: 'from-orange-500 to-red-600',
       hoverColor: 'from-orange-600 to-red-700',
       shadowColor: 'shadow-orange-500/30',
@@ -33,6 +43,7 @@ const SystemSelector = () => {
         { icon: Users, text: 'Worker Management' },
       ],
       status: 'active',
+      requiresMainAuth: true, // Work Permit requires main auth
     },
     {
       id: 'vms',
@@ -40,6 +51,7 @@ const SystemSelector = () => {
       description: 'Visitor Management System for gatepasses, visitor tracking, and security',
       icon: UserCheck,
       path: '/vms',
+      loginPath: '/vms/login',
       color: 'from-teal-500 to-cyan-600',
       hoverColor: 'from-teal-600 to-cyan-700',
       shadowColor: 'shadow-teal-500/30',
@@ -49,30 +61,74 @@ const SystemSelector = () => {
         { icon: ShieldAlert, text: 'Blacklist & Security' },
       ],
       status: 'active',
+      requiresMainAuth: false, // VMS has its own auth system
     },
   ]
 
-  const handleSystemSelect = (path) => {
+  const handleSystemSelect = (system) => {
     // Store selected system in localStorage
-    const system = path.includes('workpermit') ? 'workpermit' : path.includes('vms') ? 'vms' : 'workpermit'
-    localStorage.setItem('selectedSystem', system)
-    navigate(path)
+    localStorage.setItem('selectedSystem', system.id)
+    
+    // For Work Permit - check if user is logged in with main auth
+    if (system.id === 'workpermit') {
+      if (user) {
+        navigate(system.path)
+      } else {
+        navigate(system.loginPath)
+      }
+      return
+    }
+    
+    // For VMS - always go to VMS landing page
+    // The VMS system handles its own auth flow
+    navigate(system.path)
   }
+  
+  // Show loading while checking auth
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin" />
+          <p className="text-purple-300 text-sm">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Determine display name
+  const displayName = user?.firstName || 'User'
+  const displayEmail = user?.email || ''
+  const displayRole = user?.role?.replace('_', ' ') || ''
+  const isLoggedIn = !!user
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex flex-col">
       {/* Header */}
       <header className="p-6">
-        <div className="flex items-center gap-3">
-          <img 
-            src="/logo.png" 
-            alt="Reliable Group Logo" 
-            className="w-10 h-10 object-contain"
-          />
-          <div>
-            <h1 className="text-white font-bold text-xl">Reliable Group | Work Permit and VMS</h1>
-            <p className="text-purple-300 text-xs">Management Systems</p>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <img 
+              src="/logo.png" 
+              alt="Reliable Group Logo" 
+              className="w-10 h-10 object-contain"
+            />
+            <div>
+              <h1 className="text-white font-bold text-xl">Reliable Group | Work Permit and VMS</h1>
+              <p className="text-purple-300 text-xs">Management Systems</p>
+            </div>
           </div>
+          
+          {/* Login Button (shown when not logged in) */}
+          {!isLoggedIn && (
+            <button
+              onClick={() => navigate('/login')}
+              className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
+            >
+              <LogIn size={18} />
+              <span>Login</span>
+            </button>
+          )}
         </div>
       </header>
 
@@ -82,7 +138,7 @@ const SystemSelector = () => {
           {/* Welcome Message */}
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">
-              Welcome, {user?.firstName || 'User'}!
+              {isLoggedIn ? `Welcome, ${displayName}!` : 'Welcome!'}
             </h2>
             <p className="text-purple-200 text-lg">
               Select a system to continue
@@ -95,11 +151,14 @@ const SystemSelector = () => {
               const Icon = system.icon
               const isHovered = hoveredCard === system.id
               const isComingSoon = system.status === 'coming_soon'
+              
+              // Check if user needs to login for this system
+              const needsLogin = system.requiresMainAuth && !user
 
               return (
                 <div
                   key={system.id}
-                  onClick={() => !isComingSoon && handleSystemSelect(system.path)}
+                  onClick={() => !isComingSoon && handleSystemSelect(system)}
                   onMouseEnter={() => setHoveredCard(system.id)}
                   onMouseLeave={() => setHoveredCard(null)}
                   className={`
@@ -177,6 +236,11 @@ const SystemSelector = () => {
                     `}>
                       {isComingSoon ? (
                         <span className="text-white/60">Coming Soon</span>
+                      ) : needsLogin ? (
+                        <>
+                          <LogIn className="w-5 h-5" />
+                          <span>Login to Continue</span>
+                        </>
                       ) : (
                         <>
                           <span>Enter System</span>
@@ -195,11 +259,21 @@ const SystemSelector = () => {
 
           {/* User Info */}
           <div className="mt-12 text-center">
-            <p className="text-purple-300 text-sm">
-              Logged in as <span className="text-white font-medium">{user?.email}</span>
-              <span className="mx-2">•</span>
-              <span className="text-purple-400">{user?.role?.replace('_', ' ') || 'User'}</span>
-            </p>
+            {isLoggedIn ? (
+              <p className="text-purple-300 text-sm">
+                Logged in as <span className="text-white font-medium">{displayEmail}</span>
+                {displayRole && (
+                  <>
+                    <span className="mx-2">•</span>
+                    <span className="text-purple-400">{displayRole}</span>
+                  </>
+                )}
+              </p>
+            ) : (
+              <p className="text-purple-300 text-sm">
+                Not logged in • <button onClick={() => navigate('/login')} className="text-white hover:text-purple-200 underline">Login to Work Permit</button>
+              </p>
+            )}
           </div>
         </div>
       </main>

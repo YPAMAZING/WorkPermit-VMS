@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
+import { Outlet, NavLink, useNavigate, useLocation, Navigate } from 'react-router-dom'
 import { useVMSAuth } from '../context/VMSAuthContext'
+import LoadingSpinner from './LoadingSpinner'
 import {
   LayoutDashboard,
   Users,
@@ -21,12 +22,31 @@ import {
 } from 'lucide-react'
 
 const VMSLayout = () => {
-  const { user, logout, hasPermission, isAdmin } = useVMSAuth()
+  const { user, loading, logout, hasPermission, isAdmin } = useVMSAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false)
+
+  // Show loading state while checking authentication
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <div className="flex flex-col items-center gap-4">
+          <LoadingSpinner size="lg" />
+          <p className="text-gray-500 text-sm">Loading VMS...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Redirect to system selector if not logged in (NOT to /login)
+  if (!user) {
+    // Store the current path so we can redirect back after login
+    const currentPath = location.pathname + location.search
+    return <Navigate to="/select-system" state={{ from: currentPath, system: 'vms' }} replace />
+  }
 
   const handleLogout = () => {
     logout()

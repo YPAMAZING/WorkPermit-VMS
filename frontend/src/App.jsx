@@ -149,7 +149,8 @@ const PublicRoute = ({ children }) => {
   return children
 }
 
-// System Selector Route (only for non-Requestor roles)
+// System Selector Route - Now accessible without login
+// Users can select system first, then login if needed
 const SystemSelectorRoute = ({ children }) => {
   const { user, loading } = useAuth()
 
@@ -161,15 +162,12 @@ const SystemSelectorRoute = ({ children }) => {
     )
   }
 
-  if (!user) {
-    return <Navigate to="/login" replace />
-  }
-
-  // Requestors go directly to Work Permit
-  if (user.role === 'REQUESTOR') {
+  // Requestors go directly to Work Permit (if logged in)
+  if (user && user.role === 'REQUESTOR') {
     return <Navigate to="/workpermit/dashboard" replace />
   }
 
+  // Allow access to system selector for everyone (logged in or not)
   return children
 }
 
