@@ -168,8 +168,8 @@ const VMSLayout = () => {
           </button>
         </div>
 
-        {/* Navigation */}
-        <nav className="mt-6 px-3">
+        {/* Navigation - scrollable area */}
+        <nav className="mt-6 px-3 pb-36 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
           {filteredNavItems.map((item) => {
             const Icon = item.icon
             const isActive = location.pathname.startsWith(item.path)
@@ -194,21 +194,23 @@ const VMSLayout = () => {
           })}
         </nav>
 
-        {/* Quick Action - Visitor Check */}
-        {sidebarOpen && (
-          <div className="absolute bottom-24 left-0 right-0 px-4">
-            <button
-              onClick={() => navigate('/vms/admin/guard')}
-              className="w-full flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-500 text-white py-3 px-4 rounded-lg transition-colors"
-            >
-              <ClipboardCheck size={20} />
-              <span>Visitor Check</span>
-            </button>
-          </div>
-        )}
+        {/* Bottom Section - Fixed */}
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-b from-teal-800 to-teal-900">
+          {/* Quick Action - Visitor Check */}
+          {sidebarOpen && (
+            <div className="px-4 py-3">
+              <button
+                onClick={() => navigate('/vms/admin/guard')}
+                className="w-full flex items-center justify-center gap-2 bg-white/20 hover:bg-white/30 text-white py-3 px-4 rounded-lg transition-colors border border-white/20"
+              >
+                <ClipboardCheck size={20} />
+                <span>Visitor Check</span>
+              </button>
+            </div>
+          )}
 
-        {/* User Info */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-teal-600">
+          {/* User Info */}
+          <div className="p-4 border-t border-teal-600">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-teal-600 rounded-full flex items-center justify-center">
               <span className="text-white font-semibold">
@@ -224,6 +226,7 @@ const VMSLayout = () => {
               </div>
             )}
           </div>
+        </div>
         </div>
       </aside>
 
