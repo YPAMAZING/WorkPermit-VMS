@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useVMSAuth } from '../../context/VMSAuthContext'
 import { visitorsApi } from '../../services/vmsApi'
 import {
@@ -17,11 +16,17 @@ import {
   ChevronRight,
   Filter,
   X,
+  Calendar,
+  Clock,
+  User,
+  FileText,
+  Car,
+  CheckCircle,
+  Save,
 } from 'lucide-react'
 
 const VMSVisitors = () => {
-  const navigate = useNavigate()
-  const { canCreateVisitors, canEditVisitors, canDeleteVisitors } = useVMSAuth()
+  const { canCreateVisitors, canEditVisitors, canDeleteVisitors, isAdmin } = useVMSAuth()
   const [visitors, setVisitors] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -30,6 +35,10 @@ const VMSVisitors = () => {
   const [showFilters, setShowFilters] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState(null)
   const [error, setError] = useState(null)
+  const [viewVisitor, setViewVisitor] = useState(null)
+  const [editVisitor, setEditVisitor] = useState(null)
+  const [saving, setSaving] = useState(false)
+  const [message, setMessage] = useState({ type: '', text: '' })
 
   const fetchVisitors = async () => {
     try {
@@ -74,10 +83,27 @@ const VMSVisitors = () => {
     try {
       await visitorsApi.delete(id)
       setDeleteConfirm(null)
+      setMessage({ type: 'success', text: 'Visitor deleted successfully' })
       fetchVisitors()
     } catch (error) {
       console.error('Failed to delete visitor:', error)
-      alert(error.response?.data?.message || 'Failed to delete visitor')
+      setMessage({ type: 'error', text: error.response?.data?.message || 'Failed to delete visitor' })
+    }
+  }
+
+  const handleEditSave = async (e) => {
+    e.preventDefault()
+    setSaving(true)
+    try {
+      await visitorsApi.update(editVisitor.id, editVisitor)
+      setEditVisitor(null)
+      setMessage({ type: 'success', text: 'Visitor updated successfully' })
+      fetchVisitors()
+    } catch (error) {
+      console.error('Failed to update visitor:', error)
+      setMessage({ type: 'error', text: error.response?.data?.message || 'Failed to update visitor' })
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -89,16 +115,21 @@ const VMSVisitors = () => {
           <h1 className="text-2xl font-bold text-gray-800">Visitors</h1>
           <p className="text-gray-500 mt-1">Manage registered visitors</p>
         </div>
-        {canCreateVisitors && (
-          <button
-            onClick={() => navigate('/vms/visitors/new')}
-            className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
-          >
-            <Plus size={18} />
-            Add Visitor
-          </button>
-        )}
       </div>
+
+      {/* Message */}
+      {message.text && (
+        <div className={`p-4 rounded-lg flex items-center gap-3 ${
+          message.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' :
+          'bg-red-50 text-red-700 border border-red-200'
+        }`}>
+          {message.type === 'success' ? <CheckCircle size={20} /> : <AlertTriangle size={20} />}
+          {message.text}
+          <button onClick={() => setMessage({ type: '', text: '' })} className="ml-auto">
+            <X size={18} />
+          </button>
+        </div>
+      )}
 
       {/* Search and Filters */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
@@ -175,14 +206,7 @@ const VMSVisitors = () => {
           <div className="flex flex-col items-center justify-center h-64 text-gray-500">
             <Users size={48} className="mb-3 text-gray-300" />
             <p>No visitors found</p>
-            {canCreateVisitors && (
-              <button
-                onClick={() => navigate('/vms/visitors/new')}
-                className="mt-4 text-teal-600 hover:text-teal-700"
-              >
-                Add your first visitor
-              </button>
-            )}
+            <p className="text-sm text-gray-400 mt-1">Visitors will appear here when they check in</p>
           </div>
         ) : (
           <>
@@ -216,7 +240,7 @@ const VMSVisitors = () => {
                             <p className="font-medium text-gray-800">
                               {visitor.visitorName}
                             </p>
-                            <p className="text-xs text-gray-400">{visitor.id}</p>
+                            <p className="text-xs text-gray-400">{visitor.id?.slice(0, 8)}...</p>
                           </div>
                         </div>
                       </td>
@@ -264,22 +288,22 @@ const VMSVisitors = () => {
                       <td className="px-4 py-4">
                         <div className="flex items-center justify-end gap-2">
                           <button
-                            onClick={() => navigate(`/vms/visitors/${visitor.id}`)}
+                            onClick={() => setViewVisitor(visitor)}
                             className="p-2 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
                             title="View"
                           >
                             <Eye size={18} />
                           </button>
-                          {canEditVisitors && (
+                          {(canEditVisitors || isAdmin) && (
                             <button
-                              onClick={() => navigate(`/vms/visitors/${visitor.id}/edit`)}
+                              onClick={() => setEditVisitor({...visitor})}
                               className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                               title="Edit"
                             >
                               <Edit size={18} />
                             </button>
                           )}
-                          {canDeleteVisitors && (
+                          {(canDeleteVisitors || isAdmin) && (
                             <button
                               onClick={() => setDeleteConfirm(visitor)}
                               className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
@@ -325,6 +349,251 @@ const VMSVisitors = () => {
           </>
         )}
       </div>
+
+      {/* View Visitor Modal */}
+      {viewVisitor && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-teal-600 to-teal-700 p-6 text-white">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold">Visitor Details</h2>
+                <button onClick={() => setViewVisitor(null)} className="p-1 hover:bg-white/20 rounded">
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="p-6">
+              {/* Photo & Name */}
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-20 h-20 bg-teal-100 rounded-xl overflow-hidden flex-shrink-0">
+                  {viewVisitor.photo ? (
+                    <img src={viewVisitor.photo} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <User size={32} className="text-teal-600" />
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-800">{viewVisitor.visitorName}</h3>
+                  <p className="text-gray-500">{viewVisitor.purpose || 'Visitor'}</p>
+                  <span className={`inline-flex items-center mt-2 px-2 py-1 text-xs rounded-full ${
+                    viewVisitor.status === 'CHECKED_IN' ? 'bg-green-100 text-green-700' :
+                    viewVisitor.status === 'APPROVED' ? 'bg-blue-100 text-blue-700' :
+                    'bg-gray-100 text-gray-600'
+                  }`}>
+                    {viewVisitor.status?.replace('_', ' ') || 'Unknown'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Details */}
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
+                    <Phone size={18} className="text-gray-400" />
+                    <div>
+                      <p className="text-xs text-gray-500">Phone</p>
+                      <p className="font-medium text-gray-800">{viewVisitor.phone || '-'}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
+                    <Mail size={18} className="text-gray-400" />
+                    <div>
+                      <p className="text-xs text-gray-500">Email</p>
+                      <p className="font-medium text-gray-800 text-sm">{viewVisitor.email || '-'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
+                  <Building size={18} className="text-gray-400" />
+                  <div>
+                    <p className="text-xs text-gray-500">Company to Visit</p>
+                    <p className="font-medium text-gray-800">{viewVisitor.companyToVisit || '-'}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
+                  <User size={18} className="text-gray-400" />
+                  <div>
+                    <p className="text-xs text-gray-500">Person to Meet</p>
+                    <p className="font-medium text-gray-800">{viewVisitor.personToMeet || '-'}</p>
+                  </div>
+                </div>
+
+                {viewVisitor.vehicleNumber && (
+                  <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
+                    <Car size={18} className="text-gray-400" />
+                    <div>
+                      <p className="text-xs text-gray-500">Vehicle Number</p>
+                      <p className="font-medium text-gray-800">{viewVisitor.vehicleNumber}</p>
+                    </div>
+                  </div>
+                )}
+
+                {viewVisitor.idProofType && (
+                  <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
+                    <FileText size={18} className="text-gray-400" />
+                    <div>
+                      <p className="text-xs text-gray-500">ID Proof</p>
+                      <p className="font-medium text-gray-800">{viewVisitor.idProofType}: {viewVisitor.idProofNumber || '-'}</p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
+                    <Calendar size={18} className="text-gray-400" />
+                    <div>
+                      <p className="text-xs text-gray-500">Check-in Time</p>
+                      <p className="font-medium text-gray-800 text-sm">
+                        {viewVisitor.checkInTime ? new Date(viewVisitor.checkInTime).toLocaleString() : '-'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
+                    <Clock size={18} className="text-gray-400" />
+                    <div>
+                      <p className="text-xs text-gray-500">Check-out Time</p>
+                      <p className="font-medium text-gray-800 text-sm">
+                        {viewVisitor.checkOutTime ? new Date(viewVisitor.checkOutTime).toLocaleString() : '-'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Close Button */}
+              <div className="mt-6 flex justify-end">
+                <button
+                  onClick={() => setViewVisitor(null)}
+                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Visitor Modal */}
+      {editVisitor && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b">
+              <h2 className="text-xl font-bold text-gray-800">Edit Visitor</h2>
+              <button onClick={() => setEditVisitor(null)} className="p-2 hover:bg-gray-100 rounded-lg">
+                <X size={20} />
+              </button>
+            </div>
+            
+            <form onSubmit={handleEditSave} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Visitor Name</label>
+                <input
+                  type="text"
+                  value={editVisitor.visitorName || ''}
+                  onChange={(e) => setEditVisitor({...editVisitor, visitorName: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                  <input
+                    type="tel"
+                    value={editVisitor.phone || ''}
+                    onChange={(e) => setEditVisitor({...editVisitor, phone: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <input
+                    type="email"
+                    value={editVisitor.email || ''}
+                    onChange={(e) => setEditVisitor({...editVisitor, email: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Company to Visit</label>
+                <input
+                  type="text"
+                  value={editVisitor.companyToVisit || ''}
+                  onChange={(e) => setEditVisitor({...editVisitor, companyToVisit: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Person to Meet</label>
+                <input
+                  type="text"
+                  value={editVisitor.personToMeet || ''}
+                  onChange={(e) => setEditVisitor({...editVisitor, personToMeet: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Purpose</label>
+                <input
+                  type="text"
+                  value={editVisitor.purpose || ''}
+                  onChange={(e) => setEditVisitor({...editVisitor, purpose: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Vehicle Number</label>
+                <input
+                  type="text"
+                  value={editVisitor.vehicleNumber || ''}
+                  onChange={(e) => setEditVisitor({...editVisitor, vehicleNumber: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t">
+                <button
+                  type="button"
+                  onClick={() => setEditVisitor(null)}
+                  className="px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50"
+                >
+                  {saving ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save size={18} />
+                      Save Changes
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Delete Confirmation Modal */}
       {deleteConfirm && (
