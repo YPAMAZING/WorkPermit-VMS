@@ -25,9 +25,9 @@ const VMSLanding = () => {
       description: 'Visitors can scan QR code, enter their details, and generate a digital visitor pass instantly',
       icon: QrCode,
       path: '/vms/visitor-register',
-      color: 'from-emerald-500 to-teal-600',
-      hoverColor: 'from-emerald-600 to-teal-700',
-      shadowColor: 'shadow-emerald-500/30',
+      color: 'from-cyan-500 to-teal-600',
+      hoverColor: 'from-cyan-600 to-teal-700',
+      shadowColor: 'shadow-cyan-500/30',
       features: [
         { icon: Scan, text: 'Scan QR Code' },
         { icon: Users, text: 'Enter Details' },
@@ -41,9 +41,9 @@ const VMSLanding = () => {
       description: 'Company staff can view their visitors. Reception can manage all visitors and entries',
       icon: LogIn,
       path: '/vms/login',
-      color: 'from-blue-500 to-indigo-600',
-      hoverColor: 'from-blue-600 to-indigo-700',
-      shadowColor: 'shadow-blue-500/30',
+      color: 'from-pink-500 to-rose-600',
+      hoverColor: 'from-pink-600 to-rose-700',
+      shadowColor: 'shadow-pink-500/30',
       features: [
         { icon: Building2, text: 'Company Access' },
         { icon: Users, text: 'Reception Desk' },
@@ -64,7 +64,7 @@ const VMSLanding = () => {
               className="w-12 h-12 object-contain bg-white rounded-lg p-1"
             />
             <div>
-              <h1 className="text-white font-bold text-xl">Reliable Group | Work Permit and VMS</h1>
+              <h1 className="text-white font-bold text-xl">Reliable Group | WP and VMS</h1>
               <p className="text-teal-300 text-xs">Visitor Management System</p>
             </div>
           </div>
