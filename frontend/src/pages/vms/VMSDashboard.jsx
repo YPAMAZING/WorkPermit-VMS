@@ -190,7 +190,7 @@ const VMSDashboard = () => {
 
       {/* Two Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Recent Gatepasses */}
+        {/* Recent Visitor Passes */}
         <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100">
           <div className="flex items-center justify-between p-5 border-b border-gray-100">
             <h2 className="text-lg font-semibold text-gray-800">Recent Visitor Passes</h2>

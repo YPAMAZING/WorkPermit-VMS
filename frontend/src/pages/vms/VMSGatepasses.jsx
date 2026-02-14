@@ -209,7 +209,7 @@ const VMSGatepasses = () => {
         )}
       </div>
 
-      {/* Gatepasses Table */}
+      {/* Visitor Passes Table */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center h-64">

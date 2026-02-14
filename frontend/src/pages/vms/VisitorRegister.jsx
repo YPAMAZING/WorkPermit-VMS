@@ -287,7 +287,7 @@ const VisitorRegister = () => {
         requiresApproval: requiresApproval,
       }
 
-      // Call API to create visitor entry
+      // Call API to create visitor record
       const response = await vmsAPI.createVisitor(payload)
       
       if (response.data.success) {
