@@ -18,6 +18,7 @@ import {
   Search,
   Building2,
   UserCog,
+  ClipboardCheck,
 } from 'lucide-react'
 
 const VMSLayout = () => {
@@ -192,6 +193,19 @@ const VMSLayout = () => {
             )
           })}
         </nav>
+
+        {/* Quick Action - Visitor Check */}
+        {sidebarOpen && (
+          <div className="absolute bottom-24 left-0 right-0 px-4">
+            <button
+              onClick={() => navigate('/vms/admin/guard')}
+              className="w-full flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-500 text-white py-3 px-4 rounded-lg transition-colors"
+            >
+              <ClipboardCheck size={20} />
+              <span>Visitor Check</span>
+            </button>
+          </div>
+        )}
 
         {/* User Info */}
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-teal-600">
