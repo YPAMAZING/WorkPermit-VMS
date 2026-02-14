@@ -116,11 +116,10 @@ exports.getDashboardOverview = async (req, res) => {
         },
       }).catch(() => 0),
       
-      // Active blacklist entries (count visitors with BLACKLISTED status)
-      prisma.vMSVisitor.count({
+      // Active blacklist entries (from VMSBlacklist table)
+      prisma.vMSBlacklist.count({
         where: { 
-          status: 'BLACKLISTED',
-          ...companyFilter 
+          isActive: true,
         },
       }).catch(() => 0),
 
