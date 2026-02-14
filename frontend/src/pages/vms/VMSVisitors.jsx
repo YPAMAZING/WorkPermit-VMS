@@ -29,10 +29,12 @@ const VMSVisitors = () => {
   const [filters, setFilters] = useState({ isBlacklisted: '' })
   const [showFilters, setShowFilters] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState(null)
+  const [error, setError] = useState(null)
 
   const fetchVisitors = async () => {
     try {
       setLoading(true)
+      setError(null)
       const params = {
         page: pagination.page,
         limit: pagination.limit,
@@ -40,13 +42,14 @@ const VMSVisitors = () => {
         isBlacklisted: filters.isBlacklisted || undefined,
       }
       const response = await visitorsApi.getAll(params)
-      setVisitors(response.data.visitors)
+      setVisitors(response.data.visitors || [])
       setPagination(prev => ({
         ...prev,
         ...response.data.pagination,
       }))
     } catch (error) {
       console.error('Failed to fetch visitors:', error)
+      setError(error.response?.data?.message || 'Failed to load visitors. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -145,6 +148,22 @@ const VMSVisitors = () => {
           </div>
         )}
       </div>
+
+      {/* Error State */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="w-5 h-5 text-red-500" />
+            <p className="text-red-700">{error}</p>
+            <button
+              onClick={fetchVisitors}
+              className="ml-auto text-red-600 hover:text-red-700 font-medium"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Visitors Table */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
