@@ -21,7 +21,7 @@ import {
 
 const NewPreApproval = () => {
   const navigate = useNavigate()
-  const { user } = useVMSAuth()
+  const { user, isAdmin } = useVMSAuth()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   
@@ -33,12 +33,16 @@ const NewPreApproval = () => {
     getCompanyById 
   } = useCompanyList({ withApprovalStatus: true })
   
+  // Check if user is a company user (has companyId and is not admin)
+  const isCompanyUser = user?.companyId && !isAdmin
+  
   const [formData, setFormData] = useState({
     visitorName: '',
     phone: '',
     email: '',
     companyFrom: '',
-    companyId: '',
+    // Auto-set companyId for company users
+    companyId: user?.companyId || '',
     purpose: 'MEETING',
     validFrom: new Date().toISOString().slice(0, 16),
     validUntil: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16),
@@ -224,28 +228,36 @@ const NewPreApproval = () => {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Company to Visit <span className="text-red-500">*</span>
               </label>
-              <select
-                name="companyId"
-                value={formData.companyId}
-                onChange={handleChange}
-                disabled={companiesLoading}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:bg-gray-100"
-              >
-                {companiesLoading ? (
-                  <option value="">Loading companies...</option>
-                ) : companiesError ? (
-                  <option value="">Error loading companies</option>
-                ) : (
-                  <>
-                    <option value="">Select a company</option>
-                    {companies.map(company => (
-                      <option key={company.id} value={company.id}>
-                        {company.displayName || company.name}
-                      </option>
-                    ))}
-                  </>
-                )}
-              </select>
+              {isCompanyUser ? (
+                // Company users can only create pre-approvals for their own company
+                <div className="w-full px-4 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-700">
+                  {user?.companyName || getCompanyById(user?.companyId)?.displayName || 'Your Company'}
+                </div>
+              ) : (
+                // Admin users can select any company
+                <select
+                  name="companyId"
+                  value={formData.companyId}
+                  onChange={handleChange}
+                  disabled={companiesLoading}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:bg-gray-100"
+                >
+                  {companiesLoading ? (
+                    <option value="">Loading companies...</option>
+                  ) : companiesError ? (
+                    <option value="">Error loading companies</option>
+                  ) : (
+                    <>
+                      <option value="">Select a company</option>
+                      {companies.map(company => (
+                        <option key={company.id} value={company.id}>
+                          {company.displayName || company.name}
+                        </option>
+                      ))}
+                    </>
+                  )}
+                </select>
+              )}
               {/* Show approval status hint */}
               {selectedCompany && (
                 <div className={`mt-2 text-sm flex items-center gap-2 ${

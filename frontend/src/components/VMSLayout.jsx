@@ -16,7 +16,6 @@ import {
   ChevronDown,
   Bell,
   Search,
-  QrCode,
   Building2,
   UserCog,
 } from 'lucide-react'
@@ -193,19 +192,6 @@ const VMSLayout = () => {
             )
           })}
         </nav>
-
-        {/* Quick Actions */}
-        {sidebarOpen && (
-          <div className="absolute bottom-24 left-0 right-0 px-4">
-            <button
-              onClick={() => navigate('/vms/admin/guard')}
-              className="w-full flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-500 text-white py-3 px-4 rounded-lg transition-colors"
-            >
-              <QrCode size={20} />
-              <span>Scan QR</span>
-            </button>
-          </div>
-        )}
 
         {/* User Info */}
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-teal-600">

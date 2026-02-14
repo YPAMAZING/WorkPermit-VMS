@@ -22,6 +22,12 @@ exports.getPreApprovedVisitors = async (req, res) => {
     // Build where clause
     const where = {};
 
+    // COMPANY FILTERING: Non-admin users can only see their company's pre-approvals
+    // Admin users (isAdmin = true or no companyId) can see all
+    if (req.user && req.user.companyId && !req.user.isAdmin) {
+      where.companyId = req.user.companyId;
+    }
+
     if (search) {
       where.OR = [
         { visitorName: { contains: search } },
@@ -343,6 +349,12 @@ exports.getPreApprovalStats = async (req, res) => {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
+    // COMPANY FILTERING: Non-admin users can only see their company's stats
+    const companyFilter = {};
+    if (req.user && req.user.companyId && !req.user.isAdmin) {
+      companyFilter.companyId = req.user.companyId;
+    }
+
     const [
       total,
       active,
@@ -351,18 +363,20 @@ exports.getPreApprovalStats = async (req, res) => {
       cancelled,
       upcomingToday,
     ] = await Promise.all([
-      prisma.vMSPreApproval.count(),
-      prisma.vMSPreApproval.count({ where: { status: 'ACTIVE' } }),
-      prisma.vMSPreApproval.count({ where: { status: 'USED' } }),
+      prisma.vMSPreApproval.count({ where: companyFilter }),
+      prisma.vMSPreApproval.count({ where: { ...companyFilter, status: 'ACTIVE' } }),
+      prisma.vMSPreApproval.count({ where: { ...companyFilter, status: 'USED' } }),
       prisma.vMSPreApproval.count({ 
         where: { 
+          ...companyFilter,
           status: 'ACTIVE',
           validUntil: { lt: now }
         } 
       }),
-      prisma.vMSPreApproval.count({ where: { status: 'CANCELLED' } }),
+      prisma.vMSPreApproval.count({ where: { ...companyFilter, status: 'CANCELLED' } }),
       prisma.vMSPreApproval.count({
         where: {
+          ...companyFilter,
           status: 'ACTIVE',
           validFrom: { lte: tomorrow },
           validUntil: { gte: today },

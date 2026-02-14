@@ -8,8 +8,6 @@ import {
   Shield, 
   Building2,
   Scan,
-  Share2,
-  ClipboardCheck,
   ArrowRight
 } from 'lucide-react'
 
@@ -17,6 +15,8 @@ const VMSLanding = () => {
   const navigate = useNavigate()
   const [hoveredCard, setHoveredCard] = useState(null)
 
+  // Only 2 blocks: Visitor Entry and Staff Login
+  // Pre-Approval is accessible after staff login inside the admin panel
   const blocks = [
     {
       id: 'visitor-qr',
@@ -48,22 +48,6 @@ const VMSLanding = () => {
         { icon: Building2, text: 'Company Access' },
         { icon: Users, text: 'Reception Desk' },
         { icon: Shield, text: 'Role-Based View' },
-      ],
-    },
-    {
-      id: 'pre-approval',
-      title: 'Pre-Approval',
-      subtitle: 'Generate & Share',
-      description: 'Companies can pre-generate gatepasses for expected visitors and share via WhatsApp',
-      icon: ClipboardCheck,
-      path: '/vms/pre-approval',
-      color: 'from-purple-500 to-pink-600',
-      hoverColor: 'from-purple-600 to-pink-700',
-      shadowColor: 'shadow-purple-500/30',
-      features: [
-        { icon: FileCheck, text: 'Pre-Generate Pass' },
-        { icon: Share2, text: 'Share on WhatsApp' },
-        { icon: ClipboardCheck, text: 'Track Approvals' },
       ],
     },
   ]
@@ -106,8 +90,8 @@ const VMSLanding = () => {
             </p>
           </div>
 
-          {/* Three Blocks */}
-          <div className="grid md:grid-cols-3 gap-6">
+          {/* Two Blocks */}
+          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
             {blocks.map((block) => {
               const Icon = block.icon
               const isHovered = hoveredCard === block.id
