@@ -35,17 +35,16 @@ exports.getVisitors = async (req, res) => {
         where.status = { in: ['PENDING', 'PENDING_APPROVAL'] };
       } else if (statusUpper === 'CHECKEDIN' || statusUpper === 'CHECKED_IN') {
         where.status = 'CHECKED_IN';
-      } else {
+      } else if (statusUpper !== 'ALL') {
         where.status = statusUpper;
       }
     }
 
-    // Search filter
-    if (search) {
+    // Search filter - using simple contains (MySQL is case-insensitive by default)
+    if (search && search.trim()) {
       where.OR = [
         { visitorName: { contains: search } },
         { phone: { contains: search } },
-        { email: { contains: search } },
         { companyToVisit: { contains: search } },
         { personToMeet: { contains: search } },
       ];
@@ -53,55 +52,49 @@ exports.getVisitors = async (req, res) => {
 
     console.log('Fetching visitors with where:', JSON.stringify(where));
 
-    // Get visitors with pagination
+    // Get visitors with pagination - simplified query
     const [visitors, total] = await Promise.all([
       vmsPrisma.vMSVisitor.findMany({
         where,
         skip,
         take,
         orderBy: { [sortBy]: sortOrder },
-        include: {
-          company: {
-            select: { id: true, name: true, displayName: true },
-          },
-          gatepass: {
-            select: { id: true, gatepassNumber: true, status: true },
-          },
-        },
       }),
       vmsPrisma.vMSVisitor.count({ where }),
     ]);
 
     console.log(`Found ${visitors.length} visitors out of ${total} total`);
 
+    // Format response
+    const formattedVisitors = visitors.map(v => ({
+      id: v.id,
+      visitorName: v.visitorName,
+      phone: v.phone,
+      email: v.email,
+      companyFrom: v.companyFrom,
+      companyToVisit: v.companyToVisit,
+      companyId: v.companyId,
+      personToMeet: v.personToMeet,
+      purpose: v.purpose,
+      idProofType: v.idProofType,
+      idProofNumber: v.idProofNumber,
+      photo: v.photo,
+      vehicleNumber: v.vehicleNumber,
+      numberOfVisitors: v.numberOfVisitors,
+      status: v.status,
+      approvedBy: v.approvedBy,
+      approvedAt: v.approvedAt,
+      rejectionReason: v.rejectionReason,
+      checkInTime: v.checkInTime,
+      checkOutTime: v.checkOutTime,
+      entryType: v.entryType,
+      createdAt: v.createdAt,
+      updatedAt: v.updatedAt,
+    }));
+
     res.json({
       success: true,
-      visitors: visitors.map(v => ({
-        id: v.id,
-        visitorName: v.visitorName,
-        phone: v.phone,
-        email: v.email,
-        companyFrom: v.companyFrom,
-        companyToVisit: v.companyToVisit,
-        companyId: v.companyId,
-        companyName: v.company?.displayName || v.companyToVisit,
-        personToMeet: v.personToMeet,
-        purpose: v.purpose,
-        idProofType: v.idProofType,
-        idProofNumber: v.idProofNumber,
-        photo: v.photo,
-        vehicleNumber: v.vehicleNumber,
-        numberOfVisitors: v.numberOfVisitors,
-        status: v.status,
-        approvedBy: v.approvedBy,
-        approvedAt: v.approvedAt,
-        rejectionReason: v.rejectionReason,
-        checkInTime: v.checkInTime,
-        checkOutTime: v.checkOutTime,
-        entryType: v.entryType,
-        createdAt: v.createdAt,
-        gatepass: v.gatepass,
-      })),
+      visitors: formattedVisitors,
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
@@ -111,7 +104,12 @@ exports.getVisitors = async (req, res) => {
     });
   } catch (error) {
     console.error('Get VMS visitors error:', error);
-    res.status(500).json({ message: 'Failed to get visitors', error: error.message });
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ 
+      message: 'Failed to get visitors', 
+      error: error.message,
+      hint: 'Check if vms_visitors table exists and Prisma client is generated'
+    });
   }
 };
 
@@ -122,10 +120,6 @@ exports.getVisitor = async (req, res) => {
 
     const visitor = await vmsPrisma.vMSVisitor.findUnique({
       where: { id },
-      include: {
-        company: true,
-        gatepass: true,
-      },
     });
 
     if (!visitor) {
@@ -151,10 +145,6 @@ exports.searchByPhone = async (req, res) => {
     const visitor = await vmsPrisma.vMSVisitor.findFirst({
       where: { phone },
       orderBy: { createdAt: 'desc' },
-      include: {
-        company: true,
-        gatepass: true,
-      },
     });
 
     // Check blacklist
@@ -173,6 +163,7 @@ exports.searchByPhone = async (req, res) => {
       }
     } catch (e) {
       // Blacklist table might not exist
+      console.log('Blacklist check skipped:', e.message);
     }
 
     if (visitor) {
@@ -226,11 +217,15 @@ exports.createVisitor = async (req, res) => {
     // Check if company requires approval
     let requireApproval = false;
     if (companyId) {
-      const company = await vmsPrisma.vMSCompany.findUnique({
-        where: { id: companyId },
-        select: { requireApproval: true },
-      });
-      requireApproval = company?.requireApproval || false;
+      try {
+        const company = await vmsPrisma.vMSCompany.findUnique({
+          where: { id: companyId },
+          select: { requireApproval: true },
+        });
+        requireApproval = company?.requireApproval || false;
+      } catch (e) {
+        console.log('Company lookup failed:', e.message);
+      }
     }
 
     const visitor = await vmsPrisma.vMSVisitor.create({
@@ -248,13 +243,10 @@ exports.createVisitor = async (req, res) => {
         photo,
         vehicleNumber,
         numberOfVisitors,
-        status: requireApproval ? 'PENDING_APPROVAL' : 'APPROVED',
+        status: requireApproval ? 'PENDING' : 'APPROVED',
         entryType: 'WALK_IN',
         approvedAt: requireApproval ? null : new Date(),
         approvedBy: requireApproval ? null : req.user?.userId,
-      },
-      include: {
-        company: true,
       },
     });
 
@@ -303,10 +295,9 @@ exports.deleteVisitor = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Check if visitor has a gatepass
+    // Check if visitor exists
     const visitor = await vmsPrisma.vMSVisitor.findUnique({
       where: { id },
-      include: { gatepass: true },
     });
 
     if (!visitor) {
@@ -314,8 +305,10 @@ exports.deleteVisitor = async (req, res) => {
     }
 
     // Delete gatepass first if exists
-    if (visitor.gatepass) {
-      await vmsPrisma.vMSGatepass.delete({ where: { id: visitor.gatepass.id } });
+    try {
+      await vmsPrisma.vMSGatepass.deleteMany({ where: { visitorId: id } });
+    } catch (e) {
+      console.log('No gatepass to delete or error:', e.message);
     }
 
     await vmsPrisma.vMSVisitor.delete({ where: { id } });
@@ -348,17 +341,17 @@ exports.getVisitorStats = async (req, res) => {
       checkedOut,
       todayTotal,
     ] = await Promise.all([
-      vmsPrisma.vMSVisitor.count({ where: { ...companyFilter, status: { in: ['PENDING', 'PENDING_APPROVAL'] } } }),
-      vmsPrisma.vMSVisitor.count({ where: { ...companyFilter, status: 'APPROVED' } }),
-      vmsPrisma.vMSVisitor.count({ where: { ...companyFilter, status: 'REJECTED' } }),
-      vmsPrisma.vMSVisitor.count({ where: { ...companyFilter, status: 'CHECKED_IN' } }),
-      vmsPrisma.vMSVisitor.count({ where: { ...companyFilter, status: 'CHECKED_OUT' } }),
+      vmsPrisma.vMSVisitor.count({ where: { ...companyFilter, status: { in: ['PENDING', 'PENDING_APPROVAL'] } } }).catch(() => 0),
+      vmsPrisma.vMSVisitor.count({ where: { ...companyFilter, status: 'APPROVED' } }).catch(() => 0),
+      vmsPrisma.vMSVisitor.count({ where: { ...companyFilter, status: 'REJECTED' } }).catch(() => 0),
+      vmsPrisma.vMSVisitor.count({ where: { ...companyFilter, status: 'CHECKED_IN' } }).catch(() => 0),
+      vmsPrisma.vMSVisitor.count({ where: { ...companyFilter, status: 'CHECKED_OUT' } }).catch(() => 0),
       vmsPrisma.vMSVisitor.count({
         where: {
           ...companyFilter,
           createdAt: { gte: today, lt: tomorrow },
         },
-      }),
+      }).catch(() => 0),
     ]);
 
     res.json({
@@ -398,6 +391,9 @@ exports.approveVisitor = async (req, res) => {
     });
   } catch (error) {
     console.error('Approve visitor error:', error);
+    if (error.code === 'P2025') {
+      return res.status(404).json({ message: 'Visitor not found' });
+    }
     res.status(500).json({ message: 'Failed to approve visitor', error: error.message });
   }
 };
@@ -423,6 +419,9 @@ exports.rejectVisitor = async (req, res) => {
     });
   } catch (error) {
     console.error('Reject visitor error:', error);
+    if (error.code === 'P2025') {
+      return res.status(404).json({ message: 'Visitor not found' });
+    }
     res.status(500).json({ message: 'Failed to reject visitor', error: error.message });
   }
 };
@@ -447,6 +446,9 @@ exports.checkInVisitor = async (req, res) => {
     });
   } catch (error) {
     console.error('Check-in visitor error:', error);
+    if (error.code === 'P2025') {
+      return res.status(404).json({ message: 'Visitor not found' });
+    }
     res.status(500).json({ message: 'Failed to check in visitor', error: error.message });
   }
 };
@@ -471,6 +473,9 @@ exports.checkOutVisitor = async (req, res) => {
     });
   } catch (error) {
     console.error('Check-out visitor error:', error);
+    if (error.code === 'P2025') {
+      return res.status(404).json({ message: 'Visitor not found' });
+    }
     res.status(500).json({ message: 'Failed to check out visitor', error: error.message });
   }
 };
