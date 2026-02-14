@@ -176,7 +176,7 @@ const VMSLanding = () => {
           {/* Quick Info */}
           <div className="mt-12 text-center">
             <p className="text-teal-300/60 text-sm">
-              For assistance, contact visitor check-in or security desk
+              For assistance, contact reception or security desk
             </p>
           </div>
         </div>
