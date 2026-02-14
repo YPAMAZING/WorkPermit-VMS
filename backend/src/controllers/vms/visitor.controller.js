@@ -2,6 +2,15 @@
 // Handles VMSVisitor model for Visitor Management System
 const vmsPrisma = require('../../config/vms-prisma');
 
+// Helper to check if user is admin
+const isUserAdmin = (user) => {
+  if (!user) return false;
+  if (user.isAdmin) return true;
+  if (user.isFromWorkPermit) return true;
+  const adminRoles = ['VMS_ADMIN', 'ADMIN', 'admin', 'FIREMAN', 'SUPER_ADMIN'];
+  return adminRoles.includes(user.role);
+};
+
 // Get all VMS visitors with pagination and filters
 exports.getVisitors = async (req, res) => {
   try {
@@ -22,7 +31,16 @@ exports.getVisitors = async (req, res) => {
     const where = {};
 
     // Filter by company if user is not admin
-    if (req.user?.companyId && !req.user?.isAdmin) {
+    const userIsAdmin = isUserAdmin(req.user);
+    console.log('User admin check:', { 
+      userId: req.user?.userId, 
+      role: req.user?.role, 
+      isAdmin: req.user?.isAdmin, 
+      isFromWorkPermit: req.user?.isFromWorkPermit,
+      userIsAdmin 
+    });
+    
+    if (req.user?.companyId && !userIsAdmin) {
       where.companyId = req.user.companyId;
     } else if (companyId) {
       where.companyId = companyId;
@@ -329,7 +347,8 @@ exports.getVisitorStats = async (req, res) => {
     tomorrow.setDate(tomorrow.getDate() + 1);
 
     // Filter by company if user is not admin
-    const companyFilter = req.user?.companyId && !req.user?.isAdmin 
+    const userIsAdmin = isUserAdmin(req.user);
+    const companyFilter = req.user?.companyId && !userIsAdmin 
       ? { companyId: req.user.companyId } 
       : {};
 

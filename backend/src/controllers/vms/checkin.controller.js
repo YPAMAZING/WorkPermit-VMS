@@ -2,6 +2,15 @@ const vmsPrisma = require('../../config/vms-prisma');
 const QRCode = require('qrcode');
 const { v4: uuidv4 } = require('uuid');
 
+// Helper to check if user is admin
+const isUserAdmin = (user) => {
+  if (!user) return false;
+  if (user.isAdmin) return true;
+  if (user.isFromWorkPermit) return true;
+  const adminRoles = ['VMS_ADMIN', 'ADMIN', 'admin', 'FIREMAN', 'SUPER_ADMIN'];
+  return adminRoles.includes(user.role);
+};
+
 // Generate request number
 const generateRequestNumber = () => {
   const date = new Date();
@@ -335,7 +344,7 @@ exports.getPendingRequests = async (req, res) => {
     };
     
     // If user is company-scoped, filter by company
-    if (companyId && !['ADMIN', 'VMS_ADMIN', 'admin', 'FIREMAN'].includes(user.role)) {
+    if (companyId && !isUserAdmin(user)) {
       where.companyId = companyId;
     }
     
@@ -373,7 +382,7 @@ exports.getAllRequests = async (req, res) => {
     const where = {};
     
     // If user is company-scoped, filter by company
-    if (companyId && !['ADMIN', 'VMS_ADMIN', 'admin', 'FIREMAN'].includes(user.role)) {
+    if (companyId && !isUserAdmin(user)) {
       where.companyId = companyId;
     }
     
@@ -438,7 +447,7 @@ exports.getLiveFeed = async (req, res) => {
     const baseWhere = {};
     
     // If user is company-scoped, filter by company
-    if (companyId && !['ADMIN', 'VMS_ADMIN', 'admin', 'FIREMAN'].includes(user.role)) {
+    if (companyId && !isUserAdmin(user)) {
       baseWhere.companyId = companyId;
     }
     
@@ -523,7 +532,7 @@ exports.getRequestById = async (req, res) => {
     const where = { id };
     
     // If user is company-scoped, ensure they can only see their company's visitors
-    if (companyId && !['ADMIN', 'VMS_ADMIN', 'admin', 'FIREMAN'].includes(user.role)) {
+    if (companyId && !isUserAdmin(user)) {
       where.companyId = companyId;
     }
     
@@ -559,7 +568,7 @@ exports.approveRequest = async (req, res) => {
     const where = { id, status: 'PENDING' };
     
     // If user is company-scoped, ensure they can only approve their company's visitors
-    if (companyId && !['ADMIN', 'VMS_ADMIN', 'admin', 'FIREMAN'].includes(user.role)) {
+    if (companyId && !isUserAdmin(user)) {
       where.companyId = companyId;
     }
     
@@ -623,7 +632,7 @@ exports.rejectRequest = async (req, res) => {
     const where = { id, status: 'PENDING' };
     
     // If user is company-scoped, ensure they can only reject their company's visitors
-    if (companyId && !['ADMIN', 'VMS_ADMIN', 'admin', 'FIREMAN'].includes(user.role)) {
+    if (companyId && !isUserAdmin(user)) {
       where.companyId = companyId;
     }
     
@@ -662,7 +671,7 @@ exports.markCheckedIn = async (req, res) => {
     const where = { id, status: 'APPROVED' };
     
     // If user is company-scoped, filter by company
-    if (companyId && !['ADMIN', 'VMS_ADMIN', 'admin', 'FIREMAN'].includes(user.role)) {
+    if (companyId && !isUserAdmin(user)) {
       where.companyId = companyId;
     }
     
@@ -712,7 +721,7 @@ exports.markCheckedOut = async (req, res) => {
     const where = { id, status: 'CHECKED_IN' };
     
     // If user is company-scoped, filter by company
-    if (companyId && !['ADMIN', 'VMS_ADMIN', 'admin', 'FIREMAN'].includes(user.role)) {
+    if (companyId && !isUserAdmin(user)) {
       where.companyId = companyId;
     }
     
@@ -763,7 +772,7 @@ exports.getCheckInStats = async (req, res) => {
     const baseWhere = {};
     
     // If user is company-scoped, filter by company
-    if (companyId && !['ADMIN', 'VMS_ADMIN', 'admin', 'FIREMAN'].includes(user.role)) {
+    if (companyId && !isUserAdmin(user)) {
       baseWhere.companyId = companyId;
     }
     
@@ -837,7 +846,7 @@ exports.searchVisitor = async (req, res) => {
     };
     
     // If user is company-scoped, filter by company
-    if (companyId && !['ADMIN', 'VMS_ADMIN', 'admin', 'FIREMAN'].includes(user.role)) {
+    if (companyId && !isUserAdmin(user)) {
       where.companyId = companyId;
     }
     
