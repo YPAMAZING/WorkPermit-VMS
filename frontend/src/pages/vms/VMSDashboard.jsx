@@ -65,7 +65,7 @@ const VMSDashboard = () => {
 
   const statCards = [
     {
-      title: "Today's Gatepasses",
+      title: "Today's Visitor Passes",
       value: todayStats.total || 0,
       icon: FileText,
       color: 'bg-blue-500',
@@ -193,7 +193,7 @@ const VMSDashboard = () => {
         {/* Recent Gatepasses */}
         <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100">
           <div className="flex items-center justify-between p-5 border-b border-gray-100">
-            <h2 className="text-lg font-semibold text-gray-800">Recent Gatepasses</h2>
+            <h2 className="text-lg font-semibold text-gray-800">Recent Visitor Passes</h2>
             <button
               onClick={() => navigate('/vms/admin/gatepasses')}
               className="text-sm text-teal-600 hover:text-teal-700 flex items-center gap-1"
@@ -235,7 +235,7 @@ const VMSDashboard = () => {
             ) : (
               <div className="p-8 text-center text-gray-500">
                 <FileText size={48} className="mx-auto mb-3 text-gray-300" />
-                <p>No recent gatepasses</p>
+                <p>No recent visitor passes</p>
               </div>
             )}
           </div>
@@ -298,7 +298,7 @@ const VMSDashboard = () => {
                 ))}
               </div>
             ) : (
-              <p className="text-center text-gray-500 text-sm py-4">No gatepasses today</p>
+              <p className="text-center text-gray-500 text-sm py-4">No visitor passes today</p>
             )}
           </div>
         </div>
@@ -311,7 +311,7 @@ const VMSDashboard = () => {
             <h2 className="text-lg font-semibold text-gray-800">Weekly Trend</h2>
             <div className="flex items-center gap-4 text-sm">
               <span className="flex items-center gap-2">
-                <span className="w-3 h-3 bg-teal-500 rounded-full" /> Gatepasses
+                <span className="w-3 h-3 bg-teal-500 rounded-full" /> Visitor Passes
               </span>
               <span className="flex items-center gap-2">
                 <span className="w-3 h-3 bg-blue-500 rounded-full" /> New Visitors
@@ -337,7 +337,7 @@ const VMSDashboard = () => {
           </div>
           <div className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-3 gap-4 text-center">
             <div>
-              <p className="text-sm text-gray-500">Total Gatepasses</p>
+              <p className="text-sm text-gray-500">Total Visitor Passes</p>
               <p className="text-xl font-bold text-gray-800">{weeklyStats.totals?.gatepasses || 0}</p>
             </div>
             <div>

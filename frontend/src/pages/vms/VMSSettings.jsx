@@ -413,7 +413,7 @@ const VMSSettings = () => {
                             </span>
                             <span className="flex items-center gap-1">
                               <FileText size={12} />
-                              {company.totalGatepasses || 0} gatepasses
+                              {company.totalGatepasses || 0} visitor passes
                             </span>
                           </div>
                         </div>
@@ -525,8 +525,8 @@ const VMSSettings = () => {
                 <li>Visitor scans QR code at gate</li>
                 <li>Fills registration form & selects company</li>
                 <li>Instantly approved</li>
-                <li>Gatepass generated automatically</li>
-                <li>Visitor shows gatepass to guard</li>
+                <li>Visitor pass generated automatically</li>
+                <li>Visitor shows visitor pass to guard</li>
                 <li>Guard allows entry immediately</li>
                 <li>Reception notified of entry</li>
               </ol>

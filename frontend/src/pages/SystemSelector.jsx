@@ -48,7 +48,7 @@ const SystemSelector = () => {
     {
       id: 'vms',
       title: 'Visitor Management System',
-      description: 'Visitor Management System for gatepasses, visitor tracking, and security',
+      description: 'Visitor Management System for visitor passes, visitor tracking, and security',
       icon: UserCheck,
       path: '/vms',
       loginPath: '/vms/login',
@@ -56,7 +56,7 @@ const SystemSelector = () => {
       hoverColor: 'from-teal-600 to-cyan-700',
       shadowColor: 'shadow-teal-500/30',
       features: [
-        { icon: QrCode, text: 'QR Code Gatepasses' },
+        { icon: QrCode, text: 'QR Code Visitor Passes' },
         { icon: Users, text: 'Visitor Management' },
         { icon: ShieldAlert, text: 'Blacklist & Security' },
       ],

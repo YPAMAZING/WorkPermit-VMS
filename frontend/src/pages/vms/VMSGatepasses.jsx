@@ -105,8 +105,8 @@ const VMSGatepasses = () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Gatepasses</h1>
-          <p className="text-gray-500 mt-1">Manage visitor gatepasses</p>
+          <h1 className="text-2xl font-bold text-gray-800">Visitor Passes</h1>
+          <p className="text-gray-500 mt-1">Manage visitor passes</p>
         </div>
         {canCreateGatepasses && (
           <button
@@ -114,7 +114,7 @@ const VMSGatepasses = () => {
             className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
           >
             <Plus size={18} />
-            New Gatepass
+            New Visitor Pass
           </button>
         )}
       </div>
@@ -152,7 +152,7 @@ const VMSGatepasses = () => {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
             <input
               type="text"
-              placeholder="Search by gatepass number, visitor name, phone..."
+              placeholder="Search by pass number, visitor name, phone..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
@@ -218,13 +218,13 @@ const VMSGatepasses = () => {
         ) : gatepasses.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 text-gray-500">
             <FileText size={48} className="mb-3 text-gray-300" />
-            <p>No gatepasses found</p>
+            <p>No visitor passes found</p>
             {canCreateGatepasses && (
               <button
                 onClick={() => navigate('/vms/admin/gatepasses/new')}
                 className="mt-4 text-teal-600 hover:text-teal-700"
               >
-                Create your first gatepass
+                Create your first visitor pass
               </button>
             )}
           </div>
@@ -234,7 +234,7 @@ const VMSGatepasses = () => {
               <table className="w-full">
                 <thead className="bg-gray-50 border-b border-gray-100">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Gatepass</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Pass Number</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Visitor</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Purpose</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Host</th>
@@ -327,7 +327,7 @@ const VMSGatepasses = () => {
                                   const w = window.open('', '_blank', 'width=400,height=500')
                                   w.document.write(`
                                     <html>
-                                      <head><title>Gatepass QR - ${gp.gatepassNumber}</title></head>
+                                      <head><title>Visitor Pass QR - ${gp.gatepassNumber}</title></head>
                                       <body style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif;">
                                         <h2>${gp.gatepassNumber}</h2>
                                         <img src="${gp.qrCode}" alt="QR Code" style="width:200px;height:200px;" />
@@ -365,7 +365,7 @@ const VMSGatepasses = () => {
             <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
               <p className="text-sm text-gray-500">
                 Showing {((pagination.page - 1) * pagination.limit) + 1} to{' '}
-                {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} gatepasses
+                {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} visitor passes
               </p>
               <div className="flex items-center gap-2">
                 <button

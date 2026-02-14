@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import { checkInApi } from '../../services/vmsApi'
 import { useVMSAuth } from '../../context/VMSAuthContext'
 import {
-  Users, Clock, CheckCircle, XCircle, UserCheck, LogOut,
+  Users, Clock, CheckCircle, XCircle, UserCheck,
   RefreshCw, AlertCircle, Eye, Phone, Building2, Search,
   Filter, Bell, Shield, User, Calendar, ChevronRight,
   Loader2, X, Check, Ban, QrCode, Timer
@@ -124,20 +124,6 @@ const GuardDashboard = () => {
     }
   }
   
-  // Handle check-out
-  const handleCheckOut = async (id) => {
-    setActionLoading(id)
-    try {
-      await checkInApi.checkOut(id)
-      await fetchLiveFeed(true)
-      setSelectedRequest(null)
-    } catch (err) {
-      console.error('Failed to check-out:', err)
-      alert(err.response?.data?.message || 'Failed to check-out visitor')
-    } finally {
-      setActionLoading(null)
-    }
-  }
   
   // Filter requests by search
   const filterRequests = (requests) => {
@@ -291,22 +277,7 @@ const GuardDashboard = () => {
                 )}
               </button>
             )}
-            {request.status === 'CHECKED_IN' && (
-              <button
-                onClick={(e) => { e.stopPropagation(); handleCheckOut(request.id) }}
-                disabled={actionLoading === request.id}
-                className="flex-1 py-2 bg-gray-600 text-white text-sm font-medium rounded-lg hover:bg-gray-700 transition-colors flex items-center justify-center gap-1 disabled:opacity-50"
-              >
-                {actionLoading === request.id ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <>
-                    <LogOut className="w-4 h-4" />
-                    Check Out
-                  </>
-                )}
-              </button>
-            )}
+
           </div>
         )}
       </div>
@@ -591,17 +562,19 @@ const GuardDashboard = () => {
                   </div>
                   
                   {/* ID Proof */}
-                  {selectedRequest.idProofType && (
+                  {(selectedRequest.idProofType || selectedRequest.idDocumentImage) && (
                     <div className="p-3 bg-gray-50 rounded-lg">
                       <p className="text-xs text-gray-400 mb-1">ID Proof</p>
-                      <p className="font-medium text-gray-800">
-                        {selectedRequest.idProofType}: {selectedRequest.idProofNumber}
-                      </p>
-                      {selectedRequest.idProofImage && (
+                      {selectedRequest.idProofType && (
+                        <p className="font-medium text-gray-800">
+                          {selectedRequest.idProofType.replace(/_/g, ' ').toUpperCase()}: {selectedRequest.idProofNumber}
+                        </p>
+                      )}
+                      {(selectedRequest.idProofImage || selectedRequest.idDocumentImage) && (
                         <img 
-                          src={selectedRequest.idProofImage} 
-                          alt="ID" 
-                          className="mt-2 w-full rounded-lg border border-gray-200"
+                          src={selectedRequest.idProofImage || selectedRequest.idDocumentImage} 
+                          alt="ID Document" 
+                          className="mt-2 w-full max-h-48 object-contain rounded-lg border border-gray-200 bg-white"
                         />
                       )}
                     </div>
@@ -669,22 +642,7 @@ const GuardDashboard = () => {
                         )}
                       </button>
                     )}
-                    {selectedRequest.status === 'CHECKED_IN' && (
-                      <button
-                        onClick={() => handleCheckOut(selectedRequest.id)}
-                        disabled={actionLoading === selectedRequest.id}
-                        className="w-full py-3 bg-gray-600 text-white font-medium rounded-xl hover:bg-gray-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-                      >
-                        {actionLoading === selectedRequest.id ? (
-                          <Loader2 className="w-5 h-5 animate-spin" />
-                        ) : (
-                          <>
-                            <LogOut className="w-5 h-5" />
-                            Check Out Visitor
-                          </>
-                        )}
-                      </button>
-                    )}
+
                   </div>
                 </div>
               </div>

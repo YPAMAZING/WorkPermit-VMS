@@ -191,7 +191,7 @@ _Reliable Group - Visitor Management System_`
               className="w-10 h-10 object-contain bg-white rounded-lg p-1"
             />
             <div>
-              <h1 className="text-white font-bold text-lg">Pre-Approval Gatepass</h1>
+              <h1 className="text-white font-bold text-lg">Pre-Approval Visitor Pass</h1>
               <p className="text-purple-300 text-xs">Generate & share visitor passes</p>
             </div>
           </div>
@@ -215,7 +215,7 @@ _Reliable Group - Visitor Management System_`
                 <FileCheck className="w-8 h-8 text-purple-600" />
               </div>
               <h2 className="text-2xl font-bold text-gray-800">Create Pre-Approval</h2>
-              <p className="text-gray-500 mt-1">Generate a pre-approved gatepass for your visitor</p>
+              <p className="text-gray-500 mt-1">Generate a pre-approved visitor pass for your visitor</p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">

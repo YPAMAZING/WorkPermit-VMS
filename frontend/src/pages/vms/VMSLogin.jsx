@@ -141,7 +141,7 @@ const VMSLogin = () => {
               </p>
               <p className="text-xs text-teal-600">
                 Reception and Guard staff can log in using their existing Work Permit system credentials.
-                All users have access to manage visitors and gatepasses.
+                All users have access to manage visitors and visitor passes.
               </p>
             </div>
 

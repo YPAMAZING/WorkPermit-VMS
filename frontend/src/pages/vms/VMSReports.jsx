@@ -171,7 +171,7 @@ const VMSReports = () => {
               className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
               <Download size={18} />
-              Export Gatepasses
+              Export Visitor Passes
             </button>
           </div>
         </div>
@@ -187,7 +187,7 @@ const VMSReports = () => {
           subtitle="All time"
         />
         <StatCard
-          title="Today's Gatepasses"
+          title="Today's Visitor Passes"
           value={overview.today?.gatepasses?.total || 0}
           icon={FileText}
           color="bg-blue-500"
@@ -314,7 +314,7 @@ const VMSReports = () => {
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
         <h2 className="text-lg font-semibold text-gray-800 mb-6 flex items-center gap-2">
           <Clock size={20} className="text-purple-600" />
-          Today's Gatepass Status
+          Today's Visitor Pass Status
         </h2>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <div className="text-center p-4 bg-gray-50 rounded-lg">

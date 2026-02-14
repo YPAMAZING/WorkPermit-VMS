@@ -15,14 +15,14 @@ const VMSLanding = () => {
   const navigate = useNavigate()
   const [hoveredCard, setHoveredCard] = useState(null)
 
-  // Only 2 blocks: Visitor Entry and Staff Login
+  // Only 2 blocks: Visitor Login and Staff Login
   // Pre-Approval is accessible after staff login inside the admin panel
   const blocks = [
     {
       id: 'visitor-qr',
-      title: 'Visitor Entry',
+      title: 'Visitor Login',
       subtitle: 'Scan QR & Register',
-      description: 'Visitors can scan QR code, enter their details, and generate a digital gatepass instantly',
+      description: 'Visitors can scan QR code, enter their details, and generate a digital visitor pass instantly',
       icon: QrCode,
       path: '/vms/visitor-register',
       color: 'from-emerald-500 to-teal-600',
@@ -31,7 +31,7 @@ const VMSLanding = () => {
       features: [
         { icon: Scan, text: 'Scan QR Code' },
         { icon: Users, text: 'Enter Details' },
-        { icon: FileCheck, text: 'Get Gatepass' },
+        { icon: FileCheck, text: 'Get Visitor Pass' },
       ],
     },
     {

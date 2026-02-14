@@ -309,11 +309,11 @@ const VisitorRegister = () => {
         } else {
           setGatepass(response.data.gatepass)
           setStep(3)
-          toast.success('Gatepass generated successfully!')
+          toast.success('Visitor pass generated successfully!')
         }
       }
     } catch (error) {
-      console.error('Error generating gatepass:', error)
+      console.error('Error generating visitor pass:', error)
       
       // Check if company requires approval for mock data (default is OFF/auto-approve)
       const requiresApproval = companySettings?.requireApproval === true
@@ -349,7 +349,7 @@ const VisitorRegister = () => {
         }
         setGatepass(mockGatepass)
         setStep(3)
-        toast.success('Gatepass generated successfully!')
+        toast.success('Visitor pass generated successfully!')
       }
     } finally {
       setLoading(false)
@@ -436,7 +436,7 @@ const VisitorRegister = () => {
             />
             <div>
               <h1 className="text-white font-bold text-lg">Visitor Registration</h1>
-              <p className="text-teal-300 text-xs">Generate your gatepass</p>
+              <p className="text-teal-300 text-xs">Generate your visitor pass</p>
             </div>
           </div>
           <button
@@ -455,7 +455,7 @@ const VisitorRegister = () => {
           {[
             { num: 1, label: 'Details' },
             { num: 2, label: 'Photo' },
-            { num: 3, label: 'Gatepass' }
+            { num: 3, label: 'Visitor Pass' }
           ].map((s, idx) => (
             <div key={s.num} className="flex items-center">
               <div className={`
@@ -606,7 +606,7 @@ const VisitorRegister = () => {
                       ) : (
                         <>
                           <CheckCircle size={14} />
-                          Auto-approve - you will get a gatepass immediately
+                          Auto-approve - you will get a visitor pass immediately
                         </>
                       )}
                     </div>
@@ -841,7 +841,7 @@ const VisitorRegister = () => {
                 <Camera className="w-8 h-8 text-teal-600" />
               </div>
               <h2 className="text-2xl font-bold text-gray-800">Take Your Photo</h2>
-              <p className="text-gray-500 mt-1">This will appear on your gatepass</p>
+              <p className="text-gray-500 mt-1">This will appear on your visitor pass</p>
             </div>
 
             <div className="max-w-md mx-auto">
@@ -900,7 +900,7 @@ const VisitorRegister = () => {
                       ) : (
                         <>
                           <FileCheck className="w-5 h-5" />
-                          Generate Gatepass
+                          Generate Visitor Pass
                         </>
                       )}
                     </button>
@@ -911,7 +911,7 @@ const VisitorRegister = () => {
           </div>
         )}
 
-        {/* Step 3: Success / Gatepass or Pending Approval */}
+        {/* Step 3: Success / Visitor Pass or Pending Approval */}
         {step === 3 && gatepass && (
           <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
             {/* Conditional Header based on status */}
@@ -923,10 +923,10 @@ const VisitorRegister = () => {
                 <p className="opacity-90 mt-1">Your request is pending approval</p>
               </div>
             ) : (
-              // GATEPASS GENERATED HEADER
+              // VISITOR PASS GENERATED HEADER
               <div className="bg-gradient-to-r from-emerald-500 to-teal-600 p-6 text-center text-white">
                 <CheckCircle className="w-16 h-16 mx-auto mb-3" />
-                <h2 className="text-2xl font-bold">Gatepass Generated!</h2>
+                <h2 className="text-2xl font-bold">Visitor Pass Generated!</h2>
                 <p className="opacity-90 mt-1">Please show this to security</p>
               </div>
             )}
@@ -1017,7 +1017,7 @@ const VisitorRegister = () => {
                   </div>
                 </div>
               ) : (
-                // GATEPASS CONTENT (Direct Entry - like Vodafone)
+                // VISITOR PASS CONTENT (Direct Entry - like Vodafone)
                 <div className="border-2 border-dashed border-teal-200 rounded-xl p-6">
                   {/* Header */}
                   <div className="flex items-center justify-between mb-4 pb-4 border-b">
@@ -1025,11 +1025,11 @@ const VisitorRegister = () => {
                       <img src="/logo.png" alt="Logo" className="w-10 h-10" />
                       <div>
                         <h3 className="font-bold text-gray-800">Reliable Group</h3>
-                        <p className="text-xs text-gray-500">Visitor Gatepass</p>
+                        <p className="text-xs text-gray-500">Visitor Pass</p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-xs text-gray-500">Gatepass No.</p>
+                      <p className="text-xs text-gray-500">Pass No.</p>
                       <p className="font-mono font-bold text-teal-600">{gatepass.gatepassNumber}</p>
                     </div>
                   </div>
