@@ -4,6 +4,97 @@ const bcrypt = require('bcryptjs');
 
 const prisma = new PrismaClient();
 
+// Role definitions with their permissions
+const ROLE_DEFINITIONS = {
+  vms_admin: {
+    name: 'VMS_ADMIN',
+    displayName: 'VMS Administrator',
+    description: 'Full access to all VMS features and settings',
+    permissions: [
+      'vms.dashboard.view', 'vms.dashboard.stats',
+      'vms.visitors.view', 'vms.visitors.create', 'vms.visitors.edit', 'vms.visitors.delete', 'vms.visitors.approve',
+      'vms.gatepasses.view', 'vms.gatepasses.create', 'vms.gatepasses.approve',
+      'vms.companies.view', 'vms.companies.create', 'vms.companies.edit',
+      'vms.users.view', 'vms.users.create', 'vms.users.edit',
+      'vms.roles.view', 'vms.roles.edit',
+      'vms.settings.view', 'vms.settings.edit',
+      'vms.reports.view', 'vms.reports.export',
+      'vms.blacklist.view', 'vms.blacklist.create',
+      'vms.preapproved.view', 'vms.preapproved.create',
+    ],
+    isSystem: true,
+  },
+  company_user: {
+    name: 'COMPANY_USER',
+    displayName: 'Company User',
+    description: 'Can approve/reject visitors for assigned company',
+    permissions: [
+      'vms.dashboard.view',
+      'vms.visitors.view', 'vms.visitors.approve',
+      'vms.gatepasses.view',
+      'vms.preapproved.view', 'vms.preapproved.create',
+    ],
+    isSystem: true,
+  },
+  reception: {
+    name: 'RECEPTION',
+    displayName: 'Reception',
+    description: 'Can view and check-in visitors, no admin access',
+    permissions: [
+      'vms.dashboard.view',
+      'vms.visitors.view', 'vms.visitors.create',
+      'vms.gatepasses.view', 'vms.gatepasses.create',
+      'vms.checkin.view', 'vms.checkin.manage',
+      'vms.preapproved.view',
+    ],
+    isSystem: true,
+  },
+  security_guard: {
+    name: 'SECURITY_GUARD',
+    displayName: 'Security Guard',
+    description: 'Can verify passes and check-in/out visitors',
+    permissions: [
+      'vms.dashboard.view',
+      'vms.visitors.view',
+      'vms.gatepasses.view',
+      'vms.checkin.view', 'vms.checkin.manage',
+    ],
+    isSystem: true,
+  },
+};
+
+// Helper function to get or create a role
+const getOrCreateRole = async (roleName) => {
+  const roleKey = roleName.toLowerCase();
+  const roleDef = ROLE_DEFINITIONS[roleKey];
+  
+  if (!roleDef) {
+    console.log(`Role definition not found for: ${roleName}`);
+    return null;
+  }
+  
+  // Try to find existing role
+  let role = await prisma.vMSRole.findUnique({
+    where: { name: roleDef.name },
+  });
+  
+  if (!role) {
+    // Create the role
+    console.log(`Creating role: ${roleDef.name}`);
+    role = await prisma.vMSRole.create({
+      data: {
+        name: roleDef.name,
+        displayName: roleDef.displayName,
+        description: roleDef.description,
+        permissions: JSON.stringify(roleDef.permissions),
+        isSystem: roleDef.isSystem,
+      },
+    });
+  }
+  
+  return role;
+};
+
 // Get all VMS users
 exports.getAllUsers = async (req, res) => {
   try {
@@ -98,7 +189,10 @@ exports.createUser = async (req, res) => {
       department,
       companyId,
       vmsRoleId,
+      role, // Accept role name string (e.g., 'reception', 'security_guard', 'company_user', 'vms_admin')
     } = req.body;
+
+    console.log('Creating VMS user:', { email, firstName, lastName, role, companyId });
 
     // Validate required fields
     if (!email || !password || !firstName || !lastName) {
@@ -116,6 +210,23 @@ exports.createUser = async (req, res) => {
       return res.status(400).json({ message: 'Email already registered' });
     }
 
+    // Get or create the role
+    let roleId = vmsRoleId;
+    if (!roleId && role) {
+      const roleObj = await getOrCreateRole(role);
+      if (roleObj) {
+        roleId = roleObj.id;
+        console.log(`Role resolved: ${role} -> ${roleObj.name} (${roleId})`);
+      }
+    }
+
+    // For company_user role, company is required
+    if (role === 'company_user' && !companyId) {
+      return res.status(400).json({ 
+        message: 'Company assignment is required for Company User role' 
+      });
+    }
+
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -129,7 +240,7 @@ exports.createUser = async (req, res) => {
         phone,
         department,
         companyId: companyId || null,
-        vmsRoleId: vmsRoleId || null,
+        vmsRoleId: roleId || null,
         isActive: true,
         isApproved: true,
         isFromWorkPermit: false,
@@ -139,6 +250,8 @@ exports.createUser = async (req, res) => {
         vmsRole: true,
       },
     });
+
+    console.log('VMS user created successfully:', user.email, 'Role:', user.vmsRole?.name);
 
     // Remove password from response
     const { password: _, ...sanitizedUser } = user;

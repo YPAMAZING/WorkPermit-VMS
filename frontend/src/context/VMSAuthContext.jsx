@@ -84,13 +84,14 @@ export const VMSAuthProvider = ({ children }) => {
   // Role checks
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'VMS_ADMIN' || user?.role === 'admin' || user?.role === 'FIREMAN'
   const isSecuritySupervisor = user?.role === 'SECURITY_SUPERVISOR'
-  const isSecurityGuard = user?.role === 'SECURITY_GUARD'
-  const isReceptionist = user?.role === 'RECEPTIONIST'
+  const isSecurityGuard = user?.role === 'SECURITY_GUARD' || user?.role === 'security_guard'
+  const isReceptionist = user?.role === 'RECEPTIONIST' || user?.role === 'RECEPTION' || user?.role === 'reception'
+  const isCompanyUser = user?.role === 'COMPANY_USER' || user?.role === 'company_user'
   const isHost = user?.role === 'HOST'
   const isRequestor = user?.role === 'REQUESTOR' // Company tenant user
   
-  // Check if user can access VMS (Admin, Guard, Reception, or REQUESTOR with VMS access)
-  const canAccessVMS = isAdmin || isSecuritySupervisor || isSecurityGuard || isReceptionist || 
+  // Check if user can access VMS (Admin, Guard, Reception, Company User, or REQUESTOR with VMS access)
+  const canAccessVMS = isAdmin || isSecuritySupervisor || isSecurityGuard || isReceptionist || isCompanyUser ||
                        (isRequestor && user?.hasVMSAccess)
 
   // Load user on mount
@@ -185,6 +186,7 @@ export const VMSAuthProvider = ({ children }) => {
     isSecuritySupervisor,
     isSecurityGuard,
     isReceptionist,
+    isCompanyUser,
     isHost,
     isRequestor,
     canAccessVMS,

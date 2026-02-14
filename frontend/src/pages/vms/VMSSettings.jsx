@@ -307,17 +307,6 @@ const VMSSettings = () => {
             <QrCode size={18} className="inline mr-2" />
             How It Works
           </button>
-          <button
-            onClick={() => setActiveTab('notifications')}
-            className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
-              activeTab === 'notifications'
-                ? 'border-teal-500 text-teal-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            <Bell size={18} className="inline mr-2" />
-            Notifications
-          </button>
         </nav>
       </div>
 
@@ -544,44 +533,17 @@ const VMSSettings = () => {
             </div>
           </div>
           
-          <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-100">
-            <h3 className="font-semibold text-blue-800 mb-2">Dashboards</h3>
-            <ul className="text-sm text-blue-700 space-y-1">
-              <li><strong>Reception/Guard Dashboard:</strong> Shows all visitors (pending, approved, checked-in/out)</li>
-              <li><strong>Company Dashboard:</strong> Shows visitors for that company, allows approval/rejection</li>
-              <li><strong>Admin Dashboard:</strong> Overview of all activities across all companies</li>
-            </ul>
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'notifications' && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-            <Bell size={20} className="text-purple-600" />
-            Notification Settings
-          </h2>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-              <div>
-                <p className="font-medium text-gray-800">Email Notifications</p>
-                <p className="text-sm text-gray-500">Send email when visitor requests approval</p>
+          {/* Email Notifications - Coming Soon */}
+          <div className="mt-6 p-4 bg-purple-50 rounded-lg border border-purple-100">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Mail size={20} className="text-purple-600" />
+                <div>
+                  <h3 className="font-semibold text-purple-800">Email Notifications</h3>
+                  <p className="text-sm text-purple-600">Send email to company admin when visitor requests approval</p>
+                </div>
               </div>
-              <span className="px-3 py-1 bg-gray-200 text-gray-600 rounded-full text-sm">Coming Soon</span>
-            </div>
-            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-              <div>
-                <p className="font-medium text-gray-800">SMS Notifications</p>
-                <p className="text-sm text-gray-500">Send SMS to visitor when approved/rejected</p>
-              </div>
-              <span className="px-3 py-1 bg-gray-200 text-gray-600 rounded-full text-sm">Coming Soon</span>
-            </div>
-            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-              <div>
-                <p className="font-medium text-gray-800">WhatsApp Notifications</p>
-                <p className="text-sm text-gray-500">Send WhatsApp message to visitor</p>
-              </div>
-              <span className="px-3 py-1 bg-gray-200 text-gray-600 rounded-full text-sm">Coming Soon</span>
+              <span className="px-3 py-1 bg-purple-200 text-purple-700 rounded-full text-sm font-medium">Coming Soon</span>
             </div>
           </div>
         </div>

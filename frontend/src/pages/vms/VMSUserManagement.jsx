@@ -32,6 +32,14 @@ const VMSUserManagement = () => {
   const [saving, setSaving] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
 
+  // Available roles for VMS users
+  const roleOptions = [
+    { value: 'vms_admin', label: 'VMS Administrator', description: 'Full access to all VMS features and settings', requiresCompany: false },
+    { value: 'company_user', label: 'Company User', description: 'Can approve/reject visitors for assigned company', requiresCompany: true },
+    { value: 'reception', label: 'Reception', description: 'Can view and check-in visitors, no admin access', requiresCompany: false },
+    { value: 'security_guard', label: 'Security Guard', description: 'Can verify passes and check-in/out visitors', requiresCompany: false },
+  ]
+
   const [newUser, setNewUser] = useState({
     email: '',
     password: '',
@@ -39,7 +47,7 @@ const VMSUserManagement = () => {
     lastName: '',
     phone: '',
     companyId: '',
-    role: 'company_user',
+    role: 'reception',
   })
 
   useEffect(() => {
@@ -333,24 +341,55 @@ const VMSUserManagement = () => {
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Assign to Company
+                  Role <span className="text-red-500">*</span>
                 </label>
                 <select
-                  value={newUser.companyId}
-                  onChange={(e) => setNewUser(prev => ({ ...prev, companyId: e.target.value }))}
+                  value={newUser.role}
+                  onChange={(e) => {
+                    const selectedRole = roleOptions.find(r => r.value === e.target.value)
+                    setNewUser(prev => ({ 
+                      ...prev, 
+                      role: e.target.value,
+                      // Clear companyId if role doesn't require company
+                      companyId: selectedRole?.requiresCompany ? prev.companyId : ''
+                    }))
+                  }}
                   className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
                 >
-                  <option value="">No company (Admin/Reception)</option>
-                  {companies.map(company => (
-                    <option key={company.id} value={company.id}>
-                      {company.displayName || company.name}
+                  {roleOptions.map(role => (
+                    <option key={role.value} value={role.value}>
+                      {role.label}
                     </option>
                   ))}
                 </select>
                 <p className="text-xs text-gray-500 mt-1">
-                  Users assigned to a company can only see and approve visitors for that company
+                  {roleOptions.find(r => r.value === newUser.role)?.description}
                 </p>
               </div>
+
+              {/* Show company selector only for company_user role */}
+              {newUser.role === 'company_user' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Assign to Company <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={newUser.companyId}
+                    onChange={(e) => setNewUser(prev => ({ ...prev, companyId: e.target.value }))}
+                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  >
+                    <option value="">Select a company</option>
+                    {companies.map(company => (
+                      <option key={company.id} value={company.id}>
+                        {company.displayName || company.name}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    This user can only see and approve visitors for the selected company
+                  </p>
+                </div>
+              )}
               
               <div className="flex items-center justify-end gap-3 pt-4 border-t">
                 <button
