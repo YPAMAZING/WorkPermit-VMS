@@ -1,4 +1,4 @@
-const vmsDb = require('../../config/vms-prisma');
+const vmsPrisma = require('../../config/vms-prisma');
 const QRCode = require('qrcode');
 const { v4: uuid } = require('uuid');
 
@@ -29,14 +29,14 @@ exports.getAllVisitors = async (req, res) => {
     
     if (date === 'today') {
       const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      whereConditions.push({ submittedAt: { gte: startOfDay } });
+      whereConditions.push({ createdAt: { gte: startOfDay } });
     } else if (date === 'week') {
       const startOfWeek = new Date(now);
       startOfWeek.setDate(now.getDate() - 7);
-      whereConditions.push({ submittedAt: { gte: startOfWeek } });
+      whereConditions.push({ createdAt: { gte: startOfWeek } });
     } else if (date === 'month') {
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      whereConditions.push({ submittedAt: { gte: startOfMonth } });
+      whereConditions.push({ createdAt: { gte: startOfMonth } });
     }
     
     if (status !== 'all') {
@@ -45,8 +45,8 @@ exports.getAllVisitors = async (req, res) => {
     
     const whereClause = whereConditions.length > 0 ? { AND: whereConditions } : {};
 
-    // Fetch visitors
-    const visitors = await vmsDb.checkInRequest.findMany({
+    // Fetch visitors using correct model name: vMSVisitor
+    const visitors = await vmsPrisma.vMSVisitor.findMany({
       where: whereClause,
       include: {
         company: {
@@ -56,33 +56,40 @@ exports.getAllVisitors = async (req, res) => {
             displayName: true,
             logo: true
           }
+        },
+        gatepass: {
+          select: {
+            id: true,
+            gatepassNumber: true,
+            status: true
+          }
         }
       },
-      orderBy: { submittedAt: 'desc' },
+      orderBy: { createdAt: 'desc' },
       skip,
       take: parseInt(limit)
     });
     
     // Get total count separately
-    const total = await vmsDb.checkInRequest.count({ where: whereClause });
+    const total = await vmsPrisma.vMSVisitor.count({ where: whereClause });
 
-    // Map visitors to include pass number
+    // Map visitors to expected format
     const mappedVisitors = visitors.map(v => ({
       id: v.id,
-      visitorName: v.visitorName || `${v.firstName} ${v.lastName}`,
-      visitorPhone: v.visitorPhone || v.phone,
-      visitorEmail: v.visitorEmail || v.email,
-      visitorCompany: v.visitorCompany,
-      visitPurpose: v.visitPurpose || v.purpose,
-      hostName: v.hostName,
-      department: v.department || v.hostDepartment,
+      visitorName: v.visitorName,
+      visitorPhone: v.phone,
+      visitorEmail: v.email,
+      visitorCompany: v.companyFrom,
+      visitPurpose: v.purpose,
+      hostName: v.personToMeet,
+      department: null,
       status: v.status,
-      requestNumber: v.requestNumber,
-      passNumber: v.requestNumber,
+      requestNumber: v.gatepass?.gatepassNumber || v.id.substring(0, 8).toUpperCase(),
+      passNumber: v.gatepass?.gatepassNumber || v.id.substring(0, 8).toUpperCase(),
       photo: v.photo,
-      checkInTime: v.checkInTime || v.checkInAt,
-      checkOutTime: v.checkOutTime || v.checkOutAt,
-      createdAt: v.submittedAt,
+      checkInTime: v.checkInTime,
+      checkOutTime: v.checkOutTime,
+      createdAt: v.createdAt,
       company: v.company
     }));
 
@@ -111,12 +118,12 @@ exports.getVisitorStats = async (req, res) => {
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
     const [todayCount, weekCount, monthCount, currentlyInside, pendingCount, companies] = await Promise.all([
-      vmsDb.checkInRequest.count({ where: { submittedAt: { gte: startOfDay } } }),
-      vmsDb.checkInRequest.count({ where: { submittedAt: { gte: startOfWeek } } }),
-      vmsDb.checkInRequest.count({ where: { submittedAt: { gte: startOfMonth } } }),
-      vmsDb.checkInRequest.count({ where: { status: 'CHECKED_IN' } }),
-      vmsDb.checkInRequest.count({ where: { status: 'PENDING' } }),
-      vmsDb.company.count({ where: { isActive: true } })
+      vmsPrisma.vMSVisitor.count({ where: { createdAt: { gte: startOfDay } } }),
+      vmsPrisma.vMSVisitor.count({ where: { createdAt: { gte: startOfWeek } } }),
+      vmsPrisma.vMSVisitor.count({ where: { createdAt: { gte: startOfMonth } } }),
+      vmsPrisma.vMSVisitor.count({ where: { status: 'CHECKED_IN' } }),
+      vmsPrisma.vMSVisitor.count({ where: { status: 'PENDING' } }),
+      vmsPrisma.vMSCompany.count({ where: { isActive: true } })
     ]);
 
     res.json({
@@ -139,7 +146,7 @@ exports.getPassByNumber = async (req, res) => {
     const { passId } = req.params;
 
     // Try to find by gatepass number first
-    let gatepass = await vmsDb.gatepass.findFirst({
+    let gatepass = await vmsPrisma.vMSGatepass.findFirst({
       where: {
         OR: [
           { gatepassNumber: passId },
@@ -163,28 +170,27 @@ exports.getPassByNumber = async (req, res) => {
       return res.json({
         id: gatepass.id,
         passNumber: gatepass.gatepassNumber,
-        visitorName: gatepass.visitor?.name || gatepass.visitorName,
-        visitorPhone: gatepass.visitor?.phone || gatepass.visitorPhone,
+        visitorName: gatepass.visitor?.visitorName,
+        visitorPhone: gatepass.visitor?.phone,
         visitorEmail: gatepass.visitor?.email,
-        visitPurpose: gatepass.purpose,
-        hostName: gatepass.hostName,
-        department: gatepass.department,
+        visitPurpose: gatepass.visitor?.purpose,
+        hostName: gatepass.visitor?.personToMeet,
+        department: null,
         status: gatepass.status,
         qrCode: gatepass.qrCode,
-        checkInTime: gatepass.checkInTime,
-        checkOutTime: gatepass.checkOutTime,
+        checkInTime: gatepass.visitor?.checkInTime,
+        checkOutTime: gatepass.visitor?.checkOutTime,
         validDate: gatepass.validFrom,
         expiresAt: gatepass.validUntil,
-        createdAt: gatepass.issuedAt,
+        createdAt: gatepass.createdAt,
         company: gatepass.company
       });
     }
 
-    // Try to find by check-in request number
-    const checkInRequest = await vmsDb.checkInRequest.findFirst({
+    // Try to find by visitor ID
+    const visitor = await vmsPrisma.vMSVisitor.findFirst({
       where: {
         OR: [
-          { requestNumber: passId },
           { id: passId }
         ]
       },
@@ -201,39 +207,39 @@ exports.getPassByNumber = async (req, res) => {
       }
     });
 
-    if (checkInRequest) {
+    if (visitor) {
       // Generate QR code if not exists
-      let qrCode = checkInRequest.gatepass?.qrCode;
+      let qrCode = visitor.gatepass?.qrCode;
       if (!qrCode) {
         const qrData = JSON.stringify({
           type: 'visitor-pass',
-          passNumber: checkInRequest.requestNumber,
-          visitorName: checkInRequest.visitorName,
+          passNumber: visitor.gatepass?.gatepassNumber || visitor.id.substring(0, 8).toUpperCase(),
+          visitorName: visitor.visitorName,
           timestamp: new Date().toISOString()
         });
         qrCode = await QRCode.toDataURL(qrData, { width: 200 });
       }
 
       return res.json({
-        id: checkInRequest.id,
-        passNumber: checkInRequest.gatepass?.gatepassNumber || checkInRequest.requestNumber,
-        requestNumber: checkInRequest.requestNumber,
-        visitorName: checkInRequest.visitorName,
-        visitorPhone: checkInRequest.visitorPhone,
-        visitorEmail: checkInRequest.visitorEmail,
-        visitorCompany: checkInRequest.visitorCompany,
-        visitPurpose: checkInRequest.visitPurpose,
-        hostName: checkInRequest.hostName,
-        department: checkInRequest.department,
-        status: checkInRequest.status,
+        id: visitor.id,
+        passNumber: visitor.gatepass?.gatepassNumber || visitor.id.substring(0, 8).toUpperCase(),
+        requestNumber: visitor.id.substring(0, 8).toUpperCase(),
+        visitorName: visitor.visitorName,
+        visitorPhone: visitor.phone,
+        visitorEmail: visitor.email,
+        visitorCompany: visitor.companyFrom,
+        visitPurpose: visitor.purpose,
+        hostName: visitor.personToMeet,
+        department: null,
+        status: visitor.status,
         qrCode: qrCode,
-        photo: checkInRequest.photo,
-        checkInTime: checkInRequest.checkInTime,
-        checkOutTime: checkInRequest.checkOutTime,
-        validDate: checkInRequest.submittedAt,
-        expiresAt: checkInRequest.expiresAt,
-        createdAt: checkInRequest.submittedAt,
-        company: checkInRequest.company
+        photo: visitor.photo,
+        checkInTime: visitor.checkInTime,
+        checkOutTime: visitor.checkOutTime,
+        validDate: visitor.createdAt,
+        expiresAt: null,
+        createdAt: visitor.createdAt,
+        company: visitor.company
       });
     }
 
@@ -250,7 +256,7 @@ exports.verifyPass = async (req, res) => {
     const { passId } = req.params;
 
     // Try gatepass first
-    let gatepass = await vmsDb.gatepass.findFirst({
+    let gatepass = await vmsPrisma.vMSGatepass.findFirst({
       where: {
         OR: [
           { gatepassNumber: passId },
@@ -273,19 +279,18 @@ exports.verifyPass = async (req, res) => {
         valid: isValid && !isExpired,
         status: gatepass.status,
         passNumber: gatepass.gatepassNumber,
-        visitorName: gatepass.visitor?.name || gatepass.visitorName,
-        visitorPhone: gatepass.visitor?.phone || gatepass.visitorPhone,
+        visitorName: gatepass.visitor?.visitorName,
+        visitorPhone: gatepass.visitor?.phone,
         company: gatepass.company?.displayName || gatepass.company?.name,
-        checkInTime: gatepass.checkInTime,
+        checkInTime: gatepass.visitor?.checkInTime,
         message: isExpired ? 'Pass has expired' : isValid ? 'Valid pass' : 'Invalid pass status'
       });
     }
 
-    // Try check-in request
-    const checkInRequest = await vmsDb.checkInRequest.findFirst({
+    // Try visitor record
+    const visitor = await vmsPrisma.vMSVisitor.findFirst({
       where: {
         OR: [
-          { requestNumber: passId },
           { id: passId }
         ]
       },
@@ -296,19 +301,18 @@ exports.verifyPass = async (req, res) => {
       }
     });
 
-    if (checkInRequest) {
-      const isValid = ['APPROVED', 'CHECKED_IN', 'PENDING'].includes(checkInRequest.status);
-      const isExpired = checkInRequest.expiresAt && new Date(checkInRequest.expiresAt) < new Date();
+    if (visitor) {
+      const isValid = ['APPROVED', 'CHECKED_IN', 'PENDING'].includes(visitor.status);
 
       return res.json({
-        valid: isValid && !isExpired,
-        status: checkInRequest.status,
-        passNumber: checkInRequest.requestNumber,
-        visitorName: checkInRequest.visitorName,
-        visitorPhone: checkInRequest.visitorPhone,
-        company: checkInRequest.company?.displayName || checkInRequest.company?.name,
-        checkInTime: checkInRequest.checkInTime,
-        message: isExpired ? 'Request has expired' : isValid ? 'Valid request' : 'Invalid request status'
+        valid: isValid,
+        status: visitor.status,
+        passNumber: visitor.id.substring(0, 8).toUpperCase(),
+        visitorName: visitor.visitorName,
+        visitorPhone: visitor.phone,
+        company: visitor.company?.displayName || visitor.company?.name,
+        checkInTime: visitor.checkInTime,
+        message: isValid ? 'Valid request' : 'Invalid request status'
       });
     }
 
@@ -331,43 +335,26 @@ exports.getCompanyPortal = async (req, res) => {
   try {
     const { portalId } = req.params;
 
-    // Find company by portal ID
-    const company = await vmsDb.company.findFirst({
+    // Find company by portal ID or code
+    const company = await vmsPrisma.vMSCompany.findFirst({
       where: {
         OR: [
-          { portalId: portalId },
-          { code: portalId }
-        ]
+          { id: portalId },
+          { name: portalId }
+        ],
+        isActive: true
       },
       select: {
         id: true,
-        code: true,
         name: true,
         displayName: true,
         logo: true,
-        portalId: true,
-        subscriptionActive: true,
-        subscriptionPlan: true,
-        subscriptionEnd: true,
         isActive: true
       }
     });
 
     if (!company) {
       return res.status(404).json({ message: 'Company portal not found' });
-    }
-
-    // Check subscription status
-    if (!company.subscriptionActive) {
-      return res.status(403).json({
-        subscriptionActive: false,
-        company: {
-          name: company.name,
-          displayName: company.displayName,
-          logo: company.logo
-        },
-        message: 'Subscription is inactive. Contact admin for more.'
-      });
     }
 
     // Get visitors for this company
@@ -378,24 +365,24 @@ exports.getCompanyPortal = async (req, res) => {
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
     const [visitors, todayCount, weekCount, monthCount, currentlyInside] = await Promise.all([
-      vmsDb.checkInRequest.findMany({
+      vmsPrisma.vMSVisitor.findMany({
         where: {
           companyId: company.id,
-          submittedAt: { gte: startOfDay }
+          createdAt: { gte: startOfDay }
         },
-        orderBy: { submittedAt: 'desc' },
+        orderBy: { createdAt: 'desc' },
         take: 50
       }),
-      vmsDb.checkInRequest.count({
-        where: { companyId: company.id, submittedAt: { gte: startOfDay } }
+      vmsPrisma.vMSVisitor.count({
+        where: { companyId: company.id, createdAt: { gte: startOfDay } }
       }),
-      vmsDb.checkInRequest.count({
-        where: { companyId: company.id, submittedAt: { gte: startOfWeek } }
+      vmsPrisma.vMSVisitor.count({
+        where: { companyId: company.id, createdAt: { gte: startOfWeek } }
       }),
-      vmsDb.checkInRequest.count({
-        where: { companyId: company.id, submittedAt: { gte: startOfMonth } }
+      vmsPrisma.vMSVisitor.count({
+        where: { companyId: company.id, createdAt: { gte: startOfMonth } }
       }),
-      vmsDb.checkInRequest.count({
+      vmsPrisma.vMSVisitor.count({
         where: { companyId: company.id, status: 'CHECKED_IN' }
       })
     ]);
@@ -406,24 +393,22 @@ exports.getCompanyPortal = async (req, res) => {
         id: company.id,
         name: company.name,
         displayName: company.displayName,
-        logo: company.logo,
-        portalId: company.portalId,
-        subscriptionPlan: company.subscriptionPlan
+        logo: company.logo
       },
       visitors: visitors.map(v => ({
         id: v.id,
         visitorName: v.visitorName,
-        visitorPhone: v.visitorPhone,
-        visitorEmail: v.visitorEmail,
-        visitorCompany: v.visitorCompany,
-        visitPurpose: v.visitPurpose,
-        hostName: v.hostName,
-        department: v.department,
+        visitorPhone: v.phone,
+        visitorEmail: v.email,
+        visitorCompany: v.companyFrom,
+        visitPurpose: v.purpose,
+        hostName: v.personToMeet,
+        department: null,
         status: v.status,
-        passNumber: v.requestNumber,
-        checkInTime: v.checkInTime || v.checkInAt,
-        checkOutTime: v.checkOutTime || v.checkOutAt,
-        createdAt: v.submittedAt
+        passNumber: v.id.substring(0, 8).toUpperCase(),
+        checkInTime: v.checkInTime,
+        checkOutTime: v.checkOutTime,
+        createdAt: v.createdAt
       })),
       stats: {
         today: todayCount,
@@ -445,11 +430,11 @@ exports.getCompanyVisitors = async (req, res) => {
     const { date = 'today', status = 'all' } = req.query;
 
     // Find company
-    const company = await vmsDb.company.findFirst({
+    const company = await vmsPrisma.vMSCompany.findFirst({
       where: {
         OR: [
-          { portalId: portalId },
-          { code: portalId }
+          { id: portalId },
+          { name: portalId }
         ]
       }
     });
@@ -458,23 +443,19 @@ exports.getCompanyVisitors = async (req, res) => {
       return res.status(404).json({ message: 'Company not found' });
     }
 
-    if (!company.subscriptionActive) {
-      return res.status(403).json({ message: 'Subscription inactive' });
-    }
-
     // Build date filter
     let dateFilter = {};
     const now = new Date();
     if (date === 'today') {
       const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      dateFilter = { submittedAt: { gte: startOfDay } };
+      dateFilter = { createdAt: { gte: startOfDay } };
     } else if (date === 'week') {
       const startOfWeek = new Date(now);
       startOfWeek.setDate(now.getDate() - 7);
-      dateFilter = { submittedAt: { gte: startOfWeek } };
+      dateFilter = { createdAt: { gte: startOfWeek } };
     } else if (date === 'month') {
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      dateFilter = { submittedAt: { gte: startOfMonth } };
+      dateFilter = { createdAt: { gte: startOfMonth } };
     }
 
     // Build status filter
@@ -483,13 +464,13 @@ exports.getCompanyVisitors = async (req, res) => {
       statusFilter = { status };
     }
 
-    const visitors = await vmsDb.checkInRequest.findMany({
+    const visitors = await vmsPrisma.vMSVisitor.findMany({
       where: {
         companyId: company.id,
         ...dateFilter,
         ...statusFilter
       },
-      orderBy: { submittedAt: 'desc' }
+      orderBy: { createdAt: 'desc' }
     });
 
     // Get updated stats
@@ -499,27 +480,27 @@ exports.getCompanyVisitors = async (req, res) => {
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
     const [todayCount, weekCount, monthCount, currentlyInside] = await Promise.all([
-      vmsDb.checkInRequest.count({ where: { companyId: company.id, submittedAt: { gte: startOfDay } } }),
-      vmsDb.checkInRequest.count({ where: { companyId: company.id, submittedAt: { gte: startOfWeek } } }),
-      vmsDb.checkInRequest.count({ where: { companyId: company.id, submittedAt: { gte: startOfMonth } } }),
-      vmsDb.checkInRequest.count({ where: { companyId: company.id, status: 'CHECKED_IN' } })
+      vmsPrisma.vMSVisitor.count({ where: { companyId: company.id, createdAt: { gte: startOfDay } } }),
+      vmsPrisma.vMSVisitor.count({ where: { companyId: company.id, createdAt: { gte: startOfWeek } } }),
+      vmsPrisma.vMSVisitor.count({ where: { companyId: company.id, createdAt: { gte: startOfMonth } } }),
+      vmsPrisma.vMSVisitor.count({ where: { companyId: company.id, status: 'CHECKED_IN' } })
     ]);
 
     res.json({
       visitors: visitors.map(v => ({
         id: v.id,
-        visitorName: v.visitorName || `${v.firstName} ${v.lastName}`,
-        visitorPhone: v.visitorPhone || v.phone,
-        visitorEmail: v.visitorEmail || v.email,
-        visitorCompany: v.visitorCompany,
-        visitPurpose: v.visitPurpose || v.purpose,
-        hostName: v.hostName,
-        department: v.department || v.hostDepartment,
+        visitorName: v.visitorName,
+        visitorPhone: v.phone,
+        visitorEmail: v.email,
+        visitorCompany: v.companyFrom,
+        visitPurpose: v.purpose,
+        hostName: v.personToMeet,
+        department: null,
         status: v.status,
-        passNumber: v.requestNumber,
-        checkInTime: v.checkInTime || v.checkInAt,
-        checkOutTime: v.checkOutTime || v.checkOutAt,
-        createdAt: v.submittedAt
+        passNumber: v.id.substring(0, 8).toUpperCase(),
+        checkInTime: v.checkInTime,
+        checkOutTime: v.checkOutTime,
+        createdAt: v.createdAt
       })),
       stats: {
         today: todayCount,
@@ -542,63 +523,53 @@ exports.getCompanyVisitors = async (req, res) => {
 exports.toggleCompanySubscription = async (req, res) => {
   try {
     const { companyId } = req.params;
-    const { active, plan, endDate } = req.body;
+    const { active } = req.body;
 
-    const company = await vmsDb.company.findUnique({ where: { id: companyId } });
+    const company = await vmsPrisma.vMSCompany.findUnique({ where: { id: companyId } });
     if (!company) {
       return res.status(404).json({ message: 'Company not found' });
     }
 
-    const updatedCompany = await vmsDb.company.update({
+    const updatedCompany = await vmsPrisma.vMSCompany.update({
       where: { id: companyId },
       data: {
-        subscriptionActive: active !== undefined ? active : !company.subscriptionActive,
-        subscriptionPlan: plan || company.subscriptionPlan,
-        subscriptionEnd: endDate ? new Date(endDate) : company.subscriptionEnd,
-        subscriptionStart: active && !company.subscriptionStart ? new Date() : company.subscriptionStart
+        isActive: active !== undefined ? active : !company.isActive
       }
     });
 
     res.json({
-      message: `Subscription ${updatedCompany.subscriptionActive ? 'activated' : 'deactivated'}`,
+      message: `Company ${updatedCompany.isActive ? 'activated' : 'deactivated'}`,
       company: {
         id: updatedCompany.id,
         name: updatedCompany.name,
         displayName: updatedCompany.displayName,
-        subscriptionActive: updatedCompany.subscriptionActive,
-        subscriptionPlan: updatedCompany.subscriptionPlan,
-        subscriptionEnd: updatedCompany.subscriptionEnd
+        isActive: updatedCompany.isActive
       }
     });
   } catch (error) {
     console.error('Error toggling subscription:', error);
-    res.status(500).json({ message: 'Failed to update subscription', error: error.message });
+    res.status(500).json({ message: 'Failed to update company status', error: error.message });
   }
 };
 
 // Get all companies (admin)
 exports.getAllCompaniesAdmin = async (req, res) => {
   try {
-    const companies = await vmsDb.company.findMany({
+    const companies = await vmsPrisma.vMSCompany.findMany({
       select: {
         id: true,
-        code: true,
         name: true,
         displayName: true,
         logo: true,
-        portalId: true,
-        subscriptionActive: true,
-        subscriptionPlan: true,
-        subscriptionStart: true,
-        subscriptionEnd: true,
-        maxVisitorsPerMonth: true,
-        maxUsers: true,
         isActive: true,
+        requireApproval: true,
+        autoApproveVisitors: true,
         createdAt: true,
         _count: {
           select: {
             users: true,
-            checkInRequests: true
+            visitors: true,
+            gatepasses: true
           }
         }
       },
@@ -609,7 +580,8 @@ exports.getAllCompaniesAdmin = async (req, res) => {
       companies: companies.map(c => ({
         ...c,
         userCount: c._count.users,
-        visitorCount: c._count.checkInRequests
+        visitorCount: c._count.visitors,
+        gatepassCount: c._count.gatepasses
       }))
     });
   } catch (error) {
@@ -618,27 +590,21 @@ exports.getAllCompaniesAdmin = async (req, res) => {
   }
 };
 
-// Generate portal ID for company
+// Generate portal ID for company (not used with current schema, kept for compatibility)
 exports.generatePortalId = async (req, res) => {
   try {
     const { companyId } = req.params;
 
-    const company = await vmsDb.company.findUnique({ where: { id: companyId } });
+    const company = await vmsPrisma.vMSCompany.findUnique({ where: { id: companyId } });
     if (!company) {
       return res.status(404).json({ message: 'Company not found' });
     }
 
-    const newPortalId = generatePortalId();
-
-    const updatedCompany = await vmsDb.company.update({
-      where: { id: companyId },
-      data: { portalId: newPortalId }
-    });
-
+    // Just return the company ID as portal ID since schema doesn't have portalId field
     res.json({
       message: 'Portal ID generated',
-      portalId: updatedCompany.portalId,
-      portalUrl: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/vms/portal/${updatedCompany.portalId}`
+      portalId: company.id,
+      portalUrl: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/vms/portal/${company.id}`
     });
   } catch (error) {
     console.error('Error generating portal ID:', error);
@@ -653,26 +619,20 @@ exports.updateCompanySettings = async (req, res) => {
     const { 
       name, 
       displayName, 
-      logo, 
-      maxVisitorsPerMonth, 
-      maxUsers, 
-      subscriptionPlan,
-      subscriptionActive,
-      subscriptionEnd,
+      logo,
+      requireApproval,
+      autoApproveVisitors,
       isActive 
     } = req.body;
 
-    const updatedCompany = await vmsDb.company.update({
+    const updatedCompany = await vmsPrisma.vMSCompany.update({
       where: { id: companyId },
       data: {
         ...(name && { name }),
         ...(displayName && { displayName }),
         ...(logo && { logo }),
-        ...(maxVisitorsPerMonth && { maxVisitorsPerMonth }),
-        ...(maxUsers && { maxUsers }),
-        ...(subscriptionPlan && { subscriptionPlan }),
-        ...(subscriptionActive !== undefined && { subscriptionActive }),
-        ...(subscriptionEnd && { subscriptionEnd: new Date(subscriptionEnd) }),
+        ...(requireApproval !== undefined && { requireApproval }),
+        ...(autoApproveVisitors !== undefined && { autoApproveVisitors }),
         ...(isActive !== undefined && { isActive })
       }
     });

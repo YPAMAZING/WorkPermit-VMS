@@ -10,11 +10,12 @@ export const VMSAuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  // Get token from localStorage (shared with Work Permit)
-  const getToken = () => localStorage.getItem('vms_token') || localStorage.getItem('token')
+  // Get VMS token from localStorage (SEPARATE from Work Permit)
+  // VMS has its own user table (vms_users) and auth system
+  const getToken = () => localStorage.getItem('vms_token')
   const setToken = (token) => {
     localStorage.setItem('vms_token', token)
-    localStorage.setItem('token', token) // Also set main token for shared auth
+    // DO NOT set main 'token' - VMS auth is completely separate from Work Permit
   }
   const removeToken = () => {
     localStorage.removeItem('vms_token')
