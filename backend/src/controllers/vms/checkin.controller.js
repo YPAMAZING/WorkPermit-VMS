@@ -294,10 +294,7 @@ exports.getCheckInStatus = async (req, res) => {
         company: {
           select: { name: true, displayName: true, logo: true }
         },
-        gatepasses: {
-          take: 1,
-          orderBy: { createdAt: 'desc' }
-        }
+        gatepass: true
       }
     });
     
@@ -314,7 +311,7 @@ exports.getCheckInStatus = async (req, res) => {
       approvedAt: visitor.approvedAt,
       checkInTime: visitor.checkInTime,
       checkOutTime: visitor.checkOutTime,
-      gatepass: visitor.gatepasses?.[0] || null,
+      gatepass: visitor.gatepass || null,
     });
   } catch (error) {
     console.error('Get check-in status error:', error);
@@ -536,7 +533,7 @@ exports.getRequestById = async (req, res) => {
         company: {
           select: { name: true, displayName: true }
         },
-        gatepasses: true
+        gatepass: true
       }
     });
     
