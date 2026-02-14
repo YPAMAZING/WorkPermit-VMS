@@ -52,11 +52,8 @@ const NewPreApproval = () => {
   const purposes = [
     { value: 'MEETING', label: 'Meeting' },
     { value: 'INTERVIEW', label: 'Interview' },
-    { value: 'DELIVERY', label: 'Delivery' },
-    { value: 'MAINTENANCE', label: 'Maintenance' },
+    { value: 'VENDOR_CLIENT', label: 'Vendor/Client Visit' },
     { value: 'CONTRACTOR', label: 'Contractor Work' },
-    { value: 'EVENT', label: 'Event' },
-    { value: 'PERSONAL', label: 'Personal Visit' },
     { value: 'OTHER', label: 'Other' },
   ]
 

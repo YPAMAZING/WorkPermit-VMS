@@ -90,11 +90,8 @@ const VisitorRegister = () => {
   const purposes = [
     'Meeting',
     'Interview',
-    'Delivery',
-    'Vendor Visit',
-    'Client Visit',
-    'Maintenance',
-    'Personal',
+    'Vendor/Client Visit',
+    'Contractor Work',
     'Other'
   ]
 
@@ -257,6 +254,9 @@ const VisitorRegister = () => {
       const context = idDocCanvasRef.current.getContext('2d')
       idDocCanvasRef.current.width = idDocVideoRef.current.videoWidth
       idDocCanvasRef.current.height = idDocVideoRef.current.videoHeight
+      // Flip the image horizontally to correct mirror effect
+      context.translate(idDocCanvasRef.current.width, 0)
+      context.scale(-1, 1)
       context.drawImage(idDocVideoRef.current, 0, 0)
       const photoData = idDocCanvasRef.current.toDataURL('image/jpeg', 0.9)
       setIdDocumentImage(photoData)
@@ -394,6 +394,7 @@ const VisitorRegister = () => {
                 playsInline
                 muted
                 className="w-full h-full object-cover"
+                style={{ transform: 'scaleX(-1)' }}
               />
               {!idDocCameraActive && (
                 <div className="absolute inset-0 flex items-center justify-center">
