@@ -46,7 +46,7 @@ const VMSLanding = () => {
       shadowColor: 'shadow-pink-500/30',
       features: [
         { icon: Building2, text: 'Company Access' },
-        { icon: Users, text: 'Reception Desk' },
+        { icon: Users, text: 'Visitor Check-In' },
         { icon: Shield, text: 'Role-Based View' },
       ],
     },
@@ -176,7 +176,7 @@ const VMSLanding = () => {
           {/* Quick Info */}
           <div className="mt-12 text-center">
             <p className="text-teal-300/60 text-sm">
-              For assistance, contact reception or security desk
+              For assistance, contact visitor check-in or security desk
             </p>
           </div>
         </div>

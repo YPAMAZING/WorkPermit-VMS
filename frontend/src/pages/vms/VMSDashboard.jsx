@@ -151,7 +151,7 @@ const VMSDashboard = () => {
             className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
           >
             <FileText size={18} />
-            Reception Desk
+            Visitor Check-In
           </button>
         </div>
       </div>

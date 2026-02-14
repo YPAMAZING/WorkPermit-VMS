@@ -24,7 +24,8 @@ const Layout = ({ systemType = 'workpermit' }) => {
   const { user, logout, isAdmin, hasPermission, canViewApprovals } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [pendingCount, setPendingCount] = useState(0)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
 
@@ -139,107 +140,136 @@ const Layout = ({ systemType = 'workpermit' }) => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Mobile sidebar backdrop */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+      {/* Mobile Menu Button */}
+      <div className="lg:hidden fixed top-4 left-4 z-50">
+        <button
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className="p-2 bg-slate-800 text-white rounded-lg shadow-lg"
+        >
+          {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
+      </div>
 
-      {/* Sidebar - Safetymint Dark Blue Style */}
+      {/* Sidebar - Collapsible Style (like VMS) */}
       <aside
-        className={`fixed top-0 left-0 z-50 h-full w-64 bg-gradient-to-b from-slate-800 to-slate-900 transform transition-transform duration-300 lg:translate-x-0 ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        className={`
+          fixed top-0 left-0 z-40 h-screen transition-all duration-300
+          ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
+          lg:translate-x-0
+          ${sidebarOpen ? 'w-64' : 'w-20'}
+          bg-gradient-to-b from-slate-800 to-slate-900 text-white
+        `}
       >
         {/* Logo */}
-        <div className="flex items-center gap-3 px-4 py-4 border-b border-slate-700">
-          <div className="bg-white rounded-lg p-1.5">
-            <img 
-              src="/logo.png" 
-              alt="Reliable Group" 
-              className="h-10 w-auto"
-            />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-sm font-bold text-white leading-tight">
-              {user?.companyName || 'Reliable Group'}
-            </h1>
-            <p className="text-xs text-slate-400">Work Permit and VMS</p>
+        <div className="flex items-center justify-between h-20 px-4 border-b border-slate-700">
+          <div className="flex items-center gap-3 overflow-hidden">
+            <div className="bg-white rounded-lg p-1.5 flex-shrink-0">
+              <img 
+                src="/logo.png" 
+                alt="Reliable Group" 
+                className="h-10 w-auto"
+              />
+            </div>
+            {sidebarOpen && (
+              <div className="min-w-0">
+                <h1 className="text-sm font-bold text-white leading-tight">
+                  {user?.companyName || 'Reliable Group'}
+                </h1>
+                <p className="text-xs text-slate-400">WP and VMS</p>
+              </div>
+            )}
           </div>
           <button
-            className="lg:hidden p-1 rounded-lg hover:bg-slate-700"
-            onClick={() => setSidebarOpen(false)}
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="hidden lg:block p-1 hover:bg-slate-700 rounded flex-shrink-0"
           >
-            <X className="w-5 h-5 text-slate-400" />
+            <Menu size={20} />
           </button>
         </div>
 
-        {/* Switch System Button (for non-Requestor) */}
-        {canSwitchSystem && (
-          <div className="px-4 pt-4">
+        {/* Switch System Button (VMS style - highlighted) */}
+        {canSwitchSystem && sidebarOpen && (
+          <div className="px-3 pt-4">
             <button
               onClick={handleSwitchSystem}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-gradient-to-r from-purple-600/20 to-indigo-600/20 border border-purple-500/30 text-purple-300 hover:from-purple-600/30 hover:to-indigo-600/30 transition-all"
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg bg-white/10 hover:bg-white/20 text-purple-300 transition-all border border-purple-500/30"
             >
-              <Home className="w-5 h-5" />
-              <span className="flex-1 text-left font-medium text-sm">Switch System</span>
-              <ArrowLeftRight className="w-4 h-4" />
+              <Home size={18} />
+              <span className="flex-1 text-left text-sm font-medium">Switch System</span>
+              <ArrowLeftRight size={16} />
             </button>
           </div>
         )}
 
-        {/* Navigation */}
-        <nav className="p-4 space-y-1">
+        {/* Navigation - scrollable area */}
+        <nav className="mt-4 px-3 pb-36 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 220px)' }}>
           {filteredNavItems.map((item) => {
             const Icon = item.icon
             const isActive = location.pathname.startsWith(item.path)
+
             return (
               <NavLink
                 key={item.path}
                 to={item.path}
-                onClick={() => setSidebarOpen(false)}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
-                  isActive 
-                    ? 'bg-emerald-500/20 text-emerald-400 border-l-4 border-emerald-400' 
+                onClick={() => setMobileMenuOpen(false)}
+                className={`
+                  flex items-center gap-3 px-3 py-3 mb-1 rounded-lg transition-all
+                  ${isActive
+                    ? 'bg-emerald-500/20 text-emerald-400 border-l-4 border-emerald-400'
                     : 'text-slate-300 hover:bg-slate-700/50 hover:text-white'
-                }`}
+                  }
+                `}
               >
-                <Icon className="w-5 h-5" />
-                <span className="flex-1 font-medium">{item.name}</span>
-                {item.badge && (
-                  <span className="px-2 py-0.5 text-xs font-semibold bg-red-500 text-white rounded-full">
-                    {item.badge}
-                  </span>
+                <Icon size={20} />
+                {sidebarOpen && (
+                  <>
+                    <span className="flex-1 font-medium">{item.name}</span>
+                    {item.badge && (
+                      <span className="px-2 py-0.5 text-xs font-semibold bg-red-500 text-white rounded-full">
+                        {item.badge}
+                      </span>
+                    )}
+                  </>
                 )}
               </NavLink>
             )
           })}
         </nav>
 
-        {/* User section */}
-        <div className="absolute bottom-0 left-0 right-0 border-t border-slate-700 bg-slate-900/50">
-          <div className="p-4">
+        {/* Bottom Section - Fixed */}
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-slate-900 to-transparent pt-4">
+          {/* User section */}
+          <div className="p-4 border-t border-slate-700 bg-slate-900/50">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-full flex items-center justify-center">
+              <div className="w-10 h-10 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-full flex items-center justify-center flex-shrink-0">
                 <span className="text-sm font-semibold text-white">
                   {user?.firstName?.[0]}{user?.lastName?.[0]}
                 </span>
               </div>
-              <div className="flex-1 min-w-0 overflow-hidden">
-                <p className="text-sm font-medium text-white truncate">
-                  {user?.firstName} {user?.lastName}
-                </p>
-                <span className={`inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full max-w-full truncate ${
-                  user?.role === 'ADMIN' ? 'bg-purple-500/20 text-purple-300' :
-                  (user?.role === 'FIREMAN' || user?.role === 'SAFETY_OFFICER') ? 'bg-emerald-500/20 text-emerald-300' :
-                  'bg-blue-500/20 text-blue-300'
-                }`}>
-                  {roleBadge.label}
-                </span>
-              </div>
+              {sidebarOpen && (
+                <div className="flex-1 min-w-0 overflow-hidden">
+                  <p className="text-sm font-medium text-white truncate">
+                    {user?.firstName} {user?.lastName}
+                  </p>
+                  <span className={`inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full max-w-full truncate ${
+                    user?.role === 'ADMIN' ? 'bg-purple-500/20 text-purple-300' :
+                    (user?.role === 'FIREMAN' || user?.role === 'SAFETY_OFFICER') ? 'bg-emerald-500/20 text-emerald-300' :
+                    'bg-blue-500/20 text-blue-300'
+                  }`}>
+                    {roleBadge.label}
+                  </span>
+                </div>
+              )}
             </div>
+            {sidebarOpen && (
+              <button
+                onClick={handleLogout}
+                className="mt-3 w-full flex items-center justify-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition-colors"
+              >
+                <LogOut size={16} />
+                <span>Logout</span>
+              </button>
+            )}
           </div>
           {/* Copyright */}
           <div className="px-4 pb-3 text-center">
@@ -249,17 +279,10 @@ const Layout = ({ systemType = 'workpermit' }) => {
       </aside>
 
       {/* Main content */}
-      <div className="lg:pl-64">
+      <div className={`transition-all duration-300 ${sidebarOpen ? 'lg:pl-64' : 'lg:pl-20'}`}>
         {/* Top navbar */}
         <header className="sticky top-0 z-30 bg-white border-b border-gray-200">
           <div className="flex items-center justify-between px-4 py-3 lg:px-6">
-            <button
-              className="lg:hidden p-2 rounded-lg hover:bg-gray-100"
-              onClick={() => setSidebarOpen(true)}
-            >
-              <Menu className="w-5 h-5 text-gray-600" />
-            </button>
-
             <div className="flex-1 lg:flex-none" />
 
             <div className="flex items-center gap-3">
