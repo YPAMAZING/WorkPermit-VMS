@@ -208,7 +208,8 @@ export const companySettingsApi = {
 // ================================
 export const vmsAPI = {
   // Visitor Registration (Public - for QR scan flow)
-  createVisitor: (data) => publicApi.post('/visitors/register', data),
+  // Uses the checkin/submit endpoint which properly creates visitors with companyId
+  createVisitor: (data) => publicApi.post('/checkin/submit', data),
   
   // Pre-Approval (Company creates pre-approved passes)
   createPreApproval: (data) => vmsApi.post('/preapproved', data),
