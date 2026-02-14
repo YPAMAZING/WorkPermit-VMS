@@ -36,8 +36,7 @@ const VMSUserManagement = () => {
   const roleOptions = [
     { value: 'vms_admin', label: 'VMS Administrator', description: 'Full access to all VMS features and settings', requiresCompany: false },
     { value: 'company_user', label: 'Company User', description: 'Can approve/reject visitors for assigned company', requiresCompany: true },
-    { value: 'reception', label: 'Reception', description: 'Can view and check-in visitors, no admin access', requiresCompany: false },
-    { value: 'security_guard', label: 'Security Guard', description: 'Can verify passes and check-in/out visitors', requiresCompany: false },
+    { value: 'reception', label: 'Reception / Security Guard', description: 'Can view, check-in visitors and verify passes, no admin access', requiresCompany: false },
   ]
 
   const [newUser, setNewUser] = useState({
