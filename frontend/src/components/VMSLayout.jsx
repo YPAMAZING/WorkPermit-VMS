@@ -26,7 +26,7 @@ const VMSLayout = () => {
   const { user, loading, logout, hasPermission, isAdmin } = useVMSAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(true)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false)
 
@@ -123,133 +123,132 @@ const VMSLayout = () => {
     return isAdmin || hasPermission(item.permission)
   })
 
-  const getRoleBadge = (role) => {
-    const badges = {
-      VMS_ADMIN: { bg: 'bg-purple-500/20', text: 'text-purple-300', label: 'VMS Admin' },
-      ADMIN: { bg: 'bg-purple-500/20', text: 'text-purple-300', label: 'Admin' },
-      COMPANY_USER: { bg: 'bg-blue-500/20', text: 'text-blue-300', label: 'Company User' },
-      RECEPTION: { bg: 'bg-emerald-500/20', text: 'text-emerald-300', label: 'Reception' },
-      SECURITY_GUARD: { bg: 'bg-amber-500/20', text: 'text-amber-300', label: 'Security Guard' },
-    }
-    return badges[role] || { bg: 'bg-gray-500/20', text: 'text-gray-300', label: user?.roleName || 'User' }
-  }
-
-  const roleBadge = getRoleBadge(user?.role)
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Mobile sidebar backdrop */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+    <div className="min-h-screen bg-gray-100">
+      {/* Mobile Menu Button */}
+      <div className="lg:hidden fixed top-4 left-4 z-50">
+        <button
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className="p-2 bg-teal-600 text-white rounded-lg shadow-lg"
+        >
+          {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
+      </div>
 
-      {/* Sidebar - Matching Work Permit Dark Style */}
+      {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 z-50 h-full w-64 bg-gradient-to-b from-slate-800 to-slate-900 transform transition-transform duration-300 lg:translate-x-0 ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        className={`
+          fixed top-0 left-0 z-40 h-screen transition-transform duration-300
+          ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
+          lg:translate-x-0
+          ${sidebarOpen ? 'w-64' : 'w-20'}
+          bg-gradient-to-b from-teal-700 to-teal-900 text-white
+        `}
       >
         {/* Logo */}
-        <div className="flex items-center gap-3 px-4 py-4 border-b border-slate-700">
-          <div className="bg-white rounded-lg p-1.5">
+        <div className="flex items-center justify-between h-20 px-4 border-b border-teal-600">
+          <div className="flex items-center gap-3 overflow-hidden">
             <img 
               src="/logo.png" 
-              alt="Reliable Group" 
-              className="h-10 w-auto"
+              alt="Reliable Group Logo" 
+              className="w-10 h-10 object-contain bg-white rounded-lg p-1 flex-shrink-0"
             />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-sm font-bold text-white leading-tight">
-              Reliable Group
-            </h1>
-            <p className="text-xs text-slate-400">Visitor Management System</p>
+            {sidebarOpen && (
+              <div className="min-w-0">
+                <h1 className="font-bold text-sm leading-tight">
+                  WP and VMS
+                </h1>
+                <p className="text-xs text-teal-200 truncate">Visitor Management</p>
+              </div>
+            )}
           </div>
           <button
-            className="lg:hidden p-1 rounded-lg hover:bg-slate-700"
-            onClick={() => setSidebarOpen(false)}
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="hidden lg:block p-1 hover:bg-teal-600 rounded flex-shrink-0"
           >
-            <X className="w-5 h-5 text-slate-400" />
+            <Menu size={20} />
           </button>
         </div>
 
         {/* Switch System Button */}
-        <div className="px-4 pt-4">
-          <button
-            onClick={handleSwitchSystem}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-gradient-to-r from-purple-600/20 to-indigo-600/20 border border-purple-500/30 text-purple-300 hover:from-purple-600/30 hover:to-indigo-600/30 transition-all"
-          >
-            <Home className="w-5 h-5" />
-            <span className="flex-1 text-left font-medium text-sm">Switch System</span>
-            <ArrowLeftRight className="w-4 h-4" />
-          </button>
-        </div>
+        {sidebarOpen && (
+          <div className="px-3 pt-4">
+            <button
+              onClick={handleSwitchSystem}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg bg-white/10 hover:bg-white/20 text-teal-100 transition-all border border-teal-500/30"
+            >
+              <Home size={18} />
+              <span className="flex-1 text-left text-sm font-medium">Switch System</span>
+              <ArrowLeftRight size={16} />
+            </button>
+          </div>
+        )}
 
-        {/* Navigation */}
-        <nav className="p-4 space-y-1 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 280px)' }}>
+        {/* Navigation - scrollable area */}
+        <nav className="mt-4 px-3 pb-36 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 220px)' }}>
           {filteredNavItems.map((item) => {
             const Icon = item.icon
             const isActive = location.pathname.startsWith(item.path)
+
             return (
               <NavLink
                 key={item.path}
                 to={item.path}
-                onClick={() => setSidebarOpen(false)}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
-                  isActive 
-                    ? 'bg-teal-500/20 text-teal-400 border-l-4 border-teal-400' 
-                    : 'text-slate-300 hover:bg-slate-700/50 hover:text-white'
-                }`}
+                onClick={() => setMobileMenuOpen(false)}
+                className={`
+                  flex items-center gap-3 px-3 py-3 mb-1 rounded-lg transition-all
+                  ${isActive
+                    ? 'bg-white text-teal-700 shadow-lg'
+                    : 'text-teal-100 hover:bg-teal-600'
+                  }
+                `}
               >
-                <Icon className="w-5 h-5" />
-                <span className="flex-1 font-medium">{item.name}</span>
+                <Icon size={20} />
+                {sidebarOpen && <span className="font-medium">{item.name}</span>}
               </NavLink>
             )
           })}
         </nav>
 
-        {/* User section */}
-        <div className="absolute bottom-0 left-0 right-0 border-t border-slate-700 bg-slate-900/50">
-          <div className="p-4">
+        {/* Bottom Section - Fixed */}
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-teal-900 to-transparent pt-4">
+          {/* User Info */}
+          <div className="p-4 border-t border-teal-600">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-teal-400 to-teal-600 rounded-full flex items-center justify-center">
-                <span className="text-sm font-semibold text-white">
+              <div className="w-10 h-10 bg-teal-600 rounded-full flex items-center justify-center flex-shrink-0">
+                <span className="text-white font-semibold">
                   {user?.firstName?.[0]}{user?.lastName?.[0]}
                 </span>
               </div>
-              <div className="flex-1 min-w-0 overflow-hidden">
-                <p className="text-sm font-medium text-white truncate">
-                  {user?.firstName} {user?.lastName}
-                </p>
-                <span className={`inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full max-w-full truncate ${roleBadge.bg} ${roleBadge.text}`}>
-                  {roleBadge.label}
-                </span>
-              </div>
+              {sidebarOpen && (
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">
+                    {user?.firstName} {user?.lastName}
+                  </p>
+                  <p className="text-xs text-teal-200 truncate">{user?.roleName || user?.role}</p>
+                </div>
+              )}
             </div>
-          </div>
-          {/* Copyright */}
-          <div className="px-4 pb-3 text-center">
-            <p className="text-xs text-slate-500">© 2025 YP SECURITY SERVICES PVT LTD</p>
+            {sidebarOpen && (
+              <button
+                onClick={handleLogout}
+                className="mt-3 w-full flex items-center justify-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition-colors"
+              >
+                <LogOut size={16} />
+                <span>Logout</span>
+              </button>
+            )}
           </div>
         </div>
       </aside>
 
       {/* Main Content */}
-      <div className="lg:pl-64">
+      <div className={`transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'}`}>
         {/* Top Header */}
-        <header className="sticky top-0 z-30 bg-white border-b border-gray-200">
-          <div className="flex items-center justify-between px-4 py-3 lg:px-6">
-            <button
-              className="lg:hidden p-2 rounded-lg hover:bg-gray-100"
-              onClick={() => setSidebarOpen(true)}
-            >
-              <Menu className="w-5 h-5 text-gray-600" />
-            </button>
-
+        <header className="sticky top-0 z-30 bg-white shadow-sm">
+          <div className="flex items-center justify-between h-16 px-4 lg:px-6">
             {/* Search */}
-            <div className="flex-1 max-w-lg hidden md:block ml-4">
+            <div className="flex-1 max-w-lg hidden md:block">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
                 <input
@@ -261,10 +260,10 @@ const VMSLayout = () => {
             </div>
 
             {/* Right Side */}
-            <div className="flex items-center gap-3 ml-auto">
+            <div className="flex items-center gap-4 ml-auto">
               {/* Notifications */}
-              <button className="relative p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg">
-                <Bell size={20} />
+              <button className="relative p-2 hover:bg-gray-100 rounded-lg">
+                <Bell size={20} className="text-gray-600" />
                 <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
               </button>
 
@@ -272,14 +271,14 @@ const VMSLayout = () => {
               <div className="relative">
                 <button
                   onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-                  className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-gray-100 transition-colors"
+                  className="flex items-center gap-2 hover:bg-gray-100 rounded-lg px-2 py-1"
                 >
-                  <div className="w-9 h-9 bg-gradient-to-br from-teal-500 to-teal-700 rounded-full flex items-center justify-center ring-2 ring-white shadow-md">
+                  <div className="w-8 h-8 bg-teal-600 rounded-full flex items-center justify-center">
                     <span className="text-sm font-semibold text-white">
                       {user?.firstName?.[0]}{user?.lastName?.[0]}
                     </span>
                   </div>
-                  <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${profileDropdownOpen ? 'rotate-180' : ''}`} />
+                  <ChevronDown size={16} className="text-gray-400" />
                 </button>
 
                 {profileDropdownOpen && (
@@ -288,59 +287,44 @@ const VMSLayout = () => {
                       className="fixed inset-0 z-40"
                       onClick={() => setProfileDropdownOpen(false)}
                     />
-                    <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-50">
-                      {/* User Info Header */}
-                      <div className="px-4 py-4 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100">
-                        <div className="flex items-center gap-3">
-                          <div className="w-12 h-12 bg-gradient-to-br from-teal-500 to-teal-700 rounded-full flex items-center justify-center shadow-md">
-                            <span className="text-lg font-semibold text-white">
-                              {user?.firstName?.[0]}{user?.lastName?.[0]}
-                            </span>
-                          </div>
-                          <div className="flex-1 min-w-0 overflow-hidden">
-                            <p className="text-sm font-semibold text-gray-900 truncate">
-                              {user?.firstName} {user?.lastName}
-                            </p>
-                            <p className="text-xs text-gray-500 truncate">{user?.email}</p>
-                            <span className={`inline-flex items-center mt-1 px-2 py-0.5 text-xs font-medium rounded-full ${
-                              user?.role === 'VMS_ADMIN' || user?.role === 'ADMIN' ? 'bg-purple-100 text-purple-700' :
-                              user?.role === 'RECEPTION' ? 'bg-emerald-100 text-emerald-700' :
-                              'bg-blue-100 text-blue-700'
-                            }`}>
-                              {user?.roleName || user?.role}
-                            </span>
-                          </div>
-                        </div>
+                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden z-50">
+                      <div className="p-4 border-b border-gray-100">
+                        <p className="font-medium text-gray-800">
+                          {user?.firstName} {user?.lastName}
+                        </p>
+                        <p className="text-sm text-gray-500">{user?.email}</p>
+                        <span className="inline-block mt-2 px-2 py-1 bg-teal-100 text-teal-700 text-xs rounded-full">
+                          {user?.roleName || user?.role}
+                        </span>
                       </div>
-                      {/* Menu Items */}
                       <div className="py-2">
                         <button
                           onClick={() => {
                             setProfileDropdownOpen(false)
                             handleSwitchSystem()
                           }}
-                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 w-full transition-colors"
+                          className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 w-full"
                         >
-                          <ArrowLeftRight className="w-4 h-4 text-gray-400" />
-                          <span>Switch System</span>
+                          <ArrowLeftRight size={16} className="text-gray-400" />
+                          Switch System
                         </button>
                         <button
                           onClick={() => {
                             setProfileDropdownOpen(false)
-                            navigate('/vms/profile')
+                            navigate('/vms/admin/settings')
                           }}
-                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 w-full transition-colors"
+                          className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 w-full"
                         >
-                          <Settings className="w-4 h-4 text-gray-400" />
-                          <span>Profile Settings</span>
+                          <Settings size={16} className="text-gray-400" />
+                          Settings
                         </button>
-                        <div className="border-t border-gray-100 my-1"></div>
+                        <hr className="my-1" />
                         <button
                           onClick={handleLogout}
-                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 w-full transition-colors"
+                          className="flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 w-full"
                         >
-                          <LogOut className="w-4 h-4" />
-                          <span>Logout</span>
+                          <LogOut size={16} />
+                          Logout
                         </button>
                       </div>
                     </div>

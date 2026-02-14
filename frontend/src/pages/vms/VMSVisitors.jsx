@@ -208,15 +208,15 @@ const VMSVisitors = () => {
                               <img src={visitor.photo} alt="" className="w-full h-full object-cover" />
                             ) : (
                               <span className="text-teal-600 font-semibold">
-                                {visitor.firstName?.[0]}{visitor.lastName?.[0]}
+                                {visitor.visitorName?.[0] || 'V'}
                               </span>
                             )}
                           </div>
                           <div>
                             <p className="font-medium text-gray-800">
-                              {visitor.firstName} {visitor.lastName}
+                              {visitor.visitorName}
                             </p>
-                            <p className="text-xs text-gray-400">{visitor.visitorCode}</p>
+                            <p className="text-xs text-gray-400">{visitor.id}</p>
                           </div>
                         </div>
                       </td>
@@ -235,10 +235,10 @@ const VMSVisitors = () => {
                         </div>
                       </td>
                       <td className="px-4 py-4">
-                        {visitor.company ? (
+                        {visitor.companyToVisit ? (
                           <p className="text-sm text-gray-600 flex items-center gap-1">
                             <Building size={14} className="text-gray-400" />
-                            {visitor.company}
+                            {visitor.companyToVisit}
                           </p>
                         ) : (
                           <span className="text-gray-400 text-sm">-</span>
@@ -250,16 +250,16 @@ const VMSVisitors = () => {
                         </span>
                       </td>
                       <td className="px-4 py-4">
-                        {visitor.isBlacklisted ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-700 text-xs rounded-full">
-                            <AlertTriangle size={12} />
-                            Blacklisted
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">
-                            Active
-                          </span>
-                        )}
+                        <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded-full ${
+                          visitor.status === 'CHECKED_IN' ? 'bg-green-100 text-green-700' :
+                          visitor.status === 'APPROVED' ? 'bg-blue-100 text-blue-700' :
+                          visitor.status === 'PENDING' || visitor.status === 'PENDING_APPROVAL' ? 'bg-yellow-100 text-yellow-700' :
+                          visitor.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
+                          visitor.status === 'CHECKED_OUT' ? 'bg-gray-100 text-gray-700' :
+                          'bg-gray-100 text-gray-600'
+                        }`}>
+                          {visitor.status?.replace('_', ' ') || 'Unknown'}
+                        </span>
                       </td>
                       <td className="px-4 py-4">
                         <div className="flex items-center justify-end gap-2">
@@ -340,7 +340,7 @@ const VMSVisitors = () => {
               </div>
             </div>
             <p className="text-gray-600 mb-6">
-              Are you sure you want to delete <strong>{deleteConfirm.firstName} {deleteConfirm.lastName}</strong>?
+              Are you sure you want to delete <strong>{deleteConfirm.visitorName}</strong>?
             </p>
             <div className="flex justify-end gap-3">
               <button
