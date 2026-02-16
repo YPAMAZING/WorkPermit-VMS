@@ -452,11 +452,32 @@ exports.getLiveFeed = async (req, res) => {
     const companyId = user?.companyId;
     const { since } = req.query;
     
+    console.log('\\n📋 GET LIVE FEED');
+    console.log('User:', user?.email, 'Role:', user?.role, 'CompanyId:', companyId);
+    console.log('Is Admin:', isUserAdmin(user), 'Is Company User:', isCompanyUser(user));
+    
     const baseWhere = {};
     
     // If user is company-scoped, filter by company
-    if (companyId && !isUserAdmin(user)) {
-      baseWhere.companyId = companyId;
+    // IMPORTANT: Company users without companyId should see NO visitors
+    if (!isUserAdmin(user)) {
+      if (companyId) {
+        baseWhere.companyId = companyId;
+        console.log('Filtering by companyId:', companyId);
+      } else if (isCompanyUser(user)) {
+        // Company user role without company assigned - show nothing
+        console.log('⚠️ Company user without companyId - showing empty');
+        return res.json({
+          pending: [],
+          approved: [],
+          checkedIn: [],
+          recent: [],
+          timestamp: new Date().toISOString(),
+          counts: { pending: 0, approved: 0, checkedIn: 0 },
+          warning: 'No company assigned to your account. Please contact admin.'
+        });
+      }
+      // Reception/Guard users without companyId can see all visitors
     }
     
     const today = new Date();
