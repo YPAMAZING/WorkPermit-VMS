@@ -36,11 +36,11 @@ router.get('/live', vmsAuth, checkinController.getLiveFeed);
 // Get single check-in request details
 router.get('/requests/:id', vmsAuth, checkinController.getRequestById);
 
-// Approve check-in request
-router.post('/requests/:id/approve', vmsAuth, vmsRequireRole(['VMS_ADMIN', 'SECURITY_GUARD', 'SECURITY_SUPERVISOR', 'RECEPTIONIST']), checkinController.approveRequest);
+// Approve check-in request (Company users can approve their own company's visitors)
+router.post('/requests/:id/approve', vmsAuth, vmsRequireRole(['VMS_ADMIN', 'COMPANY_USER', 'company_user']), checkinController.approveRequest);
 
-// Reject check-in request
-router.post('/requests/:id/reject', vmsAuth, vmsRequireRole(['VMS_ADMIN', 'SECURITY_GUARD', 'SECURITY_SUPERVISOR', 'RECEPTIONIST']), checkinController.rejectRequest);
+// Reject check-in request (Company users can reject their own company's visitors)
+router.post('/requests/:id/reject', vmsAuth, vmsRequireRole(['VMS_ADMIN', 'COMPANY_USER', 'company_user']), checkinController.rejectRequest);
 
 // Mark visitor as checked in
 router.post('/requests/:id/checkin', vmsAuth, vmsRequireRole(['SECURITY_GUARD', 'SECURITY_SUPERVISOR', 'RECEPTIONIST']), checkinController.markCheckedIn);
