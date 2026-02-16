@@ -96,10 +96,7 @@ const VisitorRegister = () => {
 
   const idProofTypes = [
     { value: 'aadhaar', label: 'Aadhaar Card' },
-    { value: 'pan', label: 'PAN Card' },
     { value: 'driving_license', label: 'Driving License' },
-    { value: 'voter_id', label: 'Voter ID' },
-    { value: 'passport', label: 'Passport' },
   ]
 
   const handleChange = async (e) => {

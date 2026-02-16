@@ -64,12 +64,7 @@ const PublicCheckIn = () => {
   // ID Proof options
   const idProofOptions = [
     { value: 'AADHAAR', label: 'Aadhaar Card' },
-    { value: 'PAN', label: 'PAN Card' },
     { value: 'DRIVING_LICENSE', label: 'Driving License' },
-    { value: 'PASSPORT', label: 'Passport' },
-    { value: 'VOTER_ID', label: 'Voter ID' },
-    { value: 'COMPANY_ID', label: 'Company ID' },
-    { value: 'OTHER', label: 'Other' },
   ]
   
   // Fetch company info

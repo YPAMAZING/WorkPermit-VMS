@@ -117,20 +117,8 @@ const CompanyDashboard = () => {
     }
   }
 
-  const handleCheckIn = async (id) => {
-    setActionLoading(id)
-    try {
-      await checkInApi.checkIn(id)
-      setMessage({ type: 'success', text: 'Visitor checked in successfully!' })
-      await fetchData(true)
-      setSelectedVisitor(null)
-    } catch (error) {
-      console.error('Failed to check-in:', error)
-      setMessage({ type: 'error', text: error.response?.data?.message || 'Failed to check-in visitor' })
-    } finally {
-      setActionLoading(null)
-    }
-  }
+  // Note: handleCheckIn removed - Company users cannot check-in visitors
+  // Check-in is done by reception/guard at the main gate
 
   const getStatusBadge = (status) => {
     const styles = {
@@ -429,21 +417,12 @@ const CompanyDashboard = () => {
                       </>
                     )}
 
+                    {/* Company users can only view approved visitors, not check them in */}
                     {visitor.status === 'APPROVED' && (
-                      <button
-                        onClick={() => handleCheckIn(visitor.id)}
-                        disabled={actionLoading === visitor.id}
-                        className="flex items-center gap-1 px-2.5 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 text-xs"
-                      >
-                        {actionLoading === visitor.id ? (
-                          <Loader2 className="w-3 h-3 animate-spin" />
-                        ) : (
-                          <>
-                            <UserCheck size={14} />
-                            <span className="hidden sm:inline">Check In</span>
-                          </>
-                        )}
-                      </button>
+                      <span className="flex items-center gap-1 px-2.5 py-1.5 bg-green-100 text-green-700 rounded-lg text-xs">
+                        <CheckCircle size={14} />
+                        <span className="hidden sm:inline">Approved</span>
+                      </span>
                     )}
                     
                     <button
@@ -585,22 +564,13 @@ const CompanyDashboard = () => {
                   </div>
                 )}
 
+                {/* Company users see status only - check-in is done by reception */}
                 {selectedVisitor.status === 'APPROVED' && (
                   <div className="pt-4 border-t">
-                    <button
-                      onClick={() => handleCheckIn(selectedVisitor.id)}
-                      disabled={actionLoading === selectedVisitor.id}
-                      className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
-                    >
-                      {actionLoading === selectedVisitor.id ? (
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                      ) : (
-                        <>
-                          <UserCheck size={18} />
-                          Check In
-                        </>
-                      )}
-                    </button>
+                    <div className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-green-100 text-green-700 rounded-lg">
+                      <CheckCircle size={18} />
+                      Approved - Awaiting Check-In at Reception
+                    </div>
                   </div>
                 )}
               </div>

@@ -78,11 +78,9 @@ const statusColors = {
 // ID Proof type labels
 const idProofLabels = {
   'aadhaar': 'Aadhaar Card',
-  'pan': 'PAN Card',
+  'AADHAAR': 'Aadhaar Card',
   'driving_license': 'Driving License',
-  'voter_id': 'Voter ID',
-  'passport': 'Passport',
-  'other': 'Other ID',
+  'DRIVING_LICENSE': 'Driving License',
 };
 
 // Section colors for headers

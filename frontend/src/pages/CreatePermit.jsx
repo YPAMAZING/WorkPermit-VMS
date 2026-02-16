@@ -88,11 +88,7 @@ const optionalPPE = [
 // ID Proof types
 const idProofTypes = [
   { value: 'aadhaar', label: 'Aadhaar Card' },
-  { value: 'pan', label: 'PAN Card' },
   { value: 'driving_license', label: 'Driving License' },
-  { value: 'voter_id', label: 'Voter ID' },
-  { value: 'passport', label: 'Passport' },
-  { value: 'other', label: 'Other ID' },
 ]
 
 const CreatePermit = () => {

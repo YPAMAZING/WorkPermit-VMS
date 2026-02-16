@@ -48,12 +48,8 @@ const AddToBlacklist = () => {
   ]
 
   const idTypes = [
-    { value: 'AADHAR', label: 'Aadhar Card' },
-    { value: 'PAN', label: 'PAN Card' },
-    { value: 'PASSPORT', label: 'Passport' },
+    { value: 'AADHAR', label: 'Aadhaar Card' },
     { value: 'DRIVING_LICENSE', label: 'Driving License' },
-    { value: 'VOTER_ID', label: 'Voter ID' },
-    { value: 'OTHER', label: 'Other' },
   ]
 
   // Pre-fill from URL params (when coming from visitor page)
