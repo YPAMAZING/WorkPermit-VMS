@@ -17,6 +17,10 @@ const GuardDashboard = () => {
   // Only Company users and Admins can approve/reject
   const canApproveReject = isCompanyUser || isAdmin
   
+  // Only Reception, Security Guard, and Admin can check-in visitors
+  // Company users CANNOT check-in (they only approve/reject)
+  const canCheckIn = isReceptionist || isSecurityGuard || isAdmin
+  
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [liveFeed, setLiveFeed] = useState({
@@ -272,7 +276,7 @@ const GuardDashboard = () => {
                 Waiting for Approval
               </div>
             )}
-            {request.status === 'APPROVED' && (
+            {request.status === 'APPROVED' && canCheckIn && (
               <button
                 onClick={(e) => { e.stopPropagation(); setSelectedRequest(request) }}
                 className="flex-1 py-2 bg-green-600 text-white text-xs lg:text-sm font-medium rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-1"
@@ -280,6 +284,12 @@ const GuardDashboard = () => {
                 <Eye className="w-4 h-4" />
                 Verify & Check In
               </button>
+            )}
+            {request.status === 'APPROVED' && !canCheckIn && (
+              <div className="flex-1 py-2 bg-green-100 text-green-700 text-xs lg:text-sm font-medium rounded-lg flex items-center justify-center gap-1">
+                <CheckCircle className="w-4 h-4" />
+                Approved
+              </div>
             )}
           </div>
         )}
@@ -606,7 +616,7 @@ const GuardDashboard = () => {
                       Waiting for Approval
                     </div>
                   )}
-                  {selectedRequest.status === 'APPROVED' && (
+                  {selectedRequest.status === 'APPROVED' && canCheckIn && (
                     <div className="space-y-3">
                       {/* Verification Checklist */}
                       <div className="p-3 bg-green-50 border border-green-200 rounded-xl">
@@ -635,6 +645,12 @@ const GuardDashboard = () => {
                           </>
                         )}
                       </button>
+                    </div>
+                  )}
+                  {selectedRequest.status === 'APPROVED' && !canCheckIn && (
+                    <div className="w-full py-3 bg-green-100 text-green-700 font-medium rounded-xl flex items-center justify-center gap-2">
+                      <CheckCircle className="w-5 h-5" />
+                      Approved - Check-In at Reception
                     </div>
                   )}
                 </div>
@@ -761,7 +777,7 @@ const GuardDashboard = () => {
                     Waiting for Approval
                   </div>
                 )}
-                {selectedRequest.status === 'APPROVED' && (
+                {selectedRequest.status === 'APPROVED' && canCheckIn && (
                   <div className="space-y-3">
                     {/* Verification Checklist - Mobile */}
                     <div className="p-3 bg-green-50 border border-green-200 rounded-xl">
@@ -789,6 +805,12 @@ const GuardDashboard = () => {
                         </>
                       )}
                     </button>
+                  </div>
+                )}
+                {selectedRequest.status === 'APPROVED' && !canCheckIn && (
+                  <div className="w-full py-3 bg-green-100 text-green-700 font-medium rounded-xl flex items-center justify-center gap-2">
+                    <CheckCircle className="w-5 h-5" />
+                    Approved - Check-In at Reception
                   </div>
                 )}
               </div>
