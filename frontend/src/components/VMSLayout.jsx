@@ -20,10 +20,11 @@ import {
   UserCog,
   Home,
   ArrowLeftRight,
+  Shield,
 } from 'lucide-react'
 
 const VMSLayout = () => {
-  const { user, loading, logout, hasPermission, isAdmin } = useVMSAuth()
+  const { user, loading, logout, hasPermission, isAdmin, isCompanyUser, isReceptionist, isSecurityGuard } = useVMSAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -58,12 +59,16 @@ const VMSLayout = () => {
     navigate('/select-system')
   }
 
+  // Check if user is a company/reception/guard user (non-admin)
+  const isLimitedUser = isCompanyUser || isReceptionist || isSecurityGuard
+
   const navItems = [
     {
       name: 'Dashboard',
       path: '/vms/admin/dashboard',
       icon: LayoutDashboard,
       permission: 'vms.dashboard.view',
+      adminOnly: true,
     },
     {
       name: 'Company Dashboard',
@@ -73,34 +78,46 @@ const VMSLayout = () => {
       description: 'Approve/Reject visitors for your company',
     },
     {
+      name: 'Visitor Check-In',
+      path: '/vms/admin/guard',
+      icon: Shield,
+      permission: 'vms.checkin.view',
+      description: 'Live feed for check-in management',
+    },
+    {
       name: 'Visitors',
       path: '/vms/admin/visitors',
       icon: Users,
       permission: 'vms.visitors.view',
+      adminOnly: true,
     },
     {
       name: 'Visitor Pass',
       path: '/vms/admin/gatepasses',
       icon: FileText,
       permission: 'vms.gatepasses.view',
+      adminOnly: true,
     },
     {
       name: 'Pre-approved',
       path: '/vms/admin/preapproved',
       icon: UserCheck,
       permission: 'vms.preapproved.view',
+      adminOnly: true,
     },
     {
       name: 'Blacklist',
       path: '/vms/admin/blacklist',
       icon: ShieldAlert,
       permission: 'vms.blacklist.view',
+      adminOnly: true,
     },
     {
       name: 'Reports',
       path: '/vms/admin/reports',
       icon: BarChart3,
       permission: 'vms.reports.view',
+      adminOnly: true,
     },
     {
       name: 'User Management',
@@ -242,13 +259,21 @@ const VMSLayout = () => {
         </div>
       </aside>
 
+      {/* Mobile overlay */}
+      {mobileMenuOpen && (
+        <div 
+          className="lg:hidden fixed inset-0 bg-black/50 z-30"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
       {/* Main Content */}
       <div className={`transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'}`}>
         {/* Top Header */}
         <header className="sticky top-0 z-30 bg-white shadow-sm">
           <div className="flex items-center justify-between h-16 px-4 lg:px-6">
             {/* Search */}
-            <div className="flex-1 max-w-lg hidden md:block">
+            <div className="flex-1 max-w-lg hidden md:block ml-12 lg:ml-0">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
                 <input
@@ -308,16 +333,19 @@ const VMSLayout = () => {
                           <ArrowLeftRight size={16} className="text-gray-400" />
                           Switch System
                         </button>
-                        <button
-                          onClick={() => {
-                            setProfileDropdownOpen(false)
-                            navigate('/vms/admin/settings')
-                          }}
-                          className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 w-full"
-                        >
-                          <Settings size={16} className="text-gray-400" />
-                          Settings
-                        </button>
+                        {/* Only show Settings for admin users */}
+                        {isAdmin && (
+                          <button
+                            onClick={() => {
+                              setProfileDropdownOpen(false)
+                              navigate('/vms/admin/settings')
+                            }}
+                            className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 w-full"
+                          >
+                            <Settings size={16} className="text-gray-400" />
+                            Settings
+                          </button>
+                        )}
                         <hr className="my-1" />
                         <button
                           onClick={handleLogout}
