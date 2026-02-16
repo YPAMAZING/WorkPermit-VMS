@@ -353,13 +353,15 @@ exports.deleteUser = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    console.log('Found user to delete:', user.email);
+    console.log('Found user to delete:', user.email, 'isFromWorkPermit:', user.isFromWorkPermit, 'isActive:', user.isActive);
 
-    // Don't allow deleting Work Permit SSO users
-    if (user.isFromWorkPermit) {
-      console.log('Cannot delete Work Permit admin user:', user.email);
+    // For Work Permit synced users:
+    // - If they are INACTIVE (role changed to non-VMS role), allow deletion
+    // - If they are ACTIVE (still have VMS access from Work Permit), block deletion
+    if (user.isFromWorkPermit && user.isActive) {
+      console.log('Cannot delete active Work Permit admin user:', user.email);
       return res.status(400).json({ 
-        message: 'Cannot delete Work Permit admin users. Remove VMS access from Work Permit settings instead.' 
+        message: 'Cannot delete active Work Permit admin users. Change their role in Work Permit first to remove VMS access.' 
       });
     }
 
