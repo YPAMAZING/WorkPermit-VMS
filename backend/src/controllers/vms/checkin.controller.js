@@ -740,24 +740,50 @@ exports.rejectRequest = async (req, res) => {
 };
 
 // Mark visitor as checked in
+// NOTE: Reception and Security Guard can check-in ANY approved visitor
+// Company users can only check-in their company's visitors
 exports.markCheckedIn = async (req, res) => {
   try {
     const { id } = req.params;
     const user = req.user;
     const companyId = user?.companyId;
+    const userRole = user?.role;
     
-    const where = { id, status: 'APPROVED' };
+    console.log('\\n📋 CHECK-IN REQUEST');
+    console.log('Visitor ID:', id);
+    console.log('User:', user?.email, 'Role:', userRole, 'CompanyId:', companyId);
     
-    // If user is company-scoped, filter by company
-    if (companyId && !isUserAdmin(user)) {
-      where.companyId = companyId;
-    }
+    // Reception and Security Guard roles can check-in ANY visitor
+    const canCheckInAll = ['RECEPTION', 'reception', 'SECURITY_GUARD', 'security_guard'].includes(userRole) || isUserAdmin(user);
     
-    const visitor = await vmsPrisma.vMSVisitor.findFirst({ where });
+    // First find the visitor
+    const visitor = await vmsPrisma.vMSVisitor.findUnique({ where: { id } });
     
     if (!visitor) {
-      return res.status(404).json({ message: 'Request not found or not approved' });
+      console.log('❌ Visitor not found');
+      return res.status(404).json({ message: 'Visitor not found' });
     }
+    
+    console.log('Visitor found:', visitor.visitorName, 'Status:', visitor.status);
+    
+    if (visitor.status !== 'APPROVED') {
+      console.log('❌ Visitor not approved, status:', visitor.status);
+      return res.status(400).json({ message: `Cannot check-in. Visitor status is ${visitor.status.toLowerCase()}` });
+    }
+    
+    // Company users can only check-in their company's visitors
+    if (!canCheckInAll && isCompanyUser(user)) {
+      if (!companyId) {
+        console.log('❌ Company user without companyId');
+        return res.status(403).json({ message: 'Access denied. No company assigned to your account.' });
+      }
+      if (visitor.companyId !== companyId) {
+        console.log('❌ Company mismatch - User:', companyId, 'Visitor:', visitor.companyId);
+        return res.status(403).json({ message: 'Access denied. You can only check-in visitors for your company.' });
+      }
+    }
+    
+    console.log('✅ Check-in authorized');
     
     // Update visitor status
     const updated = await vmsPrisma.vMSVisitor.update({
@@ -789,25 +815,51 @@ exports.markCheckedIn = async (req, res) => {
 };
 
 // Mark visitor as checked out
+// NOTE: Reception and Security Guard can check-out ANY visitor
+// Company users can only check-out their company's visitors
 exports.markCheckedOut = async (req, res) => {
   try {
     const { id } = req.params;
     const { securityRemarks } = req.body;
     const user = req.user;
     const companyId = user?.companyId;
+    const userRole = user?.role;
     
-    const where = { id, status: 'CHECKED_IN' };
+    console.log('\\n📋 CHECK-OUT REQUEST');
+    console.log('Visitor ID:', id);
+    console.log('User:', user?.email, 'Role:', userRole);
     
-    // If user is company-scoped, filter by company
-    if (companyId && !isUserAdmin(user)) {
-      where.companyId = companyId;
-    }
+    // Reception and Security Guard roles can check-out ANY visitor
+    const canCheckOutAll = ['RECEPTION', 'reception', 'SECURITY_GUARD', 'security_guard'].includes(userRole) || isUserAdmin(user);
     
-    const visitor = await vmsPrisma.vMSVisitor.findFirst({ where });
+    // First find the visitor
+    const visitor = await vmsPrisma.vMSVisitor.findUnique({ where: { id } });
     
     if (!visitor) {
-      return res.status(404).json({ message: 'Request not found or not checked in' });
+      console.log('❌ Visitor not found');
+      return res.status(404).json({ message: 'Visitor not found' });
     }
+    
+    console.log('Visitor found:', visitor.visitorName, 'Status:', visitor.status);
+    
+    if (visitor.status !== 'CHECKED_IN') {
+      console.log('❌ Visitor not checked in, status:', visitor.status);
+      return res.status(400).json({ message: `Cannot check-out. Visitor status is ${visitor.status.toLowerCase()}` });
+    }
+    
+    // Company users can only check-out their company's visitors
+    if (!canCheckOutAll && isCompanyUser(user)) {
+      if (!companyId) {
+        console.log('❌ Company user without companyId');
+        return res.status(403).json({ message: 'Access denied. No company assigned to your account.' });
+      }
+      if (visitor.companyId !== companyId) {
+        console.log('❌ Company mismatch');
+        return res.status(403).json({ message: 'Access denied. You can only check-out visitors for your company.' });
+      }
+    }
+    
+    console.log('✅ Check-out authorized');
     
     // Update visitor
     const updated = await vmsPrisma.vMSVisitor.update({
