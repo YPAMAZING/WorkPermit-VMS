@@ -151,11 +151,21 @@ const GuardDashboard = () => {
     return new Date(date).toLocaleDateString()
   }
   
-  // Get status badge
+  // Get status badge - shows different labels for reception/guard vs company users
   const getStatusBadge = (status) => {
     const badges = {
-      PENDING: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Pending' },
-      APPROVED: { bg: 'bg-green-100', text: 'text-green-800', label: 'Approved' },
+      PENDING: { 
+        bg: 'bg-yellow-100', 
+        text: 'text-yellow-800', 
+        // Reception/Guard sees "Waiting for Approval", Company users see "Pending"
+        label: canApproveReject ? 'Pending' : 'Waiting for Approval'
+      },
+      APPROVED: { 
+        bg: 'bg-green-100', 
+        text: 'text-green-800', 
+        // Reception/Guard sees "Ready for Check-In"
+        label: canApproveReject ? 'Approved' : 'Ready for Check-In'
+      },
       CHECKED_IN: { bg: 'bg-blue-100', text: 'text-blue-800', label: 'Inside' },
       REJECTED: { bg: 'bg-red-100', text: 'text-red-800', label: 'Rejected' },
       CHECKED_OUT: { bg: 'bg-gray-100', text: 'text-gray-800', label: 'Left' },
@@ -257,25 +267,18 @@ const GuardDashboard = () => {
               </>
             )}
             {request.status === 'PENDING' && !canApproveReject && (
-              <div className="flex-1 py-2 bg-yellow-100 text-yellow-800 text-xs lg:text-sm font-medium rounded-lg flex items-center justify-center gap-1">
+              <div className="flex-1 py-2 bg-yellow-100 text-yellow-800 text-xs lg:text-sm font-medium rounded-lg flex items-center justify-center gap-1 animate-pulse">
                 <Clock className="w-4 h-4" />
-                Awaiting Company Approval
+                Waiting for Approval
               </div>
             )}
             {request.status === 'APPROVED' && (
               <button
-                onClick={(e) => { e.stopPropagation(); handleCheckIn(request.id) }}
-                disabled={actionLoading === request.id}
-                className="flex-1 py-2 bg-blue-600 text-white text-xs lg:text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-1 disabled:opacity-50"
+                onClick={(e) => { e.stopPropagation(); setSelectedRequest(request) }}
+                className="flex-1 py-2 bg-green-600 text-white text-xs lg:text-sm font-medium rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-1"
               >
-                {actionLoading === request.id ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <>
-                    <UserCheck className="w-4 h-4" />
-                    Check In
-                  </>
-                )}
+                <Eye className="w-4 h-4" />
+                Verify & Check In
               </button>
             )}
           </div>
@@ -598,26 +601,41 @@ const GuardDashboard = () => {
                     </>
                   )}
                   {selectedRequest.status === 'PENDING' && !canApproveReject && (
-                    <div className="w-full py-3 bg-yellow-100 text-yellow-800 font-medium rounded-xl flex items-center justify-center gap-2">
+                    <div className="w-full py-3 bg-yellow-100 text-yellow-800 font-medium rounded-xl flex items-center justify-center gap-2 animate-pulse">
                       <Clock className="w-5 h-5" />
-                      Awaiting Company Approval
+                      Waiting for Approval
                     </div>
                   )}
                   {selectedRequest.status === 'APPROVED' && (
-                    <button
-                      onClick={() => handleCheckIn(selectedRequest.id)}
-                      disabled={actionLoading === selectedRequest.id}
-                      className="w-full py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-                    >
-                      {actionLoading === selectedRequest.id ? (
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                      ) : (
-                        <>
-                          <UserCheck className="w-5 h-5" />
-                          Complete Check-In
-                        </>
-                      )}
-                    </button>
+                    <div className="space-y-3">
+                      {/* Verification Checklist */}
+                      <div className="p-3 bg-green-50 border border-green-200 rounded-xl">
+                        <p className="text-sm font-semibold text-green-800 mb-2 flex items-center gap-2">
+                          <CheckCircle className="w-4 h-4" />
+                          Approved - Please Verify Before Check-In:
+                        </p>
+                        <ul className="text-xs text-green-700 space-y-1 ml-6">
+                          <li>• Verify visitor's photo matches their face</li>
+                          <li>• Check ID proof ({selectedRequest.idProofType?.replace(/_/g, ' ') || 'ID document'})</li>
+                          <li>• Confirm purpose: {selectedRequest.purpose}</li>
+                          <li>• Meeting with: {selectedRequest.hostName || 'N/A'}</li>
+                        </ul>
+                      </div>
+                      <button
+                        onClick={() => handleCheckIn(selectedRequest.id)}
+                        disabled={actionLoading === selectedRequest.id}
+                        className="w-full py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                      >
+                        {actionLoading === selectedRequest.id ? (
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                        ) : (
+                          <>
+                            <UserCheck className="w-5 h-5" />
+                            Complete Check-In
+                          </>
+                        )}
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>
@@ -738,26 +756,40 @@ const GuardDashboard = () => {
                   </>
                 )}
                 {selectedRequest.status === 'PENDING' && !canApproveReject && (
-                  <div className="w-full py-3 bg-yellow-100 text-yellow-800 font-medium rounded-xl flex items-center justify-center gap-2">
+                  <div className="w-full py-3 bg-yellow-100 text-yellow-800 font-medium rounded-xl flex items-center justify-center gap-2 animate-pulse">
                     <Clock className="w-5 h-5" />
-                    Awaiting Company Approval
+                    Waiting for Approval
                   </div>
                 )}
                 {selectedRequest.status === 'APPROVED' && (
-                  <button
-                    onClick={() => handleCheckIn(selectedRequest.id)}
-                    disabled={actionLoading === selectedRequest.id}
-                    className="w-full py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-                  >
-                    {actionLoading === selectedRequest.id ? (
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                    ) : (
-                      <>
-                        <UserCheck className="w-5 h-5" />
-                        Complete Check-In
-                      </>
-                    )}
-                  </button>
+                  <div className="space-y-3">
+                    {/* Verification Checklist - Mobile */}
+                    <div className="p-3 bg-green-50 border border-green-200 rounded-xl">
+                      <p className="text-sm font-semibold text-green-800 mb-2 flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4" />
+                        Approved - Please Verify:
+                      </p>
+                      <ul className="text-xs text-green-700 space-y-1 ml-6">
+                        <li>• Verify photo matches visitor's face</li>
+                        <li>• Check ID proof</li>
+                        <li>• Confirm purpose: {selectedRequest.purpose}</li>
+                      </ul>
+                    </div>
+                    <button
+                      onClick={() => handleCheckIn(selectedRequest.id)}
+                      disabled={actionLoading === selectedRequest.id}
+                      className="w-full py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                      {actionLoading === selectedRequest.id ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      ) : (
+                        <>
+                          <UserCheck className="w-5 h-5" />
+                          Complete Check-In
+                        </>
+                      )}
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
