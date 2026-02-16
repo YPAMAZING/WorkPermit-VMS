@@ -121,6 +121,11 @@ exports.getCompanyByCode = async (req, res) => {
 // Submit self check-in request (PUBLIC - no auth)
 exports.submitCheckInRequest = async (req, res) => {
   try {
+    console.log('\n========================================');
+    console.log('📝 NEW VISITOR SUBMISSION REQUEST');
+    console.log('========================================');
+    console.log('Request body keys:', Object.keys(req.body));
+    
     const {
       companyCode,
       companyId,
@@ -141,8 +146,19 @@ exports.submitCheckInRequest = async (req, res) => {
       numberOfVisitors,
     } = req.body;
     
+    console.log('Parsed data:');
+    console.log('  - visitorName:', visitorName);
+    console.log('  - phone:', phone);
+    console.log('  - companyId:', companyId);
+    console.log('  - companyCode:', companyCode);
+    console.log('  - purpose:', purpose);
+    console.log('  - idProofType:', idProofType);
+    console.log('  - hasPhoto:', !!photo);
+    console.log('  - hasIdDoc:', !!idDocumentImage);
+    
     // Validate required fields
     if (!phone || !purpose) {
+      console.log('❌ Validation failed: missing phone or purpose');
       return res.status(400).json({ 
         message: 'Missing required fields: phone, purpose' 
       });
@@ -150,11 +166,14 @@ exports.submitCheckInRequest = async (req, res) => {
     
     // Find company by ID or code
     let company;
+    console.log('🔍 Looking for company...');
     if (companyId) {
+      console.log('  - Searching by companyId:', companyId);
       company = await vmsPrisma.vMSCompany.findUnique({
         where: { id: companyId }
       });
     } else if (companyCode) {
+      console.log('  - Searching by companyCode:', companyCode);
       company = await vmsPrisma.vMSCompany.findFirst({
         where: {
           OR: [
@@ -166,10 +185,17 @@ exports.submitCheckInRequest = async (req, res) => {
     }
     
     if (!company) {
+      console.log('❌ Company not found');
       return res.status(404).json({ message: 'Invalid company' });
     }
     
+    console.log('✅ Company found:', company.id, company.displayName || company.name);
+    console.log('   - requireApproval:', company.requireApproval);
+    console.log('   - autoApproveVisitors:', company.autoApproveVisitors);
+    console.log('   - isActive:', company.isActive);
+    
     if (!company.isActive) {
+      console.log('❌ Company is inactive');
       return res.status(400).json({ message: 'Company is not accepting visitors' });
     }
     
@@ -230,6 +256,11 @@ exports.submitCheckInRequest = async (req, res) => {
     // Construct visitor name
     const fullName = visitorName || `${firstName || ''} ${lastName || ''}`.trim() || 'Unknown Visitor';
     
+    console.log('📝 Creating visitor record...');
+    console.log('   - Name:', fullName);
+    console.log('   - Status:', status);
+    console.log('   - CompanyId:', company.id);
+    
     // Create visitor record
     const visitor = await vmsPrisma.vMSVisitor.create({
       data: {
@@ -251,6 +282,12 @@ exports.submitCheckInRequest = async (req, res) => {
         entryType: preApproved ? 'PRE_APPROVED' : 'WALK_IN',
       }
     });
+    
+    console.log('✅ VISITOR CREATED SUCCESSFULLY!');
+    console.log('   - Visitor ID:', visitor.id);
+    console.log('   - Status:', visitor.status);
+    console.log('   - CompanyId:', visitor.companyId);
+    console.log('========================================\n');
     
     // If pre-approved, update used entries (if tracking)
     if (preApproved) {
@@ -532,6 +569,15 @@ exports.getLiveFeed = async (req, res) => {
         take: 30
       })
     ]);
+    
+    console.log('📊 Live Feed Results:');
+    console.log('   - Pending:', pending.length);
+    console.log('   - Approved:', approved.length);
+    console.log('   - CheckedIn:', checkedIn.length);
+    console.log('   - Recent:', recent.length);
+    if (pending.length > 0) {
+      console.log('   - First pending visitor:', pending[0].visitorName, 'CompanyId:', pending[0].companyId);
+    }
     
     res.json({
       pending,

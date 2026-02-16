@@ -284,8 +284,18 @@ const VisitorRegister = () => {
         requiresApproval: requiresApproval,
       }
 
+      console.log('📝 Submitting visitor request:')
+      console.log('   - visitorName:', payload.visitorName)
+      console.log('   - phone:', payload.phone)
+      console.log('   - companyId:', payload.companyId)
+      console.log('   - companyToVisit:', payload.companyToVisit)
+      console.log('   - purpose:', payload.purpose)
+      console.log('   - requiresApproval:', requiresApproval)
+
       // Call API to create visitor record
       const response = await vmsAPI.createVisitor(payload)
+      
+      console.log('📬 API Response:', response.data)
       
       if (response.data.success) {
         if (requiresApproval && !response.data.gatepass) {
