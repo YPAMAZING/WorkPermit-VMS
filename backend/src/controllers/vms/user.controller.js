@@ -341,25 +341,34 @@ exports.deleteUser = async (req, res) => {
   try {
     const { id } = req.params;
 
+    console.log('Attempting to delete VMS user with id:', id);
+
     // Check if user exists
     const user = await prisma.vMSUser.findUnique({
       where: { id },
     });
 
     if (!user) {
+      console.log('User not found for deletion:', id);
       return res.status(404).json({ message: 'User not found' });
     }
 
+    console.log('Found user to delete:', user.email);
+
     // Don't allow deleting Work Permit SSO users
     if (user.isFromWorkPermit) {
+      console.log('Cannot delete Work Permit admin user:', user.email);
       return res.status(400).json({ 
         message: 'Cannot delete Work Permit admin users. Remove VMS access from Work Permit settings instead.' 
       });
     }
 
+    // Delete the user
     await prisma.vMSUser.delete({
       where: { id },
     });
+
+    console.log('Successfully deleted user:', user.email);
 
     res.json({
       success: true,
@@ -367,7 +376,22 @@ exports.deleteUser = async (req, res) => {
     });
   } catch (error) {
     console.error('Error deleting user:', error);
-    res.status(500).json({ message: 'Failed to delete user', error: error.message });
+    
+    // Handle Prisma-specific errors
+    if (error.code === 'P2025') {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    if (error.code === 'P2003') {
+      return res.status(400).json({ 
+        message: 'Cannot delete user: they have associated records. Please reassign or delete those records first.' 
+      });
+    }
+    
+    res.status(500).json({ 
+      message: 'Failed to delete user', 
+      error: error.message,
+      code: error.code 
+    });
   }
 };
 

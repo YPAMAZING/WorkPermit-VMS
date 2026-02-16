@@ -117,7 +117,8 @@ const VMSUserManagement = () => {
       fetchUsers()
     } catch (error) {
       console.error('Failed to delete user:', error)
-      setMessage({ type: 'error', text: 'Failed to delete user' })
+      const errorMsg = error.response?.data?.message || error.message || 'Failed to delete user'
+      setMessage({ type: 'error', text: errorMsg })
     }
   }
 
