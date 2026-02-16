@@ -11,7 +11,11 @@ import {
 } from 'lucide-react'
 
 const GuardDashboard = () => {
-  const { user } = useVMSAuth()
+  const { user, isReceptionist, isSecurityGuard, isCompanyUser, isAdmin } = useVMSAuth()
+  
+  // Reception/Guard can only check-in, NOT approve/reject
+  // Only Company users and Admins can approve/reject
+  const canApproveReject = isCompanyUser || isAdmin
   
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -223,7 +227,7 @@ const GuardDashboard = () => {
         {/* Quick Actions */}
         {showActions && (
           <div className="mt-2 lg:mt-3 pt-2 lg:pt-3 border-t border-gray-100 flex gap-2">
-            {request.status === 'PENDING' && (
+            {request.status === 'PENDING' && canApproveReject && (
               <>
                 <button
                   onClick={(e) => { e.stopPropagation(); handleApprove(request.id) }}
@@ -251,6 +255,12 @@ const GuardDashboard = () => {
                   Reject
                 </button>
               </>
+            )}
+            {request.status === 'PENDING' && !canApproveReject && (
+              <div className="flex-1 py-2 bg-yellow-100 text-yellow-800 text-xs lg:text-sm font-medium rounded-lg flex items-center justify-center gap-1">
+                <Clock className="w-4 h-4" />
+                Awaiting Company Approval
+              </div>
             )}
             {request.status === 'APPROVED' && (
               <button
@@ -562,7 +572,7 @@ const GuardDashboard = () => {
                 
                 {/* Actions */}
                 <div className="pt-4 border-t border-gray-100 space-y-2">
-                  {selectedRequest.status === 'PENDING' && (
+                  {selectedRequest.status === 'PENDING' && canApproveReject && (
                     <>
                       <button
                         onClick={() => handleApprove(selectedRequest.id)}
@@ -586,6 +596,12 @@ const GuardDashboard = () => {
                         Reject Entry
                       </button>
                     </>
+                  )}
+                  {selectedRequest.status === 'PENDING' && !canApproveReject && (
+                    <div className="w-full py-3 bg-yellow-100 text-yellow-800 font-medium rounded-xl flex items-center justify-center gap-2">
+                      <Clock className="w-5 h-5" />
+                      Awaiting Company Approval
+                    </div>
                   )}
                   {selectedRequest.status === 'APPROVED' && (
                     <button
@@ -696,7 +712,7 @@ const GuardDashboard = () => {
               
               {/* Actions */}
               <div className="pt-4 space-y-2">
-                {selectedRequest.status === 'PENDING' && (
+                {selectedRequest.status === 'PENDING' && canApproveReject && (
                   <>
                     <button
                       onClick={() => handleApprove(selectedRequest.id)}
@@ -720,6 +736,12 @@ const GuardDashboard = () => {
                       Reject Entry
                     </button>
                   </>
+                )}
+                {selectedRequest.status === 'PENDING' && !canApproveReject && (
+                  <div className="w-full py-3 bg-yellow-100 text-yellow-800 font-medium rounded-xl flex items-center justify-center gap-2">
+                    <Clock className="w-5 h-5" />
+                    Awaiting Company Approval
+                  </div>
                 )}
                 {selectedRequest.status === 'APPROVED' && (
                   <button
