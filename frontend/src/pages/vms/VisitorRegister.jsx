@@ -312,42 +312,9 @@ const VisitorRegister = () => {
     } catch (error) {
       console.error('Error generating visitor pass:', error)
       
-      // Check if company requires approval for mock data (default is OFF/auto-approve)
-      const requiresApproval = companySettings?.requireApproval === true
-      
-      if (requiresApproval) {
-        // Show pending approval screen
-        setGatepass({
-          status: 'PENDING_APPROVAL',
-          requestNumber: `REQ-${Date.now().toString().slice(-8)}`,
-          visitorName: formData.visitorName,
-          phone: formData.phone,
-          companyToVisit: formData.companyToVisit,
-          personToMeet: formData.personToMeet,
-          purpose: formData.purpose,
-          submittedAt: new Date().toISOString(),
-          photo: capturedPhoto,
-        })
-        setStep(3)
-        toast.success('Request submitted! Please wait for approval.')
-      } else {
-        // Direct gatepass (like Vodafone)
-        const mockGatepass = {
-          gatepassNumber: `GP-${Date.now().toString().slice(-8)}`,
-          visitorName: formData.visitorName,
-          phone: formData.phone,
-          companyToVisit: formData.companyToVisit,
-          personToMeet: formData.personToMeet,
-          purpose: formData.purpose,
-          checkInTime: new Date().toISOString(),
-          validUntil: new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString(), // 8 hours
-          photo: capturedPhoto,
-          status: 'CHECKED_IN',
-        }
-        setGatepass(mockGatepass)
-        setStep(3)
-        toast.success('Visitor pass generated successfully!')
-      }
+      // Show the actual error to user - don't use mock data
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to submit request. Please try again.'
+      toast.error(errorMessage)
     } finally {
       setLoading(false)
     }
