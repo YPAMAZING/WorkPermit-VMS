@@ -52,6 +52,9 @@ const vmsAuthMiddleware = async (req, res, next) => {
       const roleName = user.vmsRole?.name || 'VMS_USER';
       const isAdminRole = ['VMS_ADMIN', 'ADMIN', 'admin', 'FIREMAN', 'SUPER_ADMIN'].includes(roleName);
       
+      // Check if user is company user
+      const isCompanyRole = ['COMPANY_USER', 'company_user'].includes(roleName);
+      
       // Attach user info to request
       req.user = {
         userId: user.id,
@@ -62,7 +65,8 @@ const vmsAuthMiddleware = async (req, res, next) => {
         roleName: user.vmsRole?.displayName || 'User',
         permissions,
         companyId: user.companyId,
-        isAdmin: isAdminRole || user.isFromWorkPermit, // Work permit users are admins in VMS
+        isAdmin: isAdminRole, // Only admin roles are admins, NOT all isFromWorkPermit users
+        isCompanyUser: isCompanyRole || (user.companyId && !isAdminRole),
         isFromWorkPermit: user.isFromWorkPermit,
       };
 

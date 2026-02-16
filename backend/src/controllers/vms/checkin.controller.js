@@ -5,10 +5,18 @@ const { v4: uuidv4 } = require('uuid');
 // Helper to check if user is admin
 const isUserAdmin = (user) => {
   if (!user) return false;
+  // Check explicit admin flag
   if (user.isAdmin) return true;
-  if (user.isFromWorkPermit) return true;
+  // Check admin roles
   const adminRoles = ['VMS_ADMIN', 'ADMIN', 'admin', 'FIREMAN', 'SUPER_ADMIN'];
   return adminRoles.includes(user.role);
+};
+
+// Helper to check if user is company user (can only manage their company's visitors)
+const isCompanyUser = (user) => {
+  if (!user) return false;
+  const companyRoles = ['COMPANY_USER', 'company_user'];
+  return companyRoles.includes(user.role) || (user.companyId && !isUserAdmin(user));
 };
 
 // Generate request number
@@ -565,18 +573,43 @@ exports.approveRequest = async (req, res) => {
     const user = req.user;
     const companyId = user?.companyId;
     
-    const where = { id, status: 'PENDING' };
+    console.log('\n📋 APPROVE REQUEST');
+    console.log('Visitor ID:', id);
+    console.log('User:', user?.email, 'Role:', user?.role, 'CompanyId:', companyId);
+    console.log('Is Admin:', isUserAdmin(user), 'Is Company User:', isCompanyUser(user));
     
-    // If user is company-scoped, ensure they can only approve their company's visitors
-    if (companyId && !isUserAdmin(user)) {
-      where.companyId = companyId;
+    // First, find the visitor without company filter to check if it exists
+    const visitorCheck = await vmsPrisma.vMSVisitor.findUnique({ where: { id } });
+    
+    if (!visitorCheck) {
+      console.log('❌ Visitor not found with ID:', id);
+      return res.status(404).json({ message: 'Visitor not found' });
     }
     
-    const visitor = await vmsPrisma.vMSVisitor.findFirst({ where });
+    console.log('Visitor found:', visitorCheck.visitorName, 'Status:', visitorCheck.status, 'CompanyId:', visitorCheck.companyId);
     
-    if (!visitor) {
-      return res.status(404).json({ message: 'Request not found or already processed' });
+    // Check if already processed
+    if (visitorCheck.status !== 'PENDING') {
+      console.log('❌ Visitor already processed, status:', visitorCheck.status);
+      return res.status(400).json({ message: `Request already ${visitorCheck.status.toLowerCase()}` });
     }
+    
+    // For company users, verify they can only approve their company's visitors
+    if (isCompanyUser(user) && companyId) {
+      if (visitorCheck.companyId !== companyId) {
+        console.log('❌ Access denied - Company mismatch');
+        console.log('User companyId:', companyId, 'Visitor companyId:', visitorCheck.companyId);
+        return res.status(403).json({ message: 'Access denied. You can only approve visitors for your company.' });
+      }
+    }
+    
+    // For non-admin users without a company, deny access
+    if (!isUserAdmin(user) && !companyId) {
+      console.log('❌ Access denied - User has no company and is not admin');
+      return res.status(403).json({ message: 'Access denied. You do not have permission to approve visitors.' });
+    }
+    
+    const visitor = visitorCheck;
     
     // Update visitor status
     const updated = await vmsPrisma.vMSVisitor.update({
@@ -629,18 +662,42 @@ exports.rejectRequest = async (req, res) => {
       return res.status(400).json({ message: 'Rejection reason is required' });
     }
     
-    const where = { id, status: 'PENDING' };
+    console.log('\n📋 REJECT REQUEST');
+    console.log('Visitor ID:', id);
+    console.log('User:', user?.email, 'Role:', user?.role, 'CompanyId:', companyId);
     
-    // If user is company-scoped, ensure they can only reject their company's visitors
-    if (companyId && !isUserAdmin(user)) {
-      where.companyId = companyId;
+    // First, find the visitor without company filter to check if it exists
+    const visitorCheck = await vmsPrisma.vMSVisitor.findUnique({ where: { id } });
+    
+    if (!visitorCheck) {
+      console.log('❌ Visitor not found with ID:', id);
+      return res.status(404).json({ message: 'Visitor not found' });
     }
     
-    const visitor = await vmsPrisma.vMSVisitor.findFirst({ where });
+    console.log('Visitor found:', visitorCheck.visitorName, 'Status:', visitorCheck.status, 'CompanyId:', visitorCheck.companyId);
     
-    if (!visitor) {
-      return res.status(404).json({ message: 'Request not found or already processed' });
+    // Check if already processed
+    if (visitorCheck.status !== 'PENDING') {
+      console.log('❌ Visitor already processed, status:', visitorCheck.status);
+      return res.status(400).json({ message: `Request already ${visitorCheck.status.toLowerCase()}` });
     }
+    
+    // For company users, verify they can only reject their company's visitors
+    if (isCompanyUser(user) && companyId) {
+      if (visitorCheck.companyId !== companyId) {
+        console.log('❌ Access denied - Company mismatch');
+        console.log('User companyId:', companyId, 'Visitor companyId:', visitorCheck.companyId);
+        return res.status(403).json({ message: 'Access denied. You can only reject visitors for your company.' });
+      }
+    }
+    
+    // For non-admin users without a company, deny access
+    if (!isUserAdmin(user) && !companyId) {
+      console.log('❌ Access denied - User has no company and is not admin');
+      return res.status(403).json({ message: 'Access denied. You do not have permission to reject visitors.' });
+    }
+    
+    const visitor = visitorCheck;
     
     const updated = await vmsPrisma.vMSVisitor.update({
       where: { id },
