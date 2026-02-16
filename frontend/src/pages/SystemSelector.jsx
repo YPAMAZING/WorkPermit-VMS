@@ -10,7 +10,11 @@ import {
   UserCheck,
   QrCode,
   ShieldAlert,
-  LogIn
+  LogIn,
+  MessageSquare,
+  AlertTriangle,
+  ClipboardList,
+  CheckCircle2
 } from 'lucide-react'
 
 const SystemSelector = () => {
@@ -62,6 +66,24 @@ const SystemSelector = () => {
       ],
       status: 'active',
       requiresMainAuth: false, // VMS has its own auth system
+    },
+    {
+      id: 'complaints',
+      title: 'Complaint Management System',
+      description: 'Track and manage complaints, grievances, escalations, and resolutions efficiently',
+      icon: MessageSquare,
+      path: '/complaints',
+      loginPath: '/complaints/login',
+      color: 'from-amber-500 to-orange-600',
+      hoverColor: 'from-amber-600 to-orange-700',
+      shadowColor: 'shadow-amber-500/30',
+      features: [
+        { icon: AlertTriangle, text: 'Register Complaints' },
+        { icon: ClipboardList, text: 'Track & Escalate' },
+        { icon: CheckCircle2, text: 'Resolution Management' },
+      ],
+      status: 'coming_soon',
+      requiresMainAuth: true,
     },
   ]
 
@@ -134,7 +156,7 @@ const SystemSelector = () => {
 
       {/* Main Content */}
       <main className="flex-1 flex items-center justify-center p-6">
-        <div className="max-w-5xl w-full">
+        <div className="max-w-6xl w-full">
           {/* Welcome Message */}
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">
@@ -146,7 +168,7 @@ const SystemSelector = () => {
           </div>
 
           {/* System Cards */}
-          <div className="grid md:grid-cols-2 gap-8">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
             {systems.map((system) => {
               const Icon = system.icon
               const isHovered = hoveredCard === system.id
