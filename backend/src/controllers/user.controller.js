@@ -300,97 +300,97 @@ const createUser = async (req, res) => {
   try {
     const { email, password, firstName, lastName, role, department, phone } = req.body;
 
-    // Check if email exists in Work Permit system (active users only)
-    const existingUser = await prisma.user.findFirst({
-      where: { 
-        email,
-        isActive: true  // Only check active users
-      },
+    console.log('📝 Creating user with email:', email);
+
+    // Check if email exists in Work Permit system (ANY user, regardless of status)
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
     });
+
+    console.log('📝 Existing user found:', existingUser ? { id: existingUser.id, isActive: existingUser.isActive, isApproved: existingUser.isApproved } : null);
 
     if (existingUser) {
-      return res.status(400).json({ message: 'Email already exists in Work Permit system' });
-    }
-
-    // Check if user was previously deleted (inactive) - reactivate them
-    const inactiveUser = await prisma.user.findFirst({
-      where: { 
-        email,
-        isActive: false
-      },
-    });
-
-    if (inactiveUser) {
-      // Reactivate the user with new details
-      const hashedPassword = await bcrypt.hash(password, 10);
-      
-      // Find role
-      const roleRecord = await prisma.role.findUnique({
-        where: { name: role || 'REQUESTOR' },
-      });
-
-      const user = await prisma.user.update({
-        where: { id: inactiveUser.id },
-        data: {
-          password: hashedPassword,
-          firstName,
-          lastName,
-          roleId: roleRecord?.id,
-          department,
-          phone,
-          isActive: true,
-          isApproved: true,
-          approvedBy: req.user.id,
-          approvedAt: new Date(),
-          rejectionReason: null,
-        },
-        include: {
-          role: true,
-        },
-      });
-
-      await createAuditLog({
-        userId: req.user.id,
-        action: 'USER_REACTIVATED',
-        entity: 'User',
-        entityId: user.id,
-        newValue: { email: user.email, role: user.role?.name },
-        ipAddress: req.ip,
-        userAgent: req.headers['user-agent'],
-      });
-
-      // Send welcome email
-      try {
-        await sendWelcomeEmail({
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          role: user.role?.name || role || 'REQUESTOR',
-          requiresApproval: false,
-          password: password,
+      // If user exists but is inactive or not approved, update them instead of creating new
+      if (!existingUser.isActive || !existingUser.isApproved) {
+        console.log('📝 Reactivating inactive/unapproved user:', email);
+        
+        const hashedPassword = await bcrypt.hash(password, 10);
+        
+        // Find role
+        const roleRecord = await prisma.role.findUnique({
+          where: { name: role || 'ADMIN' },
         });
-      } catch (emailError) {
-        console.error('Welcome email failed:', emailError);
-      }
 
-      return res.status(201).json({ 
-        message: 'User account reactivated successfully. Welcome email sent.', 
-        user: {
-          id: user.id,
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          role: user.role?.name,
-          department: user.department,
-        },
-      });
+        const user = await prisma.user.update({
+          where: { id: existingUser.id },
+          data: {
+            password: hashedPassword,
+            firstName,
+            lastName,
+            roleId: roleRecord?.id,
+            department,
+            phone,
+            isActive: true,
+            isApproved: true,
+            approvedBy: req.user.id,
+            approvedAt: new Date(),
+            rejectionReason: null,
+          },
+          include: {
+            role: true,
+          },
+        });
+
+        await createAuditLog({
+          userId: req.user.id,
+          action: 'USER_REACTIVATED',
+          entity: 'User',
+          entityId: user.id,
+          newValue: { email: user.email, role: user.role?.name },
+          ipAddress: req.ip,
+          userAgent: req.headers['user-agent'],
+        });
+
+        // Send welcome email
+        try {
+          await sendWelcomeEmail({
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            role: user.role?.name || role || 'ADMIN',
+            requiresApproval: false,
+            password: password,
+          });
+        } catch (emailError) {
+          console.error('Welcome email failed:', emailError);
+        }
+
+        return res.status(201).json({ 
+          message: 'User account reactivated successfully. Welcome email sent.', 
+          user: {
+            id: user.id,
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            role: user.role?.name,
+            department: user.department,
+          },
+        });
+      }
+      
+      // User exists and is active+approved - return error
+      console.log('📝 User already exists and is active:', email);
+      return res.status(400).json({ message: 'Email already exists' });
     }
 
+    // No existing user - create new
+    console.log('📝 Creating new user:', email);
+    
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Find role
     const roleRecord = await prisma.role.findUnique({
-      where: { name: role || 'REQUESTOR' },
+      where: { name: role || 'ADMIN' },
     });
 
     const user = await prisma.user.create({
@@ -427,7 +427,7 @@ const createUser = async (req, res) => {
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
-        role: user.role?.name || role || 'REQUESTOR',
+        role: user.role?.name || role || 'ADMIN',
         requiresApproval: false, // Admin-created users are auto-approved
         password: password, // Send plain password in welcome email
       });
@@ -449,7 +449,11 @@ const createUser = async (req, res) => {
     });
   } catch (error) {
     console.error('Create user error:', error);
-    res.status(500).json({ message: 'Error creating user' });
+    // Handle Prisma unique constraint error
+    if (error.code === 'P2002') {
+      return res.status(400).json({ message: 'Email already exists' });
+    }
+    res.status(500).json({ message: 'Error creating user', error: error.message });
   }
 };
 
