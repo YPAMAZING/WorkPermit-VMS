@@ -1040,3 +1040,89 @@ exports.searchVisitor = async (req, res) => {
     res.status(500).json({ message: 'Failed to search visitors', error: error.message });
   }
 };
+
+// Debug endpoint - check user and company data
+exports.debugUserCompany = async (req, res) => {
+  try {
+    const user = req.user;
+    
+    console.log('\n========================================');
+    console.log('🔍 DEBUG: User & Company Check');
+    console.log('========================================');
+    console.log('User from JWT:', {
+      userId: user?.userId,
+      email: user?.email,
+      role: user?.role,
+      companyId: user?.companyId,
+      isAdmin: user?.isAdmin,
+      isCompanyUser: user?.isCompanyUser
+    });
+    
+    // Get user's company details if they have one
+    let userCompany = null;
+    if (user?.companyId) {
+      userCompany = await vmsPrisma.vMSCompany.findUnique({
+        where: { id: user.companyId }
+      });
+      console.log('User Company:', userCompany?.displayName || userCompany?.name, 'ID:', userCompany?.id);
+    } else {
+      console.log('⚠️ User has NO companyId assigned!');
+    }
+    
+    // Get all companies for reference
+    const allCompanies = await vmsPrisma.vMSCompany.findMany({
+      select: { id: true, name: true, displayName: true, requireApproval: true, isActive: true }
+    });
+    console.log('All Companies:', allCompanies.length);
+    
+    // Get recent visitors for this user's company
+    let recentVisitors = [];
+    if (user?.companyId) {
+      recentVisitors = await vmsPrisma.vMSVisitor.findMany({
+        where: { companyId: user.companyId },
+        select: { id: true, visitorName: true, phone: true, status: true, companyId: true, createdAt: true },
+        orderBy: { createdAt: 'desc' },
+        take: 5
+      });
+      console.log('Recent Visitors for User Company:', recentVisitors.length);
+    }
+    
+    // Get all recent visitors (for admin view)
+    const allRecentVisitors = await vmsPrisma.vMSVisitor.findMany({
+      select: { id: true, visitorName: true, phone: true, status: true, companyId: true, companyToVisit: true, createdAt: true },
+      orderBy: { createdAt: 'desc' },
+      take: 10
+    });
+    console.log('All Recent Visitors:', allRecentVisitors.length);
+    
+    res.json({
+      user: {
+        userId: user?.userId,
+        email: user?.email,
+        role: user?.role,
+        companyId: user?.companyId,
+        isAdmin: isUserAdmin(user),
+        isCompanyUser: isCompanyUser(user)
+      },
+      userCompany: userCompany ? {
+        id: userCompany.id,
+        name: userCompany.name,
+        displayName: userCompany.displayName,
+        requireApproval: userCompany.requireApproval
+      } : null,
+      allCompanies,
+      recentVisitorsForUserCompany: recentVisitors,
+      allRecentVisitors,
+      diagnosis: {
+        hasCompanyId: !!user?.companyId,
+        canSeeVisitors: isUserAdmin(user) || !!user?.companyId,
+        issue: !user?.companyId && isCompanyUser(user) 
+          ? 'Company user has no companyId - will see empty dashboard' 
+          : 'OK'
+      }
+    });
+  } catch (error) {
+    console.error('Debug error:', error);
+    res.status(500).json({ message: 'Debug error', error: error.message });
+  }
+};

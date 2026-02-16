@@ -54,4 +54,7 @@ router.get('/stats', vmsAuth, checkinController.getCheckInStats);
 // Search by phone/name (to check if visitor exists)
 router.get('/search', vmsAuth, checkinController.searchVisitor);
 
+// Debug endpoint - check user and company setup
+router.get('/debug', vmsAuth, checkinController.debugUserCompany);
+
 module.exports = router;
