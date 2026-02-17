@@ -86,7 +86,9 @@ export const VMSAuthProvider = ({ children }) => {
   const isSecuritySupervisor = user?.role === 'SECURITY_SUPERVISOR'
   const isSecurityGuard = user?.role === 'SECURITY_GUARD' || user?.role === 'security_guard'
   const isReceptionist = user?.role === 'RECEPTIONIST' || user?.role === 'RECEPTION' || user?.role === 'reception'
-  const isCompanyUser = user?.role === 'COMPANY_USER' || user?.role === 'company_user'
+  // Company user: explicit role OR has companyId and not admin/guard/reception
+  const isCompanyUser = user?.role === 'COMPANY_USER' || user?.role === 'company_user' ||
+                        (user?.companyId && !isAdmin && !isSecurityGuard && !isReceptionist && !isSecuritySupervisor)
   const isHost = user?.role === 'HOST'
   const isRequestor = user?.role === 'REQUESTOR' // Company tenant user
   

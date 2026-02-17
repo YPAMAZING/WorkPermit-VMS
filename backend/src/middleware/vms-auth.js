@@ -123,7 +123,13 @@ const vmsRoleMiddleware = (allowedRoles) => {
       return next();
     }
 
+    // Check explicit role match
     if (roles.includes(req.user.role)) {
+      return next();
+    }
+    
+    // If COMPANY_USER is in allowed roles and user has companyId (is a company user)
+    if ((roles.includes('COMPANY_USER') || roles.includes('company_user')) && req.user.isCompanyUser) {
       return next();
     }
 
