@@ -412,7 +412,7 @@ const WorkerRegistration = () => {
       {/* Footer */}
       <footer className="bg-white/5 border-t border-white/10 py-4 mt-8">
         <p className="text-center text-sm text-slate-400">
-          Reliable Work Permit and VMS
+          Reliable Group
         </p>
       </footer>
     </div>

@@ -303,12 +303,12 @@ const PermitDetail = () => {
               className="w-12 h-12 object-contain"
             />
             <div>
-              <h2 className="text-white font-bold text-lg tracking-wide">RELIABLE GROUP | WORK PERMIT AND VMS</h2>
+              <h2 className="text-white font-bold text-lg tracking-wide">RELIABLE GROUP</h2>
               <p className="text-slate-300 text-xs tracking-widest">CREATING LIFESTYLE</p>
             </div>
           </div>
           <div className="text-right">
-            <p className="text-slate-400 text-xs">Work Permit and VMS</p>
+            <p className="text-slate-400 text-xs">Management Systems</p>
           </div>
         </div>
         

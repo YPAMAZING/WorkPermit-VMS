@@ -175,7 +175,7 @@ const Layout = ({ systemType = 'workpermit' }) => {
                 <h1 className="text-sm font-bold text-white leading-tight">
                   {user?.companyName || 'Reliable Group'}
                 </h1>
-                <p className="text-xs text-slate-400">Work Permit and VMS</p>
+                <p className="text-xs text-slate-400">Management Systems</p>
               </div>
             )}
           </div>
