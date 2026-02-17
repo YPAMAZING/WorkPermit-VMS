@@ -68,7 +68,8 @@ const VMSLayout = () => {
       path: '/vms/admin/dashboard',
       icon: LayoutDashboard,
       permission: 'vms.dashboard.view',
-      adminOnly: true,
+      showFor: ['reception', 'guard'], // Show for reception & guard (admin sees via adminOnly false)
+      description: 'Main dashboard overview',
     },
     {
       name: 'Company Dashboard',
