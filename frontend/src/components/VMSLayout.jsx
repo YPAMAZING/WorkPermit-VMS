@@ -75,6 +75,7 @@ const VMSLayout = () => {
       path: '/vms/admin/company-dashboard',
       icon: Building2,
       permission: 'vms.visitors.approve',
+      companyUserOnly: true, // Show for company users
       description: 'Approve/Reject visitors for your company',
     },
     {
@@ -136,7 +137,10 @@ const VMSLayout = () => {
   ]
 
   const filteredNavItems = navItems.filter(item => {
+    // Admin-only items hidden from non-admins
     if (item.adminOnly && !isAdmin) return false
+    // Company user only items - show for company users and admins
+    if (item.companyUserOnly && !isCompanyUser && !isAdmin) return false
     return isAdmin || hasPermission(item.permission)
   })
 
