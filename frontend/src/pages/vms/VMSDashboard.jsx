@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Navigate } from 'react-router-dom'
 import { useVMSAuth } from '../../context/VMSAuthContext'
 import { dashboardApi, gatepassesApi } from '../../services/vmsApi'
 import {
@@ -18,13 +18,18 @@ import {
 } from 'lucide-react'
 
 const VMSDashboard = () => {
-  const { user, isAdmin } = useVMSAuth()
+  const { user, isAdmin, isCompanyUser, isReceptionist, isSecurityGuard } = useVMSAuth()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [overview, setOverview] = useState(null)
   const [weeklyStats, setWeeklyStats] = useState(null)
   const [alerts, setAlerts] = useState([])
   const [refreshing, setRefreshing] = useState(false)
+
+  // Company users should not access the main dashboard - redirect to company dashboard
+  if (isCompanyUser && !isAdmin) {
+    return <Navigate to="/vms/admin/company-dashboard" replace />
+  }
 
   const fetchDashboardData = async () => {
     try {

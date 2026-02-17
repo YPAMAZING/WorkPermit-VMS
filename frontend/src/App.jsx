@@ -118,6 +118,9 @@ const VMSSettings = lazy(() => import('./pages/vms/VMSSettings'))
 const CompanyDashboard = lazy(() => import('./pages/vms/CompanyDashboard'))
 const VMSUserManagement = lazy(() => import('./pages/vms/VMSUserManagement'))
 
+// VMS Smart Redirect - Redirects users to appropriate dashboard based on role
+const VMSDefaultRedirect = lazy(() => import('./pages/vms/VMSDefaultRedirect'))
+
 // VMS QR Check-in (NEW) - Public pages
 const PublicCheckIn = lazy(() => import('./pages/vms/PublicCheckIn'))
 const SingleCheckIn = lazy(() => import('./pages/vms/SingleCheckIn'))
@@ -389,7 +392,7 @@ function App() {
           
           {/* ===== VMS PROTECTED ROUTES (Require Login) ===== */}
           <Route path="/vms/admin" element={<VMSLayout />}>
-            <Route index element={<Navigate to="/vms/admin/dashboard" replace />} />
+            <Route index element={<VMSDefaultRedirect />} />
             <Route path="dashboard" element={<VMSDashboard />} />
             <Route path="visitors" element={<VMSVisitors />} />
             
