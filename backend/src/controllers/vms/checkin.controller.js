@@ -322,7 +322,17 @@ exports.submitCheckInRequest = async (req, res) => {
       companyName: company.displayName || company.name,
     });
   } catch (error) {
-    console.error('Submit check-in request error:', error);
+    console.error('========================================');
+    console.error('❌ SUBMIT CHECK-IN REQUEST ERROR');
+    console.error('========================================');
+    console.error('Error name:', error.name);
+    console.error('Error message:', error.message);
+    console.error('Error code:', error.code);
+    if (error.meta) {
+      console.error('Error meta:', JSON.stringify(error.meta, null, 2));
+    }
+    console.error('Full error:', error);
+    console.error('========================================');
     res.status(500).json({ message: 'Failed to submit check-in request', error: error.message });
   }
 };
