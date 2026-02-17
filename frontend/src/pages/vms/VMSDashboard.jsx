@@ -27,7 +27,11 @@ const VMSDashboard = () => {
   const [refreshing, setRefreshing] = useState(false)
 
   // Company users should not access the main dashboard - redirect to company dashboard
-  if (isCompanyUser && !isAdmin) {
+  // Check both isCompanyUser flag AND if user has companyId but is not admin/reception/guard
+  const shouldRedirectToCompanyDashboard = isCompanyUser || 
+    (user?.companyId && !isAdmin && !isReceptionist && !isSecurityGuard)
+  
+  if (shouldRedirectToCompanyDashboard) {
     return <Navigate to="/vms/admin/company-dashboard" replace />
   }
 

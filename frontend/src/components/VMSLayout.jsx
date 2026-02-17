@@ -138,6 +138,9 @@ const VMSLayout = () => {
     },
   ]
 
+  // Check if user is a company user (including those with companyId but VMS_USER role)
+  const isEffectiveCompanyUser = isCompanyUser || (user?.companyId && !isAdmin && !isReceptionist && !isSecurityGuard)
+
   const filteredNavItems = navItems.filter(item => {
     // Admin sees everything
     if (isAdmin) return true
@@ -148,7 +151,7 @@ const VMSLayout = () => {
     // Check showFor restrictions
     if (item.showFor) {
       const canShow = (
-        (item.showFor.includes('company') && isCompanyUser) ||
+        (item.showFor.includes('company') && isEffectiveCompanyUser) ||
         (item.showFor.includes('reception') && isReceptionist) ||
         (item.showFor.includes('guard') && isSecurityGuard)
       )

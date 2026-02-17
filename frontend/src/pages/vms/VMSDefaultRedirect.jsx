@@ -32,14 +32,15 @@ const VMSDefaultRedirect = () => {
     return <Navigate to="/vms/admin/dashboard" replace />
   }
 
-  // Company users go to company dashboard (approve/reject)
-  if (isCompanyUser) {
-    return <Navigate to="/vms/admin/company-dashboard" replace />
-  }
-
   // Reception and Guard users go to main dashboard
   if (isReceptionist || isSecurityGuard) {
     return <Navigate to="/vms/admin/dashboard" replace />
+  }
+
+  // Company users go to company dashboard (approve/reject)
+  // Check both isCompanyUser flag AND if user has companyId
+  if (isCompanyUser || user?.companyId) {
+    return <Navigate to="/vms/admin/company-dashboard" replace />
   }
 
   // Default fallback - main dashboard
