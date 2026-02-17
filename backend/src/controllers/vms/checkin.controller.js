@@ -678,32 +678,41 @@ exports.approveRequest = async (req, res) => {
     
     const visitor = visitorCheck;
     
+    console.log('✅ Permission check passed, approving visitor...');
+    
     // Update visitor status
     const updated = await vmsPrisma.vMSVisitor.update({
       where: { id },
       data: {
         status: 'APPROVED',
-        approvedBy: user?.id,
+        approvedBy: user?.userId,
         approvedAt: new Date(),
       }
     });
+    
+    console.log('✅ Visitor status updated to APPROVED');
     
     // Create gatepass
     const gatepassNumber = generateGatepassNumber();
     const qrData = JSON.stringify({ gatepassNumber, visitorId: visitor.id });
     const qrCode = await QRCode.toDataURL(qrData);
     
+    // Use visitor's companyId, or user's companyId as fallback
+    const gatepassCompanyId = visitor.companyId || companyId;
+    
     const gatepass = await vmsPrisma.vMSGatepass.create({
       data: {
         gatepassNumber,
         visitorId: visitor.id,
-        companyId: visitor.companyId,
+        companyId: gatepassCompanyId,
         validFrom: new Date(),
         validUntil: new Date(new Date().setHours(23, 59, 59, 999)),
         status: 'ACTIVE',
         qrCode,
       }
     });
+    
+    console.log('✅ Gatepass created:', gatepassNumber);
     
     res.json({
       success: true,
@@ -712,8 +721,10 @@ exports.approveRequest = async (req, res) => {
       gatepass
     });
   } catch (error) {
-    console.error('Approve request error:', error);
-    res.status(500).json({ message: 'Failed to approve request', error: error.message });
+    console.error('❌ Approve request error:', error);
+    console.error('Error details:', error.message);
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ message: 'Failed to approve request', error: error.message, details: error.code });
   }
 };
 
