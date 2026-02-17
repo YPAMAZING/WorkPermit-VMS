@@ -313,8 +313,8 @@ const VMSDashboard = () => {
             )}
           </div>
 
-          {/* Employee Pass - Only for Admin and Reception */}
-          {(isAdmin || isReceptionist) && (
+          {/* Employee Pass - For Admin, Reception, and Guard */}
+          {(isAdmin || isReceptionist || isSecurityGuard) && (
             <div 
               className="bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl shadow-sm p-5 text-white cursor-pointer hover:shadow-lg transition-shadow"
               onClick={() => navigate('/vms/admin/gatepasses')}

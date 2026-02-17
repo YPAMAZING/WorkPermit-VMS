@@ -18,6 +18,8 @@ import {
   Calendar,
   ArrowRight,
   RefreshCw,
+  CreditCard,
+  BadgeCheck,
 } from 'lucide-react'
 
 const CompanyDashboard = () => {
@@ -312,6 +314,29 @@ const CompanyDashboard = () => {
             ) : (
               <p className="text-center text-gray-500 text-sm py-4">No visitor passes today</p>
             )}
+          </div>
+
+          {/* Employee Pass - For Company Users */}
+          <div 
+            className="bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl shadow-sm p-5 text-white cursor-pointer hover:shadow-lg transition-shadow"
+            onClick={() => navigate('/vms/admin/gatepasses')}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-lg font-semibold">Employee Pass</h2>
+              <div className="p-2 bg-white/20 rounded-lg">
+                <CreditCard size={24} />
+              </div>
+            </div>
+            <p className="text-sm text-white/80 mb-4">
+              Create temporary passes for your company's new employees
+            </p>
+            <button 
+              className="w-full py-2.5 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors"
+            >
+              <BadgeCheck size={18} />
+              Manage Employee Passes
+              <ArrowRight size={16} />
+            </button>
           </div>
         </div>
       </div>
