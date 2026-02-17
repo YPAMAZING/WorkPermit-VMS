@@ -37,7 +37,7 @@ exports.getGatepasses = async (req, res) => {
       status,
       date,
       purpose,
-      sortBy = 'issuedAt',
+      sortBy = 'createdAt',
       sortOrder = 'desc',
     } = req.query;
 
@@ -55,9 +55,7 @@ exports.getGatepasses = async (req, res) => {
     if (search) {
       where.OR = [
         { gatepassNumber: { contains: search } },
-        { hostName: { contains: search } },
-        { visitor: { firstName: { contains: search } } },
-        { visitor: { lastName: { contains: search } } },
+        { visitor: { visitorName: { contains: search } } },
         { visitor: { phone: { contains: search } } },
       ];
     }
@@ -66,15 +64,11 @@ exports.getGatepasses = async (req, res) => {
       where.status = status;
     }
 
-    if (purpose) {
-      where.purpose = purpose;
-    }
-
     if (date) {
       const dateObj = new Date(date);
       const nextDay = new Date(dateObj);
       nextDay.setDate(nextDay.getDate() + 1);
-      where.expectedDate = {
+      where.createdAt = {
         gte: dateObj,
         lt: nextDay,
       };
@@ -82,7 +76,7 @@ exports.getGatepasses = async (req, res) => {
 
     // Get gatepasses with pagination
     const [gatepasses, total] = await Promise.all([
-      vmsPrisma.gatepass.findMany({
+      vmsPrisma.vMSGatepass.findMany({
         where,
         skip,
         take,
@@ -91,31 +85,24 @@ exports.getGatepasses = async (req, res) => {
           visitor: {
             select: {
               id: true,
-              firstName: true,
-              lastName: true,
+              visitorName: true,
               phone: true,
-              company: true,
+              companyFrom: true,
               photo: true,
-              isBlacklisted: true,
             },
-          },
-          issuedBy: {
-            select: { firstName: true, lastName: true },
           },
         },
       }),
-      vmsPrisma.gatepass.count({ where }),
+      vmsPrisma.vMSGatepass.count({ where }),
     ]);
 
     res.json({
       gatepasses: gatepasses.map(g => ({
         ...g,
-        visitorName: `${g.visitor.firstName} ${g.visitor.lastName}`,
-        visitorPhone: g.visitor.phone,
-        visitorCompany: g.visitor.company,
-        visitorPhoto: g.visitor.photo,
-        isBlacklisted: g.visitor.isBlacklisted,
-        issuedByName: g.issuedBy ? `${g.issuedBy.firstName} ${g.issuedBy.lastName}` : null,
+        visitorName: g.visitor?.visitorName,
+        visitorPhone: g.visitor?.phone,
+        visitorCompany: g.visitor?.companyFrom,
+        visitorPhoto: g.visitor?.photo,
       })),
       pagination: {
         page: parseInt(page),
@@ -135,13 +122,10 @@ exports.getGatepass = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const gatepass = await vmsPrisma.gatepass.findUnique({
+    const gatepass = await vmsPrisma.vMSGatepass.findUnique({
       where: { id },
       include: {
         visitor: true,
-        issuedBy: {
-          select: { firstName: true, lastName: true, email: true },
-        },
       },
     });
 
@@ -161,13 +145,10 @@ exports.getGatepassByNumber = async (req, res) => {
   try {
     const { gatepassNumber } = req.params;
 
-    const gatepass = await vmsPrisma.gatepass.findUnique({
+    const gatepass = await vmsPrisma.vMSGatepass.findUnique({
       where: { gatepassNumber },
       include: {
         visitor: true,
-        issuedBy: {
-          select: { firstName: true, lastName: true },
-        },
       },
     });
 
@@ -184,18 +165,9 @@ exports.getGatepassByNumber = async (req, res) => {
       });
     }
 
-    // Check if visitor is blacklisted
-    if (gatepass.visitor.isBlacklisted) {
-      return res.json({
-        ...gatepass,
-        isBlacklisted: true,
-        message: 'This visitor is blacklisted',
-      });
-    }
-
     res.json({
       ...gatepass,
-      isValid: gatepass.status === 'SCHEDULED' || gatepass.status === 'ACTIVE',
+      isValid: gatepass.status === 'ACTIVE',
     });
   } catch (error) {
     console.error('Get gatepass by number error:', error);
@@ -208,41 +180,22 @@ exports.createGatepass = async (req, res) => {
   try {
     const {
       visitorId,
-      purpose,
-      purposeDetails,
-      hostName,
-      hostDepartment,
-      hostPhone,
-      hostEmail,
-      entryGate,
-      visitingArea,
-      expectedDate,
-      expectedTimeIn,
-      expectedTimeOut,
+      companyId,
       validFrom,
       validUntil,
-      vehicleNumber,
-      vehicleType,
-      itemsCarried,
       remarks,
     } = req.body;
 
     // Get visitor
-    const visitor = await vmsPrisma.visitor.findUnique({ where: { id: visitorId } });
+    const visitor = await vmsPrisma.vMSVisitor.findUnique({ where: { id: visitorId } });
     if (!visitor) {
       return res.status(404).json({ message: 'Visitor not found' });
     }
 
     // Check if visitor is blacklisted
-    if (visitor.isBlacklisted) {
-      return res.status(400).json({ message: 'Cannot create gatepass for blacklisted visitor' });
-    }
-
-    // Also check blacklist table
-    const blacklistEntry = await vmsPrisma.blacklistEntry.findFirst({
+    const blacklistEntry = await vmsPrisma.vMSBlacklist.findFirst({
       where: {
         OR: [
-          { visitorId },
           { phone: visitor.phone },
         ],
         isActive: true,
@@ -272,60 +225,26 @@ exports.createGatepass = async (req, res) => {
     const qrCode = await generateQRCode(qrData);
 
     // Create gatepass
-    const gatepass = await vmsPrisma.gatepass.create({
+    const gatepass = await vmsPrisma.vMSGatepass.create({
       data: {
         gatepassNumber,
         visitorId,
-        purpose,
-        purposeDetails,
-        hostName,
-        hostDepartment,
-        hostPhone,
-        hostEmail,
-        entryGate,
-        visitingArea,
-        expectedDate: new Date(expectedDate),
-        expectedTimeIn,
-        expectedTimeOut,
+        companyId: companyId || visitor.companyId,
         validFrom: validFromDate,
         validUntil: validUntilDate,
-        vehicleNumber,
-        vehicleType,
-        itemsCarried: JSON.stringify(itemsCarried || []),
-        remarks,
-        qrCode,
-        qrCodeData: JSON.stringify(qrData),
-        issuedById: req.user?.userId,
-        status: 'SCHEDULED',
+        status: 'ACTIVE',
       },
       include: {
         visitor: true,
       },
     });
 
-    // Update visitor stats
-    await vmsPrisma.visitor.update({
-      where: { id: visitorId },
-      data: {
-        totalVisits: { increment: 1 },
-        lastVisitDate: new Date(),
-      },
-    });
-
-    // Log action
-    await vmsPrisma.auditLog.create({
-      data: {
-        userId: req.user?.userId,
-        action: 'GATEPASS_ISSUE',
-        entity: 'gatepass',
-        entityId: gatepass.id,
-        newValue: JSON.stringify(gatepass),
-      },
-    });
-
     res.status(201).json({
       message: 'Gatepass created successfully',
-      gatepass,
+      gatepass: {
+        ...gatepass,
+        qrCode,
+      },
     });
   } catch (error) {
     console.error('Create gatepass error:', error);
@@ -338,71 +257,29 @@ exports.updateGatepass = async (req, res) => {
   try {
     const { id } = req.params;
     const {
-      purpose,
-      purposeDetails,
-      hostName,
-      hostDepartment,
-      hostPhone,
-      hostEmail,
-      entryGate,
-      visitingArea,
-      expectedDate,
-      expectedTimeIn,
-      expectedTimeOut,
       validUntil,
-      vehicleNumber,
-      vehicleType,
-      itemsCarried,
-      remarks,
-      securityRemarks,
+      status,
     } = req.body;
 
     // Get existing gatepass
-    const existingGatepass = await vmsPrisma.gatepass.findUnique({ where: { id } });
+    const existingGatepass = await vmsPrisma.vMSGatepass.findUnique({ where: { id } });
     if (!existingGatepass) {
       return res.status(404).json({ message: 'Gatepass not found' });
     }
 
-    // Cannot update completed or cancelled gatepasses
-    if (['COMPLETED', 'CANCELLED'].includes(existingGatepass.status)) {
-      return res.status(400).json({ message: 'Cannot update completed or cancelled gatepass' });
+    // Cannot update cancelled gatepasses
+    if (existingGatepass.status === 'CANCELLED') {
+      return res.status(400).json({ message: 'Cannot update cancelled gatepass' });
     }
 
-    const gatepass = await vmsPrisma.gatepass.update({
+    const gatepass = await vmsPrisma.vMSGatepass.update({
       where: { id },
       data: {
-        purpose,
-        purposeDetails,
-        hostName,
-        hostDepartment,
-        hostPhone,
-        hostEmail,
-        entryGate,
-        visitingArea,
-        expectedDate: expectedDate ? new Date(expectedDate) : undefined,
-        expectedTimeIn,
-        expectedTimeOut,
         validUntil: validUntil ? new Date(validUntil) : undefined,
-        vehicleNumber,
-        vehicleType,
-        itemsCarried: itemsCarried ? JSON.stringify(itemsCarried) : undefined,
-        remarks,
-        securityRemarks,
+        status: status || undefined,
       },
       include: {
         visitor: true,
-      },
-    });
-
-    // Log action
-    await vmsPrisma.auditLog.create({
-      data: {
-        userId: req.user?.userId,
-        action: 'UPDATE',
-        entity: 'gatepass',
-        entityId: gatepass.id,
-        oldValue: JSON.stringify(existingGatepass),
-        newValue: JSON.stringify(gatepass),
       },
     });
 
@@ -420,36 +297,21 @@ exports.updateGatepass = async (req, res) => {
 exports.updateGatepassStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, securityRemarks } = req.body;
+    const { status } = req.body;
 
-    const validStatuses = ['SCHEDULED', 'ACTIVE', 'COMPLETED', 'CANCELLED', 'NO_SHOW'];
+    const validStatuses = ['ACTIVE', 'USED', 'EXPIRED', 'CANCELLED'];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ message: 'Invalid status' });
     }
 
-    const existingGatepass = await vmsPrisma.gatepass.findUnique({ where: { id } });
+    const existingGatepass = await vmsPrisma.vMSGatepass.findUnique({ where: { id } });
     if (!existingGatepass) {
       return res.status(404).json({ message: 'Gatepass not found' });
     }
 
-    const gatepass = await vmsPrisma.gatepass.update({
+    const gatepass = await vmsPrisma.vMSGatepass.update({
       where: { id },
-      data: {
-        status,
-        securityRemarks: securityRemarks || existingGatepass.securityRemarks,
-      },
-    });
-
-    // Log action
-    await vmsPrisma.auditLog.create({
-      data: {
-        userId: req.user?.userId,
-        action: `GATEPASS_${status}`,
-        entity: 'gatepass',
-        entityId: gatepass.id,
-        oldValue: JSON.stringify({ status: existingGatepass.status }),
-        newValue: JSON.stringify({ status }),
-      },
+      data: { status },
     });
 
     res.json({
@@ -468,31 +330,19 @@ exports.cancelGatepass = async (req, res) => {
     const { id } = req.params;
     const { reason } = req.body;
 
-    const existingGatepass = await vmsPrisma.gatepass.findUnique({ where: { id } });
+    const existingGatepass = await vmsPrisma.vMSGatepass.findUnique({ where: { id } });
     if (!existingGatepass) {
       return res.status(404).json({ message: 'Gatepass not found' });
     }
 
-    if (['COMPLETED', 'CANCELLED'].includes(existingGatepass.status)) {
-      return res.status(400).json({ message: 'Cannot cancel this gatepass' });
+    if (existingGatepass.status === 'CANCELLED') {
+      return res.status(400).json({ message: 'Gatepass is already cancelled' });
     }
 
-    const gatepass = await vmsPrisma.gatepass.update({
+    const gatepass = await vmsPrisma.vMSGatepass.update({
       where: { id },
       data: {
         status: 'CANCELLED',
-        remarks: reason || existingGatepass.remarks,
-      },
-    });
-
-    // Log action
-    await vmsPrisma.auditLog.create({
-      data: {
-        userId: req.user?.userId,
-        action: 'GATEPASS_CANCEL',
-        entity: 'gatepass',
-        entityId: gatepass.id,
-        newValue: JSON.stringify({ reason }),
       },
     });
 
@@ -515,7 +365,7 @@ exports.getTodaySummary = async (req, res) => {
     tomorrow.setDate(tomorrow.getDate() + 1);
 
     const where = {
-      expectedDate: {
+      createdAt: {
         gte: today,
         lt: tomorrow,
       },
@@ -523,31 +373,22 @@ exports.getTodaySummary = async (req, res) => {
 
     const [
       total,
-      scheduled,
       active,
-      completed,
+      used,
+      expired,
       cancelled,
-      noShow,
-      byPurpose,
     ] = await Promise.all([
-      vmsPrisma.gatepass.count({ where }),
-      vmsPrisma.gatepass.count({ where: { ...where, status: 'SCHEDULED' } }),
-      vmsPrisma.gatepass.count({ where: { ...where, status: 'ACTIVE' } }),
-      vmsPrisma.gatepass.count({ where: { ...where, status: 'COMPLETED' } }),
-      vmsPrisma.gatepass.count({ where: { ...where, status: 'CANCELLED' } }),
-      vmsPrisma.gatepass.count({ where: { ...where, status: 'NO_SHOW' } }),
-      vmsPrisma.gatepass.groupBy({
-        by: ['purpose'],
-        where,
-        _count: { purpose: true },
-      }),
+      vmsPrisma.vMSGatepass.count({ where }),
+      vmsPrisma.vMSGatepass.count({ where: { ...where, status: 'ACTIVE' } }),
+      vmsPrisma.vMSGatepass.count({ where: { ...where, status: 'USED' } }),
+      vmsPrisma.vMSGatepass.count({ where: { ...where, status: 'EXPIRED' } }),
+      vmsPrisma.vMSGatepass.count({ where: { ...where, status: 'CANCELLED' } }),
     ]);
 
     res.json({
       date: today.toISOString().slice(0, 10),
       total,
-      byStatus: { scheduled, active, completed, cancelled, noShow },
-      byPurpose: byPurpose.map(p => ({ purpose: p.purpose, count: p._count.purpose })),
+      byStatus: { active, used, expired, cancelled },
     });
   } catch (error) {
     console.error('Get today summary error:', error);
@@ -575,39 +416,24 @@ exports.getGatepassStats = async (req, res) => {
       todayTotal,
       todayActive,
       byStatus,
-      byPurpose,
-      dailyTrend,
     ] = await Promise.all([
-      vmsPrisma.gatepass.count({
-        where: { issuedAt: { gte: startDate } },
+      vmsPrisma.vMSGatepass.count({
+        where: { createdAt: { gte: startDate } },
       }),
-      vmsPrisma.gatepass.count({
-        where: { expectedDate: { gte: today, lt: tomorrow } },
+      vmsPrisma.vMSGatepass.count({
+        where: { createdAt: { gte: today, lt: tomorrow } },
       }),
-      vmsPrisma.gatepass.count({
+      vmsPrisma.vMSGatepass.count({
         where: {
-          expectedDate: { gte: today, lt: tomorrow },
-          status: { in: ['SCHEDULED', 'ACTIVE'] },
+          createdAt: { gte: today, lt: tomorrow },
+          status: 'ACTIVE',
         },
       }),
-      vmsPrisma.gatepass.groupBy({
+      vmsPrisma.vMSGatepass.groupBy({
         by: ['status'],
-        where: { issuedAt: { gte: startDate } },
+        where: { createdAt: { gte: startDate } },
         _count: { status: true },
       }),
-      vmsPrisma.gatepass.groupBy({
-        by: ['purpose'],
-        where: { issuedAt: { gte: startDate } },
-        _count: { purpose: true },
-      }),
-      // Get daily counts for trend
-      vmsPrisma.$queryRaw`
-        SELECT DATE(issuedAt) as date, COUNT(*) as count 
-        FROM gatepasses 
-        WHERE issuedAt >= ${startDate.toISOString()}
-        GROUP BY DATE(issuedAt)
-        ORDER BY date ASC
-      `,
     ]);
 
     res.json({
@@ -616,8 +442,6 @@ exports.getGatepassStats = async (req, res) => {
       todayTotal,
       todayActive,
       byStatus: byStatus.map(s => ({ status: s.status, count: s._count.status })),
-      byPurpose: byPurpose.map(p => ({ purpose: p.purpose, count: p._count.purpose })),
-      dailyTrend,
     });
   } catch (error) {
     console.error('Get gatepass stats error:', error);
