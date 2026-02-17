@@ -257,8 +257,8 @@ exports.submitCheckInRequest = async (req, res) => {
         companyId: company.id,
         personToMeet: personToMeet || 'Reception',
         purpose,
-        idProofType: idProofType || null,
-        idProofNumber: idProofNumber || null,
+        idProofType: idProofType || 'NONE',
+        idProofNumber: idProofNumber || '',
         idDocumentImage,
         photo,
         vehicleNumber,
@@ -286,7 +286,7 @@ exports.submitCheckInRequest = async (req, res) => {
       // Generate pass number based on entry type
       // Pre-approved: Use guest pass format (RGDGTLGP)
       // Walk-in: Use visitor pass format (RGDGTLVP)
-      const gatepassNumber = await generateVisitorPassNumber();
+      const gatepassNumber = await generateVisitorPassNumber(vmsPrisma);
       const qrData = JSON.stringify({ gatepassNumber, visitorId: visitor.id });
       qrCode = await QRCode.toDataURL(qrData);
       

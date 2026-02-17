@@ -210,7 +210,7 @@ exports.createGatepass = async (req, res) => {
     }
 
     // Generate gatepass number using new format (RGDGTLVP)
-    const gatepassNumber = await generateVisitorPassNumber();
+    const gatepassNumber = await generateVisitorPassNumber(vmsPrisma);
 
     // Calculate validity
     const validFromDate = validFrom ? new Date(validFrom) : new Date();

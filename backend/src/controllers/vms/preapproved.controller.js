@@ -206,7 +206,7 @@ exports.createPreApprovedVisitor = async (req, res) => {
     }
 
     // Generate guest pass number (RGDGTLGP format)
-    const passNumber = await generateGuestPassNumber();
+    const passNumber = await generateGuestPassNumber(prisma);
 
     // Create pre-approval
     const entry = await prisma.vMSPreApproval.create({
