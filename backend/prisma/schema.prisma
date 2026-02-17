@@ -354,8 +354,8 @@ model VMSVisitor {
   companyId       String?  @db.VarChar(36)   // Reference to VMSCompany if exists
   personToMeet    String?  @db.VarChar(255)
   purpose         String   @db.VarChar(100)
-  idProofType     String   @db.VarChar(50)
-  idProofNumber   String   @db.VarChar(100)
+  idProofType     String?  @db.VarChar(50)
+  idProofNumber   String?  @db.VarChar(100)
   idDocumentImage String?  @db.LongText
   photo           String?  @db.LongText
   vehicleNumber   String?  @db.VarChar(50)

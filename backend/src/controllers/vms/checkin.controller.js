@@ -224,11 +224,11 @@ exports.submitCheckInRequest = async (req, res) => {
       status = 'APPROVED';
     }
     
-    // Check if pre-approved
+    // Check if pre-approved (status 'ACTIVE' means the pre-approval is valid)
     const preApproved = await vmsPrisma.vMSPreApproval.findFirst({
       where: {
         phone,
-        status: 'APPROVED',
+        status: 'ACTIVE',
         validFrom: { lte: new Date() },
         validUntil: { gte: new Date() }
       }
@@ -257,8 +257,8 @@ exports.submitCheckInRequest = async (req, res) => {
         companyId: company.id,
         personToMeet: personToMeet || 'Reception',
         purpose,
-        idProofType: idProofType || 'NONE',
-        idProofNumber,
+        idProofType: idProofType || null,
+        idProofNumber: idProofNumber || null,
         idDocumentImage,
         photo,
         vehicleNumber,
