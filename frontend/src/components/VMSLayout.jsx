@@ -62,22 +62,22 @@ const VMSLayout = () => {
   // Check if user is a company/reception/guard user (non-admin)
   const isLimitedUser = isCompanyUser || isReceptionist || isSecurityGuard
 
+  // Determine which dashboard path to use based on user role
+  const getDashboardPath = () => {
+    if (isCompanyUser || (user?.companyId && !isAdmin && !isReceptionist && !isSecurityGuard)) {
+      return '/vms/admin/company-dashboard'
+    }
+    return '/vms/admin/dashboard'
+  }
+
   const navItems = [
     {
       name: 'Dashboard',
-      path: '/vms/admin/dashboard',
+      path: getDashboardPath(), // Dynamic path based on role
       icon: LayoutDashboard,
       permission: 'vms.dashboard.view',
-      showFor: ['reception', 'guard'], // Show for reception & guard (admin sees everything)
-      description: 'Main dashboard overview',
-    },
-    {
-      name: 'Dashboard',
-      path: '/vms/admin/company-dashboard',
-      icon: LayoutDashboard,
-      permission: 'vms.dashboard.view',
-      showFor: ['company'], // Only show for company users
-      description: 'Company dashboard overview',
+      showFor: ['company', 'reception', 'guard'], // Show for all non-admin roles
+      description: 'Dashboard overview',
     },
     {
       name: 'Visitor Check-In',
