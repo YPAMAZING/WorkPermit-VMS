@@ -21,7 +21,7 @@ import {
   Shield
 } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { vmsAPI, companySettingsApi } from '../../services/vmsApi'
+import { vmsAPI, companySettingsApi, publicCheckInApi } from '../../services/vmsApi'
 
 const VisitorRegister = () => {
   const navigate = useNavigate()
@@ -37,6 +37,8 @@ const VisitorRegister = () => {
   const [capturedPhoto, setCapturedPhoto] = useState(null)
   const [idDocumentImage, setIdDocumentImage] = useState(null)
   const [gatepass, setGatepass] = useState(null)
+  const [visitorId, setVisitorId] = useState(null) // Store visitor ID for status polling
+  const [isPolling, setIsPolling] = useState(false) // Track if we're polling for approval
   
   // ID Document camera modal state
   const [showIdDocCamera, setShowIdDocCamera] = useState(false)
@@ -299,10 +301,14 @@ const VisitorRegister = () => {
       
       if (response.data.success) {
         if (requiresApproval && !response.data.gatepass) {
-          // Approval required - show pending screen
+          // Approval required - show pending screen and start polling
+          const visId = response.data.visitorId || response.data.requestNumber
+          setVisitorId(visId)
+          setIsPolling(true) // Start polling for status updates
           setGatepass({
             status: 'PENDING_APPROVAL',
-            requestNumber: response.data.requestNumber || `REQ-${Date.now().toString().slice(-8)}`,
+            requestNumber: response.data.requestNumber || visId,
+            visitorId: visId,
             visitorName: formData.visitorName,
             phone: formData.phone,
             companyToVisit: formData.companyToVisit,
@@ -338,6 +344,46 @@ const VisitorRegister = () => {
       stopIdDocCamera()
     }
   }, [])
+
+  // Poll for approval status when waiting for approval
+  useEffect(() => {
+    if (!isPolling || !visitorId) return
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const response = await publicCheckInApi.getStatus(visitorId)
+        const data = response.data
+        
+        console.log('📊 Status check:', data.status)
+        
+        if (data.status === 'APPROVED' || data.status === 'CHECKED_IN') {
+          // Visitor has been approved! Update the UI
+          setIsPolling(false)
+          setGatepass({
+            ...gatepass,
+            status: data.status,
+            gatepassNumber: data.gatepassNumber || data.gatepass?.gatepassNumber,
+            gatepass: data.gatepass,
+            approvedAt: data.approvedAt,
+          })
+          toast.success('🎉 Your visit has been approved!')
+        } else if (data.status === 'REJECTED') {
+          // Visitor has been rejected
+          setIsPolling(false)
+          setGatepass({
+            ...gatepass,
+            status: 'REJECTED',
+            rejectionReason: data.rejectionReason,
+          })
+          toast.error('Your request has been rejected: ' + (data.rejectionReason || 'No reason provided'))
+        }
+      } catch (error) {
+        console.error('Status poll error:', error)
+      }
+    }, 5000) // Poll every 5 seconds
+
+    return () => clearInterval(pollInterval)
+  }, [isPolling, visitorId, gatepass])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-teal-900 to-slate-900">
@@ -889,25 +935,40 @@ const VisitorRegister = () => {
         {step === 3 && gatepass && (
           <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
             {/* Conditional Header based on status */}
-            {gatepass.status === 'PENDING_APPROVAL' ? (
+            {gatepass.status === 'PENDING_APPROVAL' || gatepass.status === 'PENDING' ? (
               // PENDING APPROVAL HEADER
               <div className="bg-gradient-to-r from-amber-500 to-orange-500 p-6 text-center text-white">
-                <Clock className="w-16 h-16 mx-auto mb-3" />
+                <Clock className="w-16 h-16 mx-auto mb-3 animate-pulse" />
                 <h2 className="text-2xl font-bold">Request Submitted!</h2>
                 <p className="opacity-90 mt-1">Your request is pending approval</p>
+                {isPolling && (
+                  <p className="text-xs mt-2 opacity-75">
+                    <RefreshCw className="w-3 h-3 inline animate-spin mr-1" />
+                    Checking for approval...
+                  </p>
+                )}
+              </div>
+            ) : gatepass.status === 'REJECTED' ? (
+              // REJECTED HEADER
+              <div className="bg-gradient-to-r from-red-500 to-red-600 p-6 text-center text-white">
+                <AlertCircle className="w-16 h-16 mx-auto mb-3" />
+                <h2 className="text-2xl font-bold">Request Rejected</h2>
+                <p className="opacity-90 mt-1">Your visit request was not approved</p>
               </div>
             ) : (
-              // VISITOR PASS GENERATED HEADER
+              // APPROVED / VISITOR PASS GENERATED HEADER
               <div className="bg-gradient-to-r from-emerald-500 to-teal-600 p-6 text-center text-white">
                 <CheckCircle className="w-16 h-16 mx-auto mb-3" />
-                <h2 className="text-2xl font-bold">Visitor Pass Generated!</h2>
+                <h2 className="text-2xl font-bold">
+                  {gatepass.status === 'APPROVED' ? 'Visit Approved!' : 'Visitor Pass Generated!'}
+                </h2>
                 <p className="opacity-90 mt-1">Please show this to security</p>
               </div>
             )}
 
             {/* Card Content */}
             <div className="p-6">
-              {gatepass.status === 'PENDING_APPROVAL' ? (
+              {gatepass.status === 'PENDING_APPROVAL' || gatepass.status === 'PENDING' ? (
                 // PENDING APPROVAL CONTENT
                 <div className="border-2 border-dashed border-amber-200 rounded-xl p-6">
                   {/* Header */}
@@ -990,8 +1051,28 @@ const VisitorRegister = () => {
                     </div>
                   </div>
                 </div>
+              ) : gatepass.status === 'REJECTED' ? (
+                // REJECTED CONTENT
+                <div className="border-2 border-dashed border-red-200 rounded-xl p-6">
+                  <div className="text-center py-8">
+                    <AlertCircle className="w-16 h-16 mx-auto mb-4 text-red-500" />
+                    <h3 className="text-xl font-bold text-gray-800 mb-2">Request Rejected</h3>
+                    <p className="text-gray-600 mb-4">
+                      Unfortunately, your visit request to {gatepass.companyToVisit} was not approved.
+                    </p>
+                    {gatepass.rejectionReason && (
+                      <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-left">
+                        <p className="text-sm font-medium text-red-800">Reason:</p>
+                        <p className="text-sm text-red-700 mt-1">{gatepass.rejectionReason}</p>
+                      </div>
+                    )}
+                    <p className="text-sm text-gray-500 mt-4">
+                      Please contact the reception for more information.
+                    </p>
+                  </div>
+                </div>
               ) : (
-                // VISITOR PASS CONTENT (Direct Entry - like Vodafone)
+                // VISITOR PASS CONTENT (Approved / Direct Entry)
                 <div className="border-2 border-dashed border-teal-200 rounded-xl p-6">
                   {/* Header */}
                   <div className="flex items-center justify-between mb-4 pb-4 border-b">
@@ -1004,7 +1085,9 @@ const VisitorRegister = () => {
                     </div>
                     <div className="text-right">
                       <p className="text-xs text-gray-500">Pass No.</p>
-                      <p className="font-mono font-bold text-teal-600">{gatepass.gatepassNumber}</p>
+                      <p className="font-mono font-bold text-teal-600">
+                        {gatepass.gatepassNumber || gatepass.gatepass?.gatepassNumber || gatepass.requestNumber}
+                      </p>
                     </div>
                   </div>
 

@@ -296,10 +296,11 @@ exports.submitCheckInRequest = async (req, res) => {
     
     // If auto-approved, create gatepass
     let gatepass = null;
+    let qrCode = null;
     if (status === 'APPROVED' || status === 'CHECKED_IN') {
       const gatepassNumber = generateGatepassNumber();
       const qrData = JSON.stringify({ gatepassNumber, visitorId: visitor.id });
-      const qrCode = await QRCode.toDataURL(qrData);
+      qrCode = await QRCode.toDataURL(qrData);
       
       gatepass = await vmsPrisma.vMSGatepass.create({
         data: {
@@ -309,7 +310,7 @@ exports.submitCheckInRequest = async (req, res) => {
           validFrom: new Date(),
           validUntil: new Date(new Date().setHours(23, 59, 59, 999)),
           status: 'ACTIVE',
-          qrCode,
+          // Note: qrCode is stored in visitor model, not gatepass
         }
       });
       
@@ -325,7 +326,8 @@ exports.submitCheckInRequest = async (req, res) => {
       requestNumber: visitor.id,
       visitorId: visitor.id,
       status,
-      gatepass,
+      gatepass: gatepass ? { ...gatepass, qrCode } : null,
+      qrCode,
       message: status === 'APPROVED' 
         ? 'Your visit has been approved! Please show this confirmation to security.'
         : 'Your check-in request has been submitted. Please wait for approval.',
@@ -356,16 +358,31 @@ exports.getCheckInStatus = async (req, res) => {
       return res.status(404).json({ message: 'Request not found' });
     }
     
+    // Generate QR code for approved visitors
+    let qrCode = null;
+    if (visitor.gatepass && (visitor.status === 'APPROVED' || visitor.status === 'CHECKED_IN')) {
+      const qrData = JSON.stringify({ gatepassNumber: visitor.gatepass.gatepassNumber, visitorId: visitor.id });
+      qrCode = await QRCode.toDataURL(qrData);
+    }
+    
     res.json({
       requestNumber: visitor.id,
       status: visitor.status,
       visitorName: visitor.visitorName,
+      phone: visitor.phone,
       companyName: visitor.company?.displayName || visitor.company?.name || visitor.companyToVisit,
+      companyToVisit: visitor.companyToVisit,
+      personToMeet: visitor.personToMeet,
+      purpose: visitor.purpose,
+      photo: visitor.photo,
       submittedAt: visitor.createdAt,
       approvedAt: visitor.approvedAt,
       checkInTime: visitor.checkInTime,
       checkOutTime: visitor.checkOutTime,
-      gatepass: visitor.gatepass || null,
+      rejectionReason: visitor.rejectionReason,
+      gatepass: visitor.gatepass ? { ...visitor.gatepass, qrCode } : null,
+      gatepassNumber: visitor.gatepass?.gatepassNumber,
+      qrCode,
     });
   } catch (error) {
     console.error('Get check-in status error:', error);
