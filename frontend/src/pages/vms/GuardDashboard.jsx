@@ -553,36 +553,30 @@ const GuardDashboard = () => {
                   </div>
                 )}
                 
-                {/* Check-in/out Times */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-3 bg-gray-50 rounded-lg">
-                    <p className="text-xs text-gray-400 mb-1">Check-in Time</p>
-                    <p className="font-medium text-gray-800">
-                      {selectedRequest.checkInTime 
-                        ? new Date(selectedRequest.checkInTime).toLocaleString('en-IN', { 
+                {/* Check-in Time */}
+                <div className="p-3 bg-gray-50 rounded-lg">
+                  <p className="text-xs text-gray-400 mb-1">Check-in Time</p>
+                  <p className="font-medium text-gray-800">
+                    {selectedRequest.checkInTime 
+                      ? new Date(selectedRequest.checkInTime).toLocaleString('en-IN', { 
+                          day: '2-digit',
+                          month: 'short',
+                          year: 'numeric',
+                          hour: '2-digit', 
+                          minute: '2-digit',
+                          hour12: true
+                        })
+                      : selectedRequest.createdAt
+                        ? new Date(selectedRequest.createdAt).toLocaleString('en-IN', { 
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric',
                             hour: '2-digit', 
                             minute: '2-digit',
-                            hour12: true,
-                            day: '2-digit',
-                            month: 'short'
+                            hour12: true
                           })
                         : '-'}
-                    </p>
-                  </div>
-                  <div className="p-3 bg-gray-50 rounded-lg">
-                    <p className="text-xs text-gray-400 mb-1">Check-out Time</p>
-                    <p className="font-medium text-gray-800">
-                      {selectedRequest.checkOutTime 
-                        ? new Date(selectedRequest.checkOutTime).toLocaleString('en-IN', { 
-                            hour: '2-digit', 
-                            minute: '2-digit',
-                            hour12: true,
-                            day: '2-digit',
-                            month: 'short'
-                          })
-                        : '-'}
-                    </p>
-                  </div>
+                  </p>
                 </div>
                 
                 {/* ID Proof */}
@@ -755,20 +749,28 @@ const GuardDashboard = () => {
                   <p className="text-xs text-green-600">Person to Meet</p>
                   <p className="font-medium text-gray-800">{selectedRequest.personToMeet || '-'}</p>
                 </div>
-                <div className="p-3 bg-gray-50 rounded-lg">
+                <div className="p-3 bg-gray-50 rounded-lg col-span-2">
                   <p className="text-xs text-gray-400">Check-in Time</p>
                   <p className="font-medium text-sm text-gray-800">
                     {selectedRequest.checkInTime 
-                      ? new Date(selectedRequest.checkInTime).toLocaleString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
-                      : '-'}
-                  </p>
-                </div>
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <p className="text-xs text-gray-400">Check-out Time</p>
-                  <p className="font-medium text-sm text-gray-800">
-                    {selectedRequest.checkOutTime 
-                      ? new Date(selectedRequest.checkOutTime).toLocaleString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
-                      : '-'}
+                      ? new Date(selectedRequest.checkInTime).toLocaleString('en-IN', { 
+                          day: '2-digit',
+                          month: 'short',
+                          year: 'numeric',
+                          hour: '2-digit', 
+                          minute: '2-digit', 
+                          hour12: true 
+                        })
+                      : selectedRequest.createdAt
+                        ? new Date(selectedRequest.createdAt).toLocaleString('en-IN', { 
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric',
+                            hour: '2-digit', 
+                            minute: '2-digit', 
+                            hour12: true 
+                          })
+                        : '-'}
                   </p>
                 </div>
               </div>

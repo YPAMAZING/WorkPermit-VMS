@@ -445,26 +445,44 @@ const VMSVisitors = () => {
                   </div>
                 )}
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
                     <Calendar size={18} className="text-gray-400" />
                     <div>
                       <p className="text-xs text-gray-500">Check-in Time</p>
                       <p className="font-medium text-gray-800 text-sm">
-                        {viewVisitor.checkInTime ? new Date(viewVisitor.checkInTime).toLocaleString() : '-'}
+                        {viewVisitor.checkInTime 
+                          ? new Date(viewVisitor.checkInTime).toLocaleString('en-IN', {
+                              day: '2-digit',
+                              month: 'short',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              hour12: true
+                            })
+                          : viewVisitor.createdAt 
+                            ? new Date(viewVisitor.createdAt).toLocaleString('en-IN', {
+                                day: '2-digit',
+                                month: 'short',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                hour12: true
+                              })
+                            : '-'}
                       </p>
                     </div>
                   </div>
+
+                {/* Company From */}
+                {viewVisitor.companyFrom && (
                   <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
-                    <Clock size={18} className="text-gray-400" />
+                    <Building size={18} className="text-gray-400" />
                     <div>
-                      <p className="text-xs text-gray-500">Check-out Time</p>
-                      <p className="font-medium text-gray-800 text-sm">
-                        {viewVisitor.checkOutTime ? new Date(viewVisitor.checkOutTime).toLocaleString() : '-'}
-                      </p>
+                      <p className="text-xs text-gray-500">Visiting From</p>
+                      <p className="font-medium text-gray-800">{viewVisitor.companyFrom}</p>
                     </div>
                   </div>
-                </div>
+                )}
               </div>
 
               {/* Close Button */}
