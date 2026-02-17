@@ -76,7 +76,8 @@ const VMSLayout = () => {
       path: getDashboardPath(), // Dynamic path based on role
       icon: LayoutDashboard,
       permission: 'vms.dashboard.view',
-      showFor: ['company', 'reception', 'guard'], // Show for all non-admin roles
+      showFor: ['company', 'reception', 'guard'], // Show for non-admin roles only
+      hideFromAdmin: true, // Admin doesn't need operational dashboard
       description: 'Dashboard overview',
     },
     {
@@ -84,7 +85,8 @@ const VMSLayout = () => {
       path: '/vms/admin/guard',
       icon: Shield,
       permission: 'vms.checkin.view',
-      showFor: ['company', 'reception', 'guard'], // Show for company, reception, guard (and admin)
+      showFor: ['company', 'reception', 'guard'], // Show for company, reception, guard only
+      hideFromAdmin: true, // Admin doesn't need check-in operations
       description: 'Live feed for check-in management',
     },
     {
@@ -142,7 +144,10 @@ const VMSLayout = () => {
   const isEffectiveCompanyUser = isCompanyUser || (user?.companyId && !isAdmin && !isReceptionist && !isSecurityGuard)
 
   const filteredNavItems = navItems.filter(item => {
-    // Admin sees everything
+    // Hide items marked as hideFromAdmin for admin users
+    if (isAdmin && item.hideFromAdmin) return false
+    
+    // Admin sees all items except those hidden from admin
     if (isAdmin) return true
     
     // Admin-only items hidden from non-admins

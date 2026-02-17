@@ -1,5 +1,5 @@
 // Smart redirect component for VMS users based on their role
-// - Admin: Dashboard (full admin dashboard)
+// - Admin: Visitors page (management-only, no operational dashboard)
 // - Company User: Company Dashboard (approve/reject visitors)
 // - Reception/Guard: Dashboard (visitor check-in dashboard)
 
@@ -27,9 +27,9 @@ const VMSDefaultRedirect = () => {
     return <Navigate to="/vms/login" replace />
   }
 
-  // Admin users go to main dashboard
+  // Admin users go to Visitors page (management only, not operational)
   if (isAdmin) {
-    return <Navigate to="/vms/admin/dashboard" replace />
+    return <Navigate to="/vms/admin/visitors" replace />
   }
 
   // Reception and Guard users go to main dashboard
@@ -43,8 +43,8 @@ const VMSDefaultRedirect = () => {
     return <Navigate to="/vms/admin/company-dashboard" replace />
   }
 
-  // Default fallback - main dashboard
-  return <Navigate to="/vms/admin/dashboard" replace />
+  // Default fallback - visitors page
+  return <Navigate to="/vms/admin/visitors" replace />
 }
 
 export default VMSDefaultRedirect
