@@ -23,6 +23,51 @@ import {
 import toast from 'react-hot-toast'
 import { vmsAPI, companySettingsApi, publicCheckInApi } from '../../services/vmsApi'
 
+// Image compression utility - compresses image aggressively for server limits
+const compressImage = (base64String, maxSizeKB = 150, maxWidth = 640) => {
+  return new Promise((resolve) => {
+    const img = new window.Image()
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      let width = img.width
+      let height = img.height
+      
+      // Scale down aggressively
+      if (width > maxWidth) {
+        height = Math.round((height * maxWidth) / width)
+        width = maxWidth
+      }
+      // Also limit height
+      const maxHeight = 800
+      if (height > maxHeight) {
+        width = Math.round((width * maxHeight) / height)
+        height = maxHeight
+      }
+      
+      canvas.width = width
+      canvas.height = height
+      
+      const ctx = canvas.getContext('2d')
+      ctx.drawImage(img, 0, 0, width, height)
+      
+      // Start with quality 0.7 and reduce until under maxSizeKB
+      let quality = 0.7
+      let result = canvas.toDataURL('image/jpeg', quality)
+      
+      // More aggressive compression loop
+      while (result.length > maxSizeKB * 1024 * 1.37 && quality > 0.05) {
+        quality -= 0.05
+        result = canvas.toDataURL('image/jpeg', quality)
+      }
+      
+      console.log(`Image compressed: ${Math.round(result.length / 1024)}KB at quality ${quality.toFixed(2)}, ${width}x${height}`)
+      resolve(result)
+    }
+    img.onerror = () => resolve(base64String) // Return original if error
+    img.src = base64String
+  })
+}
+
 const VisitorRegister = () => {
   const navigate = useNavigate()
   const videoRef = useRef(null)
@@ -187,7 +232,7 @@ const VisitorRegister = () => {
     }
   }
 
-  const capturePhoto = () => {
+  const capturePhoto = async () => {
     if (videoRef.current && canvasRef.current) {
       const context = canvasRef.current.getContext('2d')
       canvasRef.current.width = videoRef.current.videoWidth
@@ -197,23 +242,28 @@ const VisitorRegister = () => {
       context.scale(-1, 1)
       context.drawImage(videoRef.current, 0, 0)
       const photoData = canvasRef.current.toDataURL('image/jpeg', 0.8)
-      setCapturedPhoto(photoData)
+      
+      // Compress the photo to max 100KB for server limits
+      const compressedPhoto = await compressImage(photoData, 100, 480)
+      setCapturedPhoto(compressedPhoto)
       stopCamera()
     }
   }
 
 
 
-  const handleUploadIdDocument = (e) => {
+  const handleUploadIdDocument = async (e) => {
     const file = e.target.files[0]
     if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error('Document size should be less than 5MB')
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error('Document size should be less than 10MB')
         return
       }
       const reader = new FileReader()
-      reader.onloadend = () => {
-        setIdDocumentImage(reader.result)
+      reader.onloadend = async () => {
+        // Compress the ID document to max 150KB for server limits
+        const compressedImage = await compressImage(reader.result, 150, 800)
+        setIdDocumentImage(compressedImage)
         setErrors(prev => ({ ...prev, idDocument: '' }))
         toast.success('ID document uploaded!')
       }
@@ -247,7 +297,7 @@ const VisitorRegister = () => {
     setShowIdDocCamera(false)
   }
 
-  const captureIdDocument = () => {
+  const captureIdDocument = async () => {
     if (idDocVideoRef.current && idDocCanvasRef.current) {
       const context = idDocCanvasRef.current.getContext('2d')
       idDocCanvasRef.current.width = idDocVideoRef.current.videoWidth
@@ -256,8 +306,11 @@ const VisitorRegister = () => {
       context.translate(idDocCanvasRef.current.width, 0)
       context.scale(-1, 1)
       context.drawImage(idDocVideoRef.current, 0, 0)
-      const photoData = idDocCanvasRef.current.toDataURL('image/jpeg', 0.9)
-      setIdDocumentImage(photoData)
+      const photoData = idDocCanvasRef.current.toDataURL('image/jpeg', 0.7)
+      
+      // Compress the ID document to max 150KB for server limits
+      const compressedImage = await compressImage(photoData, 150, 800)
+      setIdDocumentImage(compressedImage)
       setErrors(prev => ({ ...prev, idDocument: '' }))
       stopIdDocCamera()
       toast.success('ID document captured!')
