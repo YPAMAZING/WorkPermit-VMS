@@ -75,7 +75,7 @@ const VMSLayout = () => {
       path: '/vms/admin/company-dashboard',
       icon: Building2,
       permission: 'vms.visitors.approve',
-      companyUserOnly: true, // Show for company users
+      showFor: ['company'], // Only show for company users (and admin)
       description: 'Approve/Reject visitors for your company',
     },
     {
@@ -83,6 +83,7 @@ const VMSLayout = () => {
       path: '/vms/admin/guard',
       icon: Shield,
       permission: 'vms.checkin.view',
+      showFor: ['company', 'reception', 'guard'], // Show for company, reception, guard (and admin)
       description: 'Live feed for check-in management',
     },
     {
@@ -137,11 +138,24 @@ const VMSLayout = () => {
   ]
 
   const filteredNavItems = navItems.filter(item => {
+    // Admin sees everything
+    if (isAdmin) return true
+    
     // Admin-only items hidden from non-admins
-    if (item.adminOnly && !isAdmin) return false
-    // Company user only items - show for company users and admins
-    if (item.companyUserOnly && !isCompanyUser && !isAdmin) return false
-    return isAdmin || hasPermission(item.permission)
+    if (item.adminOnly) return false
+    
+    // Check showFor restrictions
+    if (item.showFor) {
+      const canShow = (
+        (item.showFor.includes('company') && isCompanyUser) ||
+        (item.showFor.includes('reception') && isReceptionist) ||
+        (item.showFor.includes('guard') && isSecurityGuard)
+      )
+      return canShow
+    }
+    
+    // Default: check permission
+    return hasPermission(item.permission)
   })
 
   return (
