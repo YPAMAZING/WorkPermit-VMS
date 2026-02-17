@@ -15,6 +15,8 @@ import {
   Calendar,
   ArrowRight,
   RefreshCw,
+  BadgeCheck,
+  CreditCard,
 } from 'lucide-react'
 
 const VMSDashboard = () => {
@@ -204,7 +206,7 @@ const VMSDashboard = () => {
           <div className="flex items-center justify-between p-5 border-b border-gray-100">
             <h2 className="text-lg font-semibold text-gray-800">Recent Visitor Passes</h2>
             <button
-              onClick={() => navigate('/vms/admin/gatepasses')}
+              onClick={() => navigate('/vms/admin/visitors')}
               className="text-sm text-teal-600 hover:text-teal-700 flex items-center gap-1"
             >
               View all <ArrowRight size={16} />
@@ -310,6 +312,31 @@ const VMSDashboard = () => {
               <p className="text-center text-gray-500 text-sm py-4">No visitor passes today</p>
             )}
           </div>
+
+          {/* Employee Pass - Only for Admin and Reception */}
+          {(isAdmin || isReceptionist) && (
+            <div 
+              className="bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl shadow-sm p-5 text-white cursor-pointer hover:shadow-lg transition-shadow"
+              onClick={() => navigate('/vms/admin/gatepasses')}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-lg font-semibold">Employee Pass</h2>
+                <div className="p-2 bg-white/20 rounded-lg">
+                  <CreditCard size={24} />
+                </div>
+              </div>
+              <p className="text-sm text-white/80 mb-4">
+                Create temporary passes for new employees before ID card issuance
+              </p>
+              <button 
+                className="w-full py-2.5 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors"
+              >
+                <BadgeCheck size={18} />
+                Manage Employee Passes
+                <ArrowRight size={16} />
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
