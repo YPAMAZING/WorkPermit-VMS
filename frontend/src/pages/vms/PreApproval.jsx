@@ -1,5 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useVMSAuth } from '../../context/VMSAuthContext'
+import useCompanyList from '../../hooks/useCompanyList'
 import { 
   User, 
   Phone, 
@@ -23,9 +25,27 @@ import { vmsAPI } from '../../services/vmsApi'
 
 const PreApproval = () => {
   const navigate = useNavigate()
+  const { user, isAdmin, isReceptionist, isSecurityGuard } = useVMSAuth()
   const [step, setStep] = useState(1) // 1: Form, 2: Success
   const [loading, setLoading] = useState(false)
   const [preApproval, setPreApproval] = useState(null)
+  
+  // Check if user is admin/reception (can see all companies) or company user (only their company)
+  const isAdminOrReception = isAdmin || isReceptionist || isSecurityGuard
+  const isCompanyUser = user?.companyId && !isAdminOrReception
+  
+  // Use the reusable hook for company list
+  const { 
+    companies: allCompanies, 
+    loading: companiesLoading, 
+    error: companiesError,
+    getCompanyById 
+  } = useCompanyList({ withApprovalStatus: true })
+  
+  // Filter companies based on user role
+  const companies = isCompanyUser 
+    ? allCompanies.filter(c => c.id === user.companyId)
+    : allCompanies
   
   const [formData, setFormData] = useState({
     visitorName: '',
@@ -33,6 +53,7 @@ const PreApproval = () => {
     email: '',
     companyFrom: '',
     companyToVisit: '',
+    companyId: '',
     personToMeet: '',
     purpose: '',
     visitDate: '',
@@ -44,29 +65,50 @@ const PreApproval = () => {
   })
 
   const [errors, setErrors] = useState({})
+  
+  // Auto-set company for company users
+  useEffect(() => {
+    if (isCompanyUser && user?.companyId && companies.length > 0) {
+      const userCompany = companies.find(c => c.id === user.companyId)
+      if (userCompany) {
+        setFormData(prev => ({
+          ...prev,
+          companyToVisit: userCompany.displayName || userCompany.name,
+          companyId: userCompany.id
+        }))
+      }
+    }
+  }, [isCompanyUser, user?.companyId, companies])
 
-  const companies = [
-    'Reliable Group - Head Office',
-    'Reliable Tech Solutions',
-    'Reliable Properties',
-    'Reliable Infrastructure',
-    'Other'
-  ]
-
+  // Same purposes as the visitor registration form
   const purposes = [
     'Meeting',
     'Interview',
-    'Delivery',
-    'Vendor Visit',
-    'Client Visit',
-    'Maintenance',
-    'Personal',
+    'Vendor/Client Visit',
     'Other'
   ]
 
   const handleChange = (e) => {
     const { name, value } = e.target
-    setFormData(prev => ({ ...prev, [name]: value }))
+    
+    // Handle company selection specially
+    if (name === 'companyToVisit') {
+      const selectedCompany = companies.find(c => 
+        c.displayName === value || c.name === value
+      )
+      if (selectedCompany) {
+        setFormData(prev => ({ 
+          ...prev, 
+          companyToVisit: selectedCompany.displayName || selectedCompany.name,
+          companyId: selectedCompany.id
+        }))
+      } else {
+        setFormData(prev => ({ ...prev, [name]: value, companyId: '' }))
+      }
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }))
+    }
+    
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }))
     }
@@ -315,17 +357,36 @@ _Reliable Group - Visitor Management System_`
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Company to Visit <span className="text-red-500">*</span>
                     </label>
-                    <select
-                      name="companyToVisit"
-                      value={formData.companyToVisit}
-                      onChange={handleChange}
-                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 ${errors.companyToVisit ? 'border-red-500' : 'border-gray-200'}`}
-                    >
-                      <option value="">Select company</option>
-                      {companies.map(c => (
-                        <option key={c} value={c}>{c}</option>
-                      ))}
-                    </select>
+                    {isCompanyUser ? (
+                      // Company users can only create pre-approvals for their own company
+                      <div className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-gray-50 text-gray-700">
+                        {formData.companyToVisit || user?.companyName || 'Your Company'}
+                      </div>
+                    ) : (
+                      // Admin/Reception users can select any company
+                      <select
+                        name="companyToVisit"
+                        value={formData.companyToVisit}
+                        onChange={handleChange}
+                        disabled={companiesLoading}
+                        className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100 ${errors.companyToVisit ? 'border-red-500' : 'border-gray-200'}`}
+                      >
+                        {companiesLoading ? (
+                          <option value="">Loading companies...</option>
+                        ) : companiesError ? (
+                          <option value="">Error loading companies</option>
+                        ) : (
+                          <>
+                            <option value="">Select company</option>
+                            {companies.map(c => (
+                              <option key={c.id} value={c.displayName || c.name}>
+                                {c.displayName || c.name}
+                              </option>
+                            ))}
+                          </>
+                        )}
+                      </select>
+                    )}
                     {errors.companyToVisit && <p className="text-red-500 text-xs mt-1">{errors.companyToVisit}</p>}
                   </div>
 
@@ -438,7 +499,7 @@ _Reliable Group - Visitor Management System_`
                     >
                       <option value={2}>2 Hours</option>
                       <option value={4}>4 Hours</option>
-                      <option value={8}>8 Hours (Full Day)</option>
+                      <option value={8}>8 Hours</option>
                       <option value={12}>12 Hours</option>
                       <option value={24}>24 Hours</option>
                     </select>
