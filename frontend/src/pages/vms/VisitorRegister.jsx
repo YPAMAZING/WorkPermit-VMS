@@ -107,7 +107,6 @@ const VisitorRegister = () => {
     personToMeet: '',
     purpose: '',
     idProofType: 'aadhaar',
-    idProofNumber: '',
     vehicleNumber: '',
     numberOfVisitors: 1,
   })
@@ -193,7 +192,6 @@ const VisitorRegister = () => {
     if (!formData.companyToVisit) newErrors.companyToVisit = 'Select company to visit'
     // Person to meet is now optional
     if (!formData.purpose) newErrors.purpose = 'Select purpose'
-    if (!formData.idProofNumber.trim()) newErrors.idProofNumber = 'ID proof number is required'
     if (!idDocumentImage) newErrors.idDocument = 'ID document image is required'
 
     setErrors(newErrors)
@@ -735,22 +733,6 @@ const VisitorRegister = () => {
                       <option key={id.value} value={id.value}>{id.label}</option>
                     ))}
                   </select>
-                </div>
-
-                {/* ID Proof Number */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    ID Proof Number <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="idProofNumber"
-                    value={formData.idProofNumber}
-                    onChange={handleChange}
-                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-teal-500 ${errors.idProofNumber ? 'border-red-500' : 'border-gray-200'}`}
-                    placeholder="Enter ID number"
-                  />
-                  {errors.idProofNumber && <p className="text-red-500 text-xs mt-1">{errors.idProofNumber}</p>}
                 </div>
 
                 {/* Upload ID Document Image - COMPULSORY */}
