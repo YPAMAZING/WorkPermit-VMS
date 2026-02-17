@@ -42,11 +42,11 @@ router.post('/requests/:id/approve', vmsAuth, vmsRequireRole(['VMS_ADMIN', 'COMP
 // Reject check-in request (Company users can reject their own company's visitors)
 router.post('/requests/:id/reject', vmsAuth, vmsRequireRole(['VMS_ADMIN', 'COMPANY_USER', 'company_user']), checkinController.rejectRequest);
 
-// Mark visitor as checked in
-router.post('/requests/:id/checkin', vmsAuth, vmsRequireRole(['SECURITY_GUARD', 'SECURITY_SUPERVISOR', 'RECEPTIONIST']), checkinController.markCheckedIn);
+// Mark visitor as checked in (Reception, Guard, Admin)
+router.post('/requests/:id/checkin', vmsAuth, vmsRequireRole(['VMS_ADMIN', 'SECURITY_GUARD', 'SECURITY_SUPERVISOR', 'RECEPTIONIST', 'RECEPTION', 'reception']), checkinController.markCheckedIn);
 
-// Mark visitor as checked out
-router.post('/requests/:id/checkout', vmsAuth, vmsRequireRole(['SECURITY_GUARD', 'SECURITY_SUPERVISOR', 'RECEPTIONIST']), checkinController.markCheckedOut);
+// Mark visitor as checked out (Reception, Guard, Admin)
+router.post('/requests/:id/checkout', vmsAuth, vmsRequireRole(['VMS_ADMIN', 'SECURITY_GUARD', 'SECURITY_SUPERVISOR', 'RECEPTIONIST', 'RECEPTION', 'reception']), checkinController.markCheckedOut);
 
 // Get check-in statistics
 router.get('/stats', vmsAuth, checkinController.getCheckInStats);

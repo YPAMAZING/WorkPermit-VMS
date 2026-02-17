@@ -694,8 +694,6 @@ exports.approveRequest = async (req, res) => {
     
     // Create gatepass
     const gatepassNumber = generateGatepassNumber();
-    const qrData = JSON.stringify({ gatepassNumber, visitorId: visitor.id });
-    const qrCode = await QRCode.toDataURL(qrData);
     
     // Use visitor's companyId, or user's companyId as fallback
     const gatepassCompanyId = visitor.companyId || companyId;
@@ -708,7 +706,6 @@ exports.approveRequest = async (req, res) => {
         validFrom: new Date(),
         validUntil: new Date(new Date().setHours(23, 59, 59, 999)),
         status: 'ACTIVE',
-        qrCode,
       }
     });
     
@@ -811,7 +808,9 @@ exports.markCheckedIn = async (req, res) => {
     console.log('User:', user?.email, 'Role:', userRole, 'CompanyId:', companyId);
     
     // Reception and Security Guard roles can check-in ANY visitor
-    const canCheckInAll = ['RECEPTION', 'reception', 'SECURITY_GUARD', 'security_guard'].includes(userRole) || isUserAdmin(user);
+    const canCheckInAll = ['RECEPTION', 'reception', 'RECEPTIONIST', 'SECURITY_GUARD', 'security_guard', 'SECURITY_SUPERVISOR'].includes(userRole) || isUserAdmin(user);
+    
+    console.log('canCheckInAll:', canCheckInAll);
     
     // First find the visitor
     const visitor = await vmsPrisma.vMSVisitor.findUnique({ where: { id } });
@@ -855,8 +854,8 @@ exports.markCheckedIn = async (req, res) => {
     await vmsPrisma.vMSGatepass.updateMany({
       where: { visitorId: id },
       data: { 
-        status: 'ACTIVE',
-        checkInTime: new Date()
+        status: 'USED',
+        usedAt: new Date()
       }
     });
     
