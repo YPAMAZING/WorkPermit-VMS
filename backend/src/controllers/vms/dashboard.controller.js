@@ -4,6 +4,27 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
+// Auto-expire pre-approvals that have passed their validUntil date
+const autoExpirePreApprovals = async () => {
+  try {
+    const now = new Date();
+    const result = await prisma.vMSPreApproval.updateMany({
+      where: {
+        status: 'ACTIVE',
+        validUntil: { lt: now },
+      },
+      data: {
+        status: 'EXPIRED',
+      },
+    });
+    if (result.count > 0) {
+      console.log(`Auto-expired ${result.count} pre-approval(s)`);
+    }
+  } catch (error) {
+    console.error('Auto-expire pre-approvals error:', error);
+  }
+};
+
 // Helper: Check if user is admin (can see all companies)
 const isUserAdmin = (userRole) => {
   const adminRoles = ['ADMIN', 'VMS_ADMIN', 'SECURITY_SUPERVISOR'];
@@ -21,6 +42,9 @@ const getCompanyFilter = (req) => {
 // Get dashboard overview - Returns data in format expected by frontend VMSDashboard component
 exports.getDashboardOverview = async (req, res) => {
   try {
+    // Auto-expire pre-approvals before fetching stats
+    await autoExpirePreApprovals();
+    
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
@@ -66,11 +90,12 @@ exports.getDashboardOverview = async (req, res) => {
         },
       }).catch(() => 0),
       
-      // Scheduled gatepasses (validFrom > now)
-      prisma.vMSGatepass.count({
+      // Scheduled = Pre-approved visitors valid for today (not yet arrived)
+      prisma.vMSPreApproval.count({
         where: { 
           status: 'ACTIVE',
-          validFrom: { gt: new Date() },
+          validFrom: { lte: tomorrow },
+          validUntil: { gte: today },
           ...companyFilter 
         },
       }).catch(() => 0),

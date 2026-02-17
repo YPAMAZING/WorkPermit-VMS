@@ -108,7 +108,7 @@ const VMSLayout = () => {
       path: '/vms/admin/preapproved',
       icon: UserCheck,
       permission: 'vms.preapproved.view',
-      adminOnly: true,
+      showFor: ['company'], // Company users can manage their pre-approvals
     },
     {
       name: 'Blacklist',

@@ -4,9 +4,32 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
+// Auto-expire pre-approvals that have passed their validUntil date
+const autoExpirePreApprovals = async () => {
+  try {
+    const now = new Date();
+    const result = await prisma.vMSPreApproval.updateMany({
+      where: {
+        status: 'ACTIVE',
+        validUntil: { lt: now },
+      },
+      data: {
+        status: 'EXPIRED',
+      },
+    });
+    if (result.count > 0) {
+      console.log(`[PreApproved] Auto-expired ${result.count} pre-approval(s)`);
+    }
+  } catch (error) {
+    console.error('Auto-expire pre-approvals error:', error);
+  }
+};
+
 // Get all pre-approved visitors with pagination and filters
 exports.getPreApprovedVisitors = async (req, res) => {
   try {
+    // Auto-expire before fetching
+    await autoExpirePreApprovals();
     const {
       page = 1,
       limit = 10,
