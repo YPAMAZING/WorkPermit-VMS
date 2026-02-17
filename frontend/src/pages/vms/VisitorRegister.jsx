@@ -93,6 +93,12 @@ const VisitorRegister = () => {
   const [companies, setCompanies] = useState([])
   const [companiesLoading, setCompaniesLoading] = useState(true)
   
+  // Company autocomplete search state
+  const [companySearchText, setCompanySearchText] = useState('')
+  const [showCompanyDropdown, setShowCompanyDropdown] = useState(false)
+  const [filteredCompanies, setFilteredCompanies] = useState([])
+  const companyInputRef = useRef(null)
+  
   // Company settings for approval-based flow
   const [companySettings, setCompanySettings] = useState(null)
   const [loadingCompanySettings, setLoadingCompanySettings] = useState(false)
@@ -636,32 +642,108 @@ const VisitorRegister = () => {
                   </div>
                 </div>
 
-                {/* Company To Visit */}
-                <div>
+                {/* Company To Visit - Autocomplete Search */}
+                <div className="relative">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Company to Visit <span className="text-red-500">*</span>
                   </label>
-                  <select
-                    name="companyToVisit"
-                    value={formData.companyToVisit}
-                    onChange={handleChange}
-                    disabled={companiesLoading}
-                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-teal-500 disabled:bg-gray-100 ${errors.companyToVisit ? 'border-red-500' : 'border-gray-200'}`}
-                  >
-                    {companiesLoading ? (
-                      <option value="">Loading companies...</option>
-                    ) : (
-                      <>
-                        <option value="">Select company</option>
-                        {companies.map(c => (
-                          <option key={c.id} value={c.displayName || c.name}>
-                            {c.displayName || c.name}
-                          </option>
-                        ))}
-                        <option value="Other">Other</option>
-                      </>
+                  <div className="relative">
+                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      ref={companyInputRef}
+                      type="text"
+                      value={companySearchText}
+                      onChange={(e) => {
+                        const value = e.target.value
+                        setCompanySearchText(value)
+                        setShowCompanyDropdown(true)
+                        
+                        // Filter companies based on search text
+                        if (value.trim().length >= 1) {
+                          const filtered = companies.filter(c => {
+                            const name = (c.displayName || c.name || '').toLowerCase()
+                            return name.includes(value.toLowerCase())
+                          })
+                          setFilteredCompanies(filtered)
+                        } else {
+                          setFilteredCompanies([])
+                        }
+                        
+                        // Clear selection if user is typing
+                        if (formData.companyToVisit && value !== formData.companyToVisit) {
+                          setFormData(prev => ({ ...prev, companyToVisit: '', companyId: '' }))
+                          setCompanySettings(null)
+                        }
+                      }}
+                      onFocus={() => {
+                        if (companySearchText.trim().length >= 1) {
+                          setShowCompanyDropdown(true)
+                        }
+                      }}
+                      onBlur={() => {
+                        // Delay hiding to allow click on dropdown item
+                        setTimeout(() => setShowCompanyDropdown(false), 200)
+                      }}
+                      placeholder={companiesLoading ? "Loading..." : "Type company name to search..."}
+                      disabled={companiesLoading}
+                      className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-teal-500 disabled:bg-gray-100 ${errors.companyToVisit ? 'border-red-500' : 'border-gray-200'}`}
+                    />
+                    {formData.companyToVisit && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCompanySearchText('')
+                          setFormData(prev => ({ ...prev, companyToVisit: '', companyId: '' }))
+                          setCompanySettings(null)
+                          setFilteredCompanies([])
+                          companyInputRef.current?.focus()
+                        }}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
                     )}
-                  </select>
+                  </div>
+                  
+                  {/* Autocomplete Dropdown */}
+                  {showCompanyDropdown && filteredCompanies.length > 0 && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                      {filteredCompanies.map(c => (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => {
+                            const companyName = c.displayName || c.name
+                            setCompanySearchText(companyName)
+                            setFormData(prev => ({ 
+                              ...prev, 
+                              companyToVisit: companyName,
+                              companyId: c.id
+                            }))
+                            setCompanySettings({
+                              requireApproval: c.requireApproval,
+                              autoApproveVisitors: !c.requireApproval
+                            })
+                            setShowCompanyDropdown(false)
+                            setFilteredCompanies([])
+                          }}
+                          className="w-full px-4 py-3 text-left hover:bg-teal-50 border-b border-gray-100 last:border-0 flex items-center gap-3"
+                        >
+                          <Building2 className="w-4 h-4 text-gray-400" />
+                          <span className="text-gray-800">{c.displayName || c.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {/* No results message */}
+                  {showCompanyDropdown && companySearchText.trim().length >= 2 && filteredCompanies.length === 0 && !companiesLoading && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-4 text-center text-gray-500">
+                      <p className="text-sm">No company found matching "{companySearchText}"</p>
+                      <p className="text-xs mt-1">Please check the spelling or contact reception</p>
+                    </div>
+                  )}
+                  
                   {errors.companyToVisit && <p className="text-red-500 text-xs mt-1">{errors.companyToVisit}</p>}
                   
                   {/* Show approval status */}
