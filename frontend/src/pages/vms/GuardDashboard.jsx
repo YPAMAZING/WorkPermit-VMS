@@ -135,11 +135,11 @@ const GuardDashboard = () => {
     if (!searchQuery.trim()) return requests
     const query = searchQuery.toLowerCase()
     return requests.filter(r => 
-      r.firstName?.toLowerCase().includes(query) ||
-      r.lastName?.toLowerCase().includes(query) ||
+      r.visitorName?.toLowerCase().includes(query) ||
       r.phone?.includes(query) ||
-      r.hostName?.toLowerCase().includes(query) ||
-      r.requestNumber?.toLowerCase().includes(query)
+      r.personToMeet?.toLowerCase().includes(query) ||
+      r.companyToVisit?.toLowerCase().includes(query) ||
+      r.id?.toLowerCase().includes(query)
     )
   }
   
@@ -208,7 +208,7 @@ const GuardDashboard = () => {
             )}
             <div className="min-w-0">
               <h3 className="font-semibold text-gray-800 text-sm lg:text-base truncate">
-                {request.firstName} {request.lastName}
+                {request.visitorName || 'Unknown Visitor'}
               </h3>
               <p className="text-xs lg:text-sm text-gray-500 flex items-center gap-1">
                 <Phone className="w-3 h-3" />
@@ -234,7 +234,7 @@ const GuardDashboard = () => {
           </div>
           <div>
             <p className="text-gray-400 text-xs">Meeting</p>
-            <p className="text-gray-700 font-medium truncate">{request.hostName || '-'}</p>
+            <p className="text-gray-700 font-medium truncate">{request.personToMeet || '-'}</p>
           </div>
         </div>
         
@@ -506,67 +506,97 @@ const GuardDashboard = () => {
                   )}
                   <div>
                     <h4 className="text-xl font-semibold text-gray-800">
-                      {selectedRequest.firstName} {selectedRequest.lastName}
+                      {selectedRequest.visitorName || `${selectedRequest.firstName || ''} ${selectedRequest.lastName || ''}`.trim() || 'Unknown'}
                     </h4>
-                    {selectedRequest.designation && (
-                      <p className="text-gray-500">{selectedRequest.designation}</p>
+                    {selectedRequest.companyFrom && (
+                      <p className="text-gray-500">{selectedRequest.companyFrom}</p>
                     )}
                     {getStatusBadge(selectedRequest.status)}
                   </div>
                 </div>
                 
-                {/* Contact & Company */}
+                {/* Contact Info */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="p-3 bg-gray-50 rounded-lg">
                     <p className="text-xs text-gray-400 mb-1">Phone</p>
-                    <p className="font-medium text-gray-800">{selectedRequest.phone}</p>
+                    <p className="font-medium text-gray-800">{selectedRequest.phone || '-'}</p>
                   </div>
                   <div className="p-3 bg-gray-50 rounded-lg">
                     <p className="text-xs text-gray-400 mb-1">Email</p>
                     <p className="font-medium text-gray-800 truncate">{selectedRequest.email || '-'}</p>
                   </div>
-                  <div className="p-3 bg-gray-50 rounded-lg col-span-2">
-                    <p className="text-xs text-gray-400 mb-1">Company</p>
-                    <p className="font-medium text-gray-800">{selectedRequest.visitorCompany || '-'}</p>
-                  </div>
+                </div>
+                
+                {/* Company To Visit */}
+                <div className="p-3 bg-blue-50 rounded-lg">
+                  <p className="text-xs text-blue-600 mb-1">Company to Visit</p>
+                  <p className="font-medium text-gray-800">{selectedRequest.companyToVisit || selectedRequest.company?.displayName || selectedRequest.company?.name || '-'}</p>
                 </div>
                 
                 {/* Visit Purpose */}
                 <div className="p-3 bg-teal-50 rounded-lg">
                   <p className="text-xs text-teal-600 mb-1">Purpose of Visit</p>
-                  <p className="font-medium text-gray-800">{selectedRequest.purpose}</p>
-                  {selectedRequest.purposeDetails && (
-                    <p className="text-sm text-gray-600 mt-1">{selectedRequest.purposeDetails}</p>
-                  )}
+                  <p className="font-medium text-gray-800">{selectedRequest.purpose || '-'}</p>
                 </div>
                 
-                {/* Host Info */}
+                {/* Person to Meet */}
                 <div className="p-3 bg-green-50 rounded-lg">
-                  <p className="text-xs text-green-600 mb-1">Meeting With</p>
-                  <p className="font-medium text-gray-800">{selectedRequest.hostName || '-'}</p>
-                  {selectedRequest.hostDepartment && (
-                    <p className="text-sm text-gray-600">{selectedRequest.hostDepartment}</p>
-                  )}
-                  {selectedRequest.hostPhone && (
-                    <p className="text-sm text-gray-600 flex items-center gap-1 mt-1">
-                      <Phone className="w-3 h-3" />
-                      {selectedRequest.hostPhone}
+                  <p className="text-xs text-green-600 mb-1">Person to Meet</p>
+                  <p className="font-medium text-gray-800">{selectedRequest.personToMeet || '-'}</p>
+                </div>
+                
+                {/* Vehicle Number (if any) */}
+                {selectedRequest.vehicleNumber && (
+                  <div className="p-3 bg-gray-50 rounded-lg">
+                    <p className="text-xs text-gray-400 mb-1">Vehicle Number</p>
+                    <p className="font-medium text-gray-800">{selectedRequest.vehicleNumber}</p>
+                  </div>
+                )}
+                
+                {/* Check-in/out Times */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-3 bg-gray-50 rounded-lg">
+                    <p className="text-xs text-gray-400 mb-1">Check-in Time</p>
+                    <p className="font-medium text-gray-800">
+                      {selectedRequest.checkInTime 
+                        ? new Date(selectedRequest.checkInTime).toLocaleString('en-IN', { 
+                            hour: '2-digit', 
+                            minute: '2-digit',
+                            hour12: true,
+                            day: '2-digit',
+                            month: 'short'
+                          })
+                        : '-'}
                     </p>
-                  )}
+                  </div>
+                  <div className="p-3 bg-gray-50 rounded-lg">
+                    <p className="text-xs text-gray-400 mb-1">Check-out Time</p>
+                    <p className="font-medium text-gray-800">
+                      {selectedRequest.checkOutTime 
+                        ? new Date(selectedRequest.checkOutTime).toLocaleString('en-IN', { 
+                            hour: '2-digit', 
+                            minute: '2-digit',
+                            hour12: true,
+                            day: '2-digit',
+                            month: 'short'
+                          })
+                        : '-'}
+                    </p>
+                  </div>
                 </div>
                 
                 {/* ID Proof */}
                 {(selectedRequest.idProofType || selectedRequest.idDocumentImage) && (
                   <div className="p-3 bg-gray-50 rounded-lg">
                     <p className="text-xs text-gray-400 mb-1">ID Proof</p>
-                    {selectedRequest.idProofType && (
+                    {selectedRequest.idProofType && selectedRequest.idProofType !== 'NONE' && (
                       <p className="font-medium text-gray-800">
-                        {selectedRequest.idProofType.replace(/_/g, ' ').toUpperCase()}: {selectedRequest.idProofNumber}
+                        {selectedRequest.idProofType.replace(/_/g, ' ').toUpperCase()}: {selectedRequest.idProofNumber || '-'}
                       </p>
                     )}
-                    {(selectedRequest.idProofImage || selectedRequest.idDocumentImage) && (
+                    {selectedRequest.idDocumentImage && (
                       <img 
-                        src={selectedRequest.idProofImage || selectedRequest.idDocumentImage} 
+                        src={selectedRequest.idDocumentImage} 
                         alt="ID Document" 
                         className="mt-2 w-full max-h-48 object-contain rounded-lg border border-gray-200 bg-white"
                       />
@@ -577,8 +607,8 @@ const GuardDashboard = () => {
                 {/* Request Number */}
                 <div className="p-3 bg-gray-50 rounded-lg flex items-center justify-between">
                   <div>
-                    <p className="text-xs text-gray-400">Request Number</p>
-                    <p className="font-mono font-bold text-gray-800">{selectedRequest.requestNumber}</p>
+                    <p className="text-xs text-gray-400">Request ID</p>
+                    <p className="font-mono font-bold text-gray-800 text-sm">{selectedRequest.id}</p>
                   </div>
                   <QrCode className="w-8 h-8 text-gray-400" />
                 </div>
@@ -696,9 +726,9 @@ const GuardDashboard = () => {
                 )}
                 <div className="flex-1 min-w-0">
                   <h4 className="text-lg font-semibold text-gray-800 truncate">
-                    {selectedRequest.firstName} {selectedRequest.lastName}
+                    {selectedRequest.visitorName || 'Unknown Visitor'}
                   </h4>
-                  <p className="text-sm text-gray-500">{selectedRequest.phone}</p>
+                  <p className="text-sm text-gray-500">{selectedRequest.phone || '-'}</p>
                   {getStatusBadge(selectedRequest.status)}
                 </div>
               </div>
@@ -710,36 +740,56 @@ const GuardDashboard = () => {
                   <p className="font-medium text-sm text-gray-800 truncate">{selectedRequest.email || '-'}</p>
                 </div>
                 <div className="p-3 bg-gray-50 rounded-lg">
-                  <p className="text-xs text-gray-400">Company</p>
-                  <p className="font-medium text-sm text-gray-800 truncate">{selectedRequest.visitorCompany || '-'}</p>
+                  <p className="text-xs text-gray-400">From Company</p>
+                  <p className="font-medium text-sm text-gray-800 truncate">{selectedRequest.companyFrom || '-'}</p>
+                </div>
+                <div className="p-3 bg-blue-50 rounded-lg col-span-2">
+                  <p className="text-xs text-blue-600">Company to Visit</p>
+                  <p className="font-medium text-gray-800">{selectedRequest.companyToVisit || selectedRequest.company?.displayName || '-'}</p>
                 </div>
                 <div className="p-3 bg-teal-50 rounded-lg col-span-2">
                   <p className="text-xs text-teal-600">Purpose</p>
-                  <p className="font-medium text-gray-800">{selectedRequest.purpose}</p>
+                  <p className="font-medium text-gray-800">{selectedRequest.purpose || '-'}</p>
                 </div>
                 <div className="p-3 bg-green-50 rounded-lg col-span-2">
-                  <p className="text-xs text-green-600">Meeting With</p>
-                  <p className="font-medium text-gray-800">{selectedRequest.hostName || '-'}</p>
+                  <p className="text-xs text-green-600">Person to Meet</p>
+                  <p className="font-medium text-gray-800">{selectedRequest.personToMeet || '-'}</p>
+                </div>
+                <div className="p-3 bg-gray-50 rounded-lg">
+                  <p className="text-xs text-gray-400">Check-in Time</p>
+                  <p className="font-medium text-sm text-gray-800">
+                    {selectedRequest.checkInTime 
+                      ? new Date(selectedRequest.checkInTime).toLocaleString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
+                      : '-'}
+                  </p>
+                </div>
+                <div className="p-3 bg-gray-50 rounded-lg">
+                  <p className="text-xs text-gray-400">Check-out Time</p>
+                  <p className="font-medium text-sm text-gray-800">
+                    {selectedRequest.checkOutTime 
+                      ? new Date(selectedRequest.checkOutTime).toLocaleString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
+                      : '-'}
+                  </p>
                 </div>
               </div>
 
               {/* ID Proof */}
-              {(selectedRequest.idProofImage || selectedRequest.idDocumentImage) && (
+              {selectedRequest.idDocumentImage && (
                 <div className="p-3 bg-gray-50 rounded-lg">
                   <p className="text-xs text-gray-400 mb-2">ID Document</p>
                   <img 
-                    src={selectedRequest.idProofImage || selectedRequest.idDocumentImage} 
+                    src={selectedRequest.idDocumentImage} 
                     alt="ID Document" 
                     className="w-full max-h-48 object-contain rounded-lg border border-gray-200 bg-white"
                   />
                 </div>
               )}
               
-              {/* Request Number */}
+              {/* Request ID */}
               <div className="p-3 bg-gray-50 rounded-lg flex items-center justify-between">
                 <div>
-                  <p className="text-xs text-gray-400">Request Number</p>
-                  <p className="font-mono font-bold text-gray-800">{selectedRequest.requestNumber}</p>
+                  <p className="text-xs text-gray-400">Request ID</p>
+                  <p className="font-mono font-bold text-gray-800 text-sm">{selectedRequest.id}</p>
                 </div>
                 <QrCode className="w-6 h-6 text-gray-400" />
               </div>
