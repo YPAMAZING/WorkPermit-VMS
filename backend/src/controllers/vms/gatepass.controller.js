@@ -2,28 +2,7 @@
 const vmsPrisma = require('../../config/vms-prisma');
 const QRCode = require('qrcode');
 const { v4: uuidv4 } = require('uuid');
-
-// Generate gatepass number
-const generateGatepassNumber = async () => {
-  const date = new Date();
-  const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
-  
-  // Get count for today
-  const todayStart = new Date(date.setHours(0, 0, 0, 0));
-  const todayEnd = new Date(date.setHours(23, 59, 59, 999));
-  
-  const count = await vmsPrisma.gatepass.count({
-    where: {
-      issuedAt: {
-        gte: todayStart,
-        lte: todayEnd,
-      },
-    },
-  });
-  
-  const sequence = String(count + 1).padStart(4, '0');
-  return `GP-${dateStr}-${sequence}`;
-};
+const { generateVisitorPassNumber } = require('../../utils/passNumberGenerator');
 
 // Generate QR code for gatepass
 const generateQRCode = async (data) => {
@@ -277,8 +256,8 @@ exports.createGatepass = async (req, res) => {
       });
     }
 
-    // Generate gatepass number
-    const gatepassNumber = await generateGatepassNumber();
+    // Generate gatepass number using new format (RGDGTLVP)
+    const gatepassNumber = await generateVisitorPassNumber();
 
     // Calculate validity
     const validFromDate = validFrom ? new Date(validFrom) : new Date();

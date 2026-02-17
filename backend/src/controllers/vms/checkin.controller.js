@@ -1,6 +1,7 @@
 const vmsPrisma = require('../../config/vms-prisma');
 const QRCode = require('qrcode');
 const { v4: uuidv4 } = require('uuid');
+const { generateVisitorPassNumber, generateRequestNumber } = require('../../utils/passNumberGenerator');
 
 // Helper to check if user is admin
 const isUserAdmin = (user) => {
@@ -19,14 +20,6 @@ const isCompanyUser = (user) => {
   return companyRoles.includes(user.role) || (user.companyId && !isUserAdmin(user));
 };
 
-// Generate request number
-const generateRequestNumber = () => {
-  const date = new Date();
-  const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
-  const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
-  return `CHK-${dateStr}-${random}`;
-};
-
 // Generate visitor code
 const generateVisitorCode = () => {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -35,14 +28,6 @@ const generateVisitorCode = () => {
     code += chars.charAt(Math.floor(Math.random() * chars.length));
   }
   return code;
-};
-
-// Generate gatepass number
-const generateGatepassNumber = () => {
-  const date = new Date();
-  const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
-  const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
-  return `GP-${dateStr}-${random}`;
 };
 
 // ================================
@@ -298,7 +283,10 @@ exports.submitCheckInRequest = async (req, res) => {
     let gatepass = null;
     let qrCode = null;
     if (status === 'APPROVED' || status === 'CHECKED_IN') {
-      const gatepassNumber = generateGatepassNumber();
+      // Generate pass number based on entry type
+      // Pre-approved: Use guest pass format (RGDGTLGP)
+      // Walk-in: Use visitor pass format (RGDGTLVP)
+      const gatepassNumber = await generateVisitorPassNumber();
       const qrData = JSON.stringify({ gatepassNumber, visitorId: visitor.id });
       qrCode = await QRCode.toDataURL(qrData);
       

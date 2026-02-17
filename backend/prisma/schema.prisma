@@ -417,6 +417,7 @@ model VMSGatepass {
 
 model VMSPreApproval {
   id              String   @id @default(uuid()) @db.VarChar(36)
+  passNumber      String?  @unique @db.VarChar(50)  // RGDGTLGP FEB 2026 - 0001
   visitorName     String   @db.VarChar(255)
   phone           String   @db.VarChar(20)
   email           String?  @db.VarChar(255)
