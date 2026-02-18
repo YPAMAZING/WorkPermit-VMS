@@ -158,7 +158,33 @@ exports.getPreApprovedVisitor = async (req, res) => {
       return res.status(404).json({ message: 'Pre-approved visitor not found' });
     }
 
-    res.json(entry);
+    // Fetch company name separately (no relation in schema)
+    let companyName = null;
+    if (entry.companyId) {
+      try {
+        const company = await prisma.vMSCompany.findUnique({
+          where: { id: entry.companyId },
+          select: { name: true, displayName: true }
+        });
+        companyName = company?.displayName || company?.name || null;
+      } catch (e) {
+        console.log('Could not fetch company data:', e.message);
+      }
+    }
+
+    // Generate pass number for display
+    const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+    const createdDate = new Date(entry.createdAt);
+    const month = months[createdDate.getMonth()];
+    const year = createdDate.getFullYear();
+    const passNumber = `RGDGTLGP ${month} ${year} - ${String(entry.id.substring(0, 4)).toUpperCase()}`;
+
+    res.json({
+      ...entry,
+      companyName,
+      passNumber,
+      approvalCode: passNumber
+    });
   } catch (error) {
     console.error('Get pre-approved visitor error:', error);
     res.status(500).json({ message: 'Failed to get entry', error: error.message });
