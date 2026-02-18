@@ -140,12 +140,15 @@ const PreApproval = () => {
       const validUntil = new Date(visitDateTime.getTime() + formData.validHours * 60 * 60 * 1000)
 
       const payload = {
-        ...formData,
-        entryType: 'PRE_APPROVED',
-        status: 'PRE_APPROVED',
-        expectedArrival: visitDateTime.toISOString(),
+        visitorName: formData.visitorName,
+        phone: formData.phone,
+        email: formData.email,
+        companyFrom: formData.companyFrom,
+        companyId: formData.companyId,
+        purpose: formData.purpose,
+        validFrom: visitDateTime.toISOString(),
         validUntil: validUntil.toISOString(),
-        createdBy: 'company', // Will be replaced with actual user
+        remarks: formData.remarks,
       }
 
       const response = await vmsAPI.createPreApproval(payload)
@@ -255,7 +258,7 @@ _Reliable Group - Visitor Management System_`
             </div>
           </div>
           <button
-            onClick={() => navigate('/vms')}
+            onClick={() => navigate(isAdminOrReception ? '/vms/dashboard' : '/vms/admin/company_dashboard')}
             className="text-purple-300 hover:text-white text-sm flex items-center gap-1"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -646,12 +649,17 @@ _Reliable Group - Visitor Management System_`
                     onClick={() => {
                       setStep(1)
                       setPreApproval(null)
+                      // For company users, preserve their company selection
+                      const userCompany = isCompanyUser && user?.companyId 
+                        ? companies.find(c => c.id === user.companyId) 
+                        : null
                       setFormData({
                         visitorName: '',
                         phone: '',
                         email: '',
                         companyFrom: '',
-                        companyToVisit: '',
+                        companyToVisit: userCompany?.displayName || userCompany?.name || '',
+                        companyId: userCompany?.id || '',
                         personToMeet: '',
                         purpose: '',
                         visitDate: '',
@@ -670,10 +678,10 @@ _Reliable Group - Visitor Management System_`
                 </div>
 
                 <button
-                  onClick={() => navigate('/vms')}
+                  onClick={() => navigate(isAdminOrReception ? '/vms/dashboard' : '/vms/admin/company_dashboard')}
                   className="w-full text-gray-500 py-2 text-sm hover:text-gray-700"
                 >
-                  ← Back to VMS Home
+                  ← Back to Dashboard
                 </button>
               </div>
             </div>

@@ -258,13 +258,19 @@ exports.createPreApprovedVisitor = async (req, res) => {
         validUntil: new Date(validUntil),
         status: 'ACTIVE',
         createdBy: req.user?.userId || 'system',
-      },
-      include: {
-        company: {
-          select: { name: true, displayName: true, logo: true }
-        }
       }
     });
+
+    // Fetch company data separately (no relation in schema)
+    let companyData = null;
+    try {
+      companyData = await prisma.vMSCompany.findUnique({
+        where: { id: companyId },
+        select: { name: true, displayName: true, logo: true }
+      });
+    } catch (e) {
+      console.log('Could not fetch company data:', e.message);
+    }
 
     res.status(201).json({
       success: true,
@@ -272,6 +278,7 @@ exports.createPreApprovedVisitor = async (req, res) => {
       entry: {
         ...entry,
         passNumber, // Include generated pass number
+        company: companyData
       },
       preApproval: {
         id: entry.id,
@@ -282,7 +289,7 @@ exports.createPreApprovedVisitor = async (req, res) => {
         email: entry.email,
         companyFrom: entry.companyFrom,
         companyId: entry.companyId,
-        companyToVisit: entry.company?.displayName || entry.company?.name,
+        companyToVisit: companyData?.displayName || companyData?.name,
         purpose: entry.purpose,
         validFrom: entry.validFrom,
         validUntil: entry.validUntil,
