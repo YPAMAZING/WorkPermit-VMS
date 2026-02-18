@@ -377,7 +377,23 @@ const VisitorRegister = () => {
           setStep(3)
           toast.success('Request submitted! Please wait for approval.')
         } else {
-          setGatepass(response.data.gatepass)
+          // Auto-approved - merge form data with API response
+          const apiGatepass = response.data.gatepass || {}
+          setGatepass({
+            ...apiGatepass,
+            // Include form data for display
+            visitorName: formData.visitorName,
+            phone: formData.phone,
+            companyToVisit: formData.companyToVisit,
+            personToMeet: formData.personToMeet,
+            purpose: formData.purpose,
+            photo: capturedPhoto,
+            // Use API response values or fallbacks
+            gatepassNumber: apiGatepass.gatepassNumber || response.data.gatepassNumber,
+            validUntil: apiGatepass.validUntil || new Date(new Date().setHours(23, 59, 59, 999)).toISOString(),
+            checkInTime: apiGatepass.validFrom || new Date().toISOString(),
+            status: response.data.status || 'APPROVED',
+          })
           setStep(3)
           toast.success('Visitor pass generated successfully!')
         }
