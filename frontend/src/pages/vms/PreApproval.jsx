@@ -258,7 +258,7 @@ _Reliable Group - Visitor Management System_`
             </div>
           </div>
           <button
-            onClick={() => navigate(isAdminOrReception ? '/vms/dashboard' : '/vms/admin/company_dashboard')}
+            onClick={() => navigate(isAdminOrReception ? '/vms/admin/dashboard' : '/vms/admin/company-dashboard')}
             className="text-purple-300 hover:text-white text-sm flex items-center gap-1"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -678,7 +678,7 @@ _Reliable Group - Visitor Management System_`
                 </div>
 
                 <button
-                  onClick={() => navigate(isAdminOrReception ? '/vms/dashboard' : '/vms/admin/company_dashboard')}
+                  onClick={() => navigate(isAdminOrReception ? '/vms/admin/dashboard' : '/vms/admin/company-dashboard')}
                   className="w-full text-gray-500 py-2 text-sm hover:text-gray-700"
                 >
                   ← Back to Dashboard

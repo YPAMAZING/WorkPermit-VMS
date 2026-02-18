@@ -90,6 +90,15 @@ const VMSLayout = () => {
       description: 'Live feed for check-in management',
     },
     {
+      name: 'Pre-approved Passes',
+      path: '/vms/admin/preapproved',
+      icon: UserCheck,
+      permission: 'vms.preapproved.view',
+      showFor: ['company', 'reception', 'guard'], // Show for all non-admin roles
+      hideFromAdmin: true,
+      description: 'Manage pre-approved visitor passes',
+    },
+    {
       name: 'Visitors',
       path: '/vms/admin/visitors',
       icon: Users,
@@ -108,7 +117,7 @@ const VMSLayout = () => {
       path: '/vms/admin/preapproved',
       icon: UserCheck,
       permission: 'vms.preapproved.view',
-      adminOnly: true, // Only admin needs separate page, company sees it in dashboard
+      adminOnly: true, // Admin version of pre-approved management
     },
     {
       name: 'Blacklist',
