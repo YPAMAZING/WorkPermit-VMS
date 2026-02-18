@@ -61,7 +61,9 @@ exports.getAllVisitors = async (req, res) => {
           select: {
             id: true,
             gatepassNumber: true,
-            status: true
+            status: true,
+            validFrom: true,
+            validUntil: true
           }
         }
       },
@@ -84,11 +86,13 @@ exports.getAllVisitors = async (req, res) => {
       hostName: v.personToMeet,
       department: null,
       status: v.status,
-      requestNumber: v.gatepass?.gatepassNumber || v.id.substring(0, 8).toUpperCase(),
-      passNumber: v.gatepass?.gatepassNumber || v.id.substring(0, 8).toUpperCase(),
+      requestNumber: v.gatepass?.gatepassNumber || `RGDGTLRQ-${v.id.substring(0, 8).toUpperCase()}`,
+      passNumber: v.gatepass?.gatepassNumber || `RGDGTLRQ-${v.id.substring(0, 8).toUpperCase()}`,
       photo: v.photo,
       checkInTime: v.checkInTime,
       checkOutTime: v.checkOutTime,
+      validFrom: v.gatepass?.validFrom,
+      validUntil: v.gatepass?.validUntil,
       createdAt: v.createdAt,
       company: v.company
     }));
@@ -370,6 +374,17 @@ exports.getCompanyPortal = async (req, res) => {
           companyId: company.id,
           createdAt: { gte: startOfDay }
         },
+        include: {
+          gatepass: {
+            select: {
+              id: true,
+              gatepassNumber: true,
+              status: true,
+              validFrom: true,
+              validUntil: true
+            }
+          }
+        },
         orderBy: { createdAt: 'desc' },
         take: 50
       }),
@@ -405,9 +420,13 @@ exports.getCompanyPortal = async (req, res) => {
         hostName: v.personToMeet,
         department: null,
         status: v.status,
-        passNumber: v.id.substring(0, 8).toUpperCase(),
+        passNumber: v.gatepass?.gatepassNumber || `RGDGTLRQ-${v.id.substring(0, 8).toUpperCase()}`,
+        requestNumber: v.gatepass?.gatepassNumber || `RGDGTLRQ-${v.id.substring(0, 8).toUpperCase()}`,
+        photo: v.photo,
         checkInTime: v.checkInTime,
         checkOutTime: v.checkOutTime,
+        validFrom: v.gatepass?.validFrom,
+        validUntil: v.gatepass?.validUntil,
         createdAt: v.createdAt
       })),
       stats: {
@@ -470,6 +489,17 @@ exports.getCompanyVisitors = async (req, res) => {
         ...dateFilter,
         ...statusFilter
       },
+      include: {
+        gatepass: {
+          select: {
+            id: true,
+            gatepassNumber: true,
+            status: true,
+            validFrom: true,
+            validUntil: true
+          }
+        }
+      },
       orderBy: { createdAt: 'desc' }
     });
 
@@ -497,9 +527,14 @@ exports.getCompanyVisitors = async (req, res) => {
         hostName: v.personToMeet,
         department: null,
         status: v.status,
-        passNumber: v.id.substring(0, 8).toUpperCase(),
+        // Use gatepass number if available, otherwise use formatted ID
+        passNumber: v.gatepass?.gatepassNumber || `RGDGTLRQ-${v.id.substring(0, 8).toUpperCase()}`,
+        requestNumber: v.gatepass?.gatepassNumber || `RGDGTLRQ-${v.id.substring(0, 8).toUpperCase()}`,
+        photo: v.photo,
         checkInTime: v.checkInTime,
         checkOutTime: v.checkOutTime,
+        validFrom: v.gatepass?.validFrom,
+        validUntil: v.gatepass?.validUntil,
         createdAt: v.createdAt
       })),
       stats: {

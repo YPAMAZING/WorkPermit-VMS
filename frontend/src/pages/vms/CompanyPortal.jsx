@@ -477,6 +477,12 @@ const CompanyPortal = () => {
                       <div className="text-sm">{formatDateTime(selectedVisitor.checkOutTime)}</div>
                     </div>
                   )}
+                  {selectedVisitor.validUntil && (
+                    <div>
+                      <div className="text-xs text-gray-500">Valid Until</div>
+                      <div className="text-sm">{formatDateTime(selectedVisitor.validUntil)}</div>
+                    </div>
+                  )}
                 </div>
 
                 {selectedVisitor.idProof && (

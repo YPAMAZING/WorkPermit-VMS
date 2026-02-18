@@ -1262,10 +1262,16 @@ const VisitorRegister = () => {
                     <div className="bg-gray-50 p-3 rounded-lg">
                       <p className="text-xs text-gray-500 mb-1">Check-in Time</p>
                       <p className="font-medium text-gray-800">
-                        {new Date(gatepass.checkInTime).toLocaleTimeString('en-IN', {
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
+                        {gatepass.checkInTime && !isNaN(new Date(gatepass.checkInTime).getTime())
+                          ? new Date(gatepass.checkInTime).toLocaleTimeString('en-IN', {
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })
+                          : new Date().toLocaleTimeString('en-IN', {
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })
+                        }
                       </p>
                     </div>
                   </div>
@@ -1276,12 +1282,20 @@ const VisitorRegister = () => {
                     <div>
                       <p className="text-xs text-amber-700">Valid Until</p>
                       <p className="font-medium text-amber-800">
-                        {new Date(gatepass.validUntil).toLocaleString('en-IN', {
-                          day: 'numeric',
-                          month: 'short',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
+                        {gatepass.validUntil && !isNaN(new Date(gatepass.validUntil).getTime())
+                          ? new Date(gatepass.validUntil).toLocaleString('en-IN', {
+                              day: 'numeric',
+                              month: 'short',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })
+                          : new Date(new Date().setHours(23, 59, 0, 0)).toLocaleString('en-IN', {
+                              day: 'numeric',
+                              month: 'short',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })
+                        }
                       </p>
                     </div>
                   </div>
