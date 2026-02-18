@@ -30,10 +30,13 @@ import {
 } from 'lucide-react'
 
 const VMSGatepasses = () => {
-  const { canCreateGatepasses, canEditGatepasses, isAdmin, isReceptionist, isSecurityGuard, user } = useVMSAuth()
+  const { canCreateGatepasses, canEditGatepasses, isAdmin, isReceptionist, isSecurityGuard, user, isCompanyUser } = useVMSAuth()
   
   // Can see all companies (admin, reception, guard)
   const canSeeAllCompanies = isAdmin || isReceptionist || isSecurityGuard
+  
+  // Can create employee passes: Admin, Reception, or Company Users (for their own company)
+  const canCreateEmployeePass = isAdmin || isReceptionist || isCompanyUser || canCreateGatepasses || user?.companyId
   const [passes, setPasses] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -279,10 +282,10 @@ Pass Link: ${passUrl}
           >
             <RefreshCw size={18} className={refreshing ? 'animate-spin' : ''} />
           </button>
-          {(canCreateGatepasses || isAdmin) && (
+          {canCreateEmployeePass && (
             <button
               onClick={() => {
-                setNewPass(prev => ({ ...prev, validUntil: getDefaultValidUntil() }))
+                setNewPass(prev => ({ ...prev, validUntil: getDefaultValidUntil(), companyId: user?.companyId || '' }))
                 setShowCreateModal(true)
               }}
               className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
@@ -446,10 +449,10 @@ Pass Link: ${passUrl}
           <div className="flex flex-col items-center justify-center h-64 text-gray-500">
             <Briefcase size={48} className="mb-3 text-gray-300" />
             <p>No employee passes found</p>
-            {(canCreateGatepasses || isAdmin) && (
+            {canCreateEmployeePass && (
               <button
                 onClick={() => {
-                  setNewPass(prev => ({ ...prev, validUntil: getDefaultValidUntil() }))
+                  setNewPass(prev => ({ ...prev, validUntil: getDefaultValidUntil(), companyId: user?.companyId || '' }))
                   setShowCreateModal(true)
                 }}
                 className="mt-4 text-teal-600 hover:text-teal-700"
