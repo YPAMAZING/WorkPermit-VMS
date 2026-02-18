@@ -422,6 +422,7 @@ model VMSPreApproval {
   email           String?  @db.VarChar(255)
   companyFrom     String?  @db.VarChar(255)
   companyId       String   @db.VarChar(36)
+  personToMeet    String?  @db.VarChar(255)
   purpose         String   @db.VarChar(100)
   
   validFrom       DateTime

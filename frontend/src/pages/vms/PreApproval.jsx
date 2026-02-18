@@ -145,6 +145,7 @@ const PreApproval = () => {
         email: formData.email,
         companyFrom: formData.companyFrom,
         companyId: formData.companyId,
+        personToMeet: formData.personToMeet,
         purpose: formData.purpose,
         validFrom: visitDateTime.toISOString(),
         validUntil: validUntil.toISOString(),

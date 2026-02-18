@@ -665,7 +665,9 @@ const GuardDashboard = () => {
                 <div className="p-3 bg-gray-50 rounded-lg flex items-center justify-between">
                   <div>
                     <p className="text-xs text-gray-400">Request ID</p>
-                    <p className="font-mono font-bold text-gray-800 text-sm">{selectedRequest.id}</p>
+                    <p className="font-mono font-bold text-gray-800 text-sm">
+                      {selectedRequest.passNumber || selectedRequest.approvalCode || selectedRequest.gatepass?.gatepassNumber || selectedRequest.requestNumber || selectedRequest.id?.substring(0, 8).toUpperCase()}
+                    </p>
                   </div>
                   <QrCode className="w-8 h-8 text-gray-400" />
                 </div>

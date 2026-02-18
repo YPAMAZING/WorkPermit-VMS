@@ -707,7 +707,7 @@ exports.getLiveFeed = async (req, res) => {
         companyToVisit: pa.company?.displayName || pa.company?.name,
         company: pa.company,
         purpose: pa.purpose,
-        personToMeet: null,
+        personToMeet: pa.personToMeet || null,
         status: 'PRE_APPROVED',
         passNumber,
         approvalCode: passNumber,
