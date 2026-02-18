@@ -100,6 +100,7 @@ exports.getPreApprovedVisitors = async (req, res) => {
     const companyMap = new Map(companies.map(c => [c.id, c]));
 
     // Use stored pass numbers, or generate fallback for old entries
+    // Use RGDGTLPA prefix for Pre-Approval passes
     const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 
     res.json({
@@ -110,7 +111,7 @@ exports.getPreApprovedVisitors = async (req, res) => {
           const createdDate = new Date(e.createdAt);
           const month = months[createdDate.getMonth()];
           const year = createdDate.getFullYear();
-          passNumber = `RGDGTLGP ${month} ${year} - ${String(e.id.substring(0, 4)).toUpperCase()}`;
+          passNumber = `RGDGTLPA ${month} ${year} - ${String(e.id.substring(0, 4)).toUpperCase()}`;
         }
         const company = companyMap.get(e.companyId);
         
@@ -124,7 +125,9 @@ exports.getPreApprovedVisitors = async (req, res) => {
           companyFrom: e.companyFrom,
           companyId: e.companyId,
           companyName: company?.displayName || company?.name,
+          personToMeet: e.personToMeet,
           purpose: e.purpose,
+          remarks: e.remarks,
           validFrom: e.validFrom,
           validUntil: e.validUntil,
           status: e.status,
@@ -176,13 +179,14 @@ exports.getPreApprovedVisitor = async (req, res) => {
     }
 
     // Generate pass number for display (use stored one if available, otherwise generate)
+    // Use RGDGTLPA prefix for Pre-Approval passes
     let passNumber = entry.passNumber;
     if (!passNumber) {
       const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
       const createdDate = new Date(entry.createdAt);
       const month = months[createdDate.getMonth()];
       const year = createdDate.getFullYear();
-      passNumber = `RGDGTLGP ${month} ${year} - ${String(entry.id.substring(0, 4)).toUpperCase()}`;
+      passNumber = `RGDGTLPA ${month} ${year} - ${String(entry.id.substring(0, 4)).toUpperCase()}`;
     }
 
     res.json({
@@ -289,6 +293,7 @@ exports.createPreApprovedVisitor = async (req, res) => {
         companyId,
         personToMeet: personToMeet || null,
         purpose,
+        remarks: remarks || null, // Save remarks to database
         validFrom: new Date(validFrom),
         validUntil: new Date(validUntil),
         status: 'ACTIVE',

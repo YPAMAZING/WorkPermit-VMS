@@ -43,6 +43,7 @@ const NewPreApproval = () => {
     companyFrom: '',
     // Auto-set companyId for company users
     companyId: user?.companyId || '',
+    personToMeet: '',
     purpose: 'MEETING',
     validFrom: new Date().toISOString().slice(0, 16),
     validUntil: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16),
@@ -287,6 +288,22 @@ const NewPreApproval = () => {
                   <option key={p.value} value={p.value}>{p.label}</option>
                 ))}
               </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Person to Meet (Optional)
+              </label>
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                <input
+                  type="text"
+                  name="personToMeet"
+                  value={formData.personToMeet}
+                  onChange={handleChange}
+                  placeholder="Name of person to meet"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                />
+              </div>
             </div>
           </div>
         </div>

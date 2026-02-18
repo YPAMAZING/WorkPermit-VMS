@@ -425,6 +425,7 @@ model VMSPreApproval {
   companyId       String   @db.VarChar(36)
   personToMeet    String?  @db.VarChar(255)
   purpose         String   @db.VarChar(100)
+  remarks         String?  @db.Text  // Additional notes/remarks about the pre-approval
   
   validFrom       DateTime
   validUntil      DateTime

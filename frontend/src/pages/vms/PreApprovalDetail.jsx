@@ -214,7 +214,7 @@ Please show this at the reception desk upon arrival.`
             <div>
               <p className="text-xs text-teal-600 uppercase font-semibold mb-1">Pass Number / Request ID</p>
               <p className="text-xl font-bold text-teal-800 font-mono tracking-wide">
-                {entry.passNumber || entry.approvalCode || `RGDGTLGP ${new Date(entry.createdAt).toLocaleDateString('en-US', { month: 'short' }).toUpperCase()} ${new Date(entry.createdAt).getFullYear()} - ${entry.id?.substring(0, 4).toUpperCase()}`}
+                {entry.passNumber || entry.approvalCode || `RGDGTLPA ${new Date(entry.createdAt).toLocaleDateString('en-US', { month: 'short' }).toUpperCase()} ${new Date(entry.createdAt).getFullYear()} - ${entry.id?.substring(0, 4).toUpperCase()}`}
               </p>
             </div>
             <div className="w-12 h-12 bg-teal-100 rounded-lg flex items-center justify-center">

@@ -586,12 +586,16 @@ exports.getLiveFeed = async (req, res) => {
     
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
     
     // Build preApproval where clause
+    // Show pre-approvals that are expected TODAY (any time during the day)
+    // This matches the "Expected Today" count in the Pre-approved Passes list
     const preApprovalWhere = {
       status: 'ACTIVE',
-      validFrom: { lte: new Date() },
-      validUntil: { gte: new Date() }
+      validFrom: { lte: tomorrow },  // validFrom <= end of today
+      validUntil: { gte: today }     // validUntil >= start of today
     };
     
     // If user has companyId, filter pre-approvals by company
@@ -714,6 +718,7 @@ exports.getLiveFeed = async (req, res) => {
         company: pa.company,
         purpose: pa.purpose,
         personToMeet: pa.personToMeet || null,
+        remarks: pa.remarks || null,
         status: 'PRE_APPROVED',
         passNumber,
         approvalCode: passNumber,
