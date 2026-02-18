@@ -21,6 +21,7 @@ import {
   Home,
   ArrowLeftRight,
   Shield,
+  Briefcase,
 } from 'lucide-react'
 
 const VMSLayout = () => {
@@ -106,9 +107,16 @@ const VMSLayout = () => {
       adminOnly: true,
     },
     {
-      name: 'Visitor Pass',
-      path: '/vms/admin/gatepasses',
+      name: 'Visitor Passes',
+      path: '/vms/admin/visitor-passes',
       icon: FileText,
+      permission: 'vms.gatepasses.view',
+      adminOnly: true,
+    },
+    {
+      name: 'Employee Pass',
+      path: '/vms/admin/gatepasses',
+      icon: Briefcase,
       permission: 'vms.gatepasses.view',
       adminOnly: true,
     },
