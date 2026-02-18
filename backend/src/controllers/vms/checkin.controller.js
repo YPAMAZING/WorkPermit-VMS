@@ -651,14 +651,29 @@ exports.getLiveFeed = async (req, res) => {
         take: 20
       }),
       // Pre-approved visitors (active, valid for today)
-      vmsPrisma.vMSPreApproval.findMany({
-        where: preApprovalWhere,
-        include: {
-          company: { select: { name: true, displayName: true, logo: true } }
-        },
-        orderBy: { validFrom: 'asc' },
-        take: 30
-      }),
+      (async () => {
+        const preApprovals = await vmsPrisma.vMSPreApproval.findMany({
+          where: preApprovalWhere,
+          orderBy: { validFrom: 'asc' },
+          take: 30
+        });
+        
+        // Fetch company info for each pre-approval
+        if (preApprovals.length > 0) {
+          const companyIds = [...new Set(preApprovals.map(pa => pa.companyId))];
+          const companies = await vmsPrisma.vMSCompany.findMany({
+            where: { id: { in: companyIds } },
+            select: { id: true, name: true, displayName: true }
+          });
+          const companyMap = new Map(companies.map(c => [c.id, c]));
+          
+          return preApprovals.map(pa => ({
+            ...pa,
+            company: companyMap.get(pa.companyId) || null
+          }));
+        }
+        return preApprovals;
+      })(),
       // Recent activity (today)
       vmsPrisma.vMSVisitor.findMany({
         where: {

@@ -86,15 +86,18 @@ exports.getPreApprovedVisitors = async (req, res) => {
         where,
         skip,
         take,
-        orderBy: { [sortBy]: sortOrder },
-        include: {
-          company: {
-            select: { name: true, displayName: true, logo: true }
-          }
-        }
+        orderBy: { [sortBy]: sortOrder }
       }),
       prisma.vMSPreApproval.count({ where }),
     ]);
+
+    // Fetch company data separately (no relation in schema)
+    const companyIds = [...new Set(entries.map(e => e.companyId).filter(Boolean))];
+    const companies = companyIds.length > 0 ? await prisma.vMSCompany.findMany({
+      where: { id: { in: companyIds } },
+      select: { id: true, name: true, displayName: true, logo: true }
+    }) : [];
+    const companyMap = new Map(companies.map(c => [c.id, c]));
 
     // Generate display pass numbers based on creation order
     const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
@@ -106,6 +109,7 @@ exports.getPreApprovedVisitors = async (req, res) => {
         const year = createdDate.getFullYear();
         // Generate a consistent pass number based on the entry
         const passNumber = `RGDGTLGP ${month} ${year} - ${String(e.id.substring(0, 4)).toUpperCase()}`;
+        const company = companyMap.get(e.companyId);
         
         return {
           id: e.id,
@@ -116,7 +120,7 @@ exports.getPreApprovedVisitors = async (req, res) => {
           email: e.email,
           companyFrom: e.companyFrom,
           companyId: e.companyId,
-          companyName: e.company?.displayName || e.company?.name,
+          companyName: company?.displayName || company?.name,
           purpose: e.purpose,
           validFrom: e.validFrom,
           validUntil: e.validUntil,
