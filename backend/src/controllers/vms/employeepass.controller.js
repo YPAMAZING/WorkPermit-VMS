@@ -161,7 +161,20 @@ exports.getEmployeePasses = async (req, res) => {
     });
   } catch (error) {
     console.error('Get employee passes error:', error);
-    res.status(500).json({ message: 'Failed to get employee passes', error: error.message });
+    
+    // Check for table not exists error
+    if (error.code === 'P2021') {
+      return res.status(500).json({ 
+        message: 'Employee Pass table does not exist. Please run: npx prisma db push',
+        error: error.message 
+      });
+    }
+    
+    res.status(500).json({ 
+      message: 'Failed to get employee passes', 
+      error: error.message,
+      hint: 'If this is a new deployment, run: npx prisma db push'
+    });
   }
 };
 
@@ -357,7 +370,26 @@ exports.createEmployeePass = async (req, res) => {
     });
   } catch (error) {
     console.error('Create employee pass error:', error);
-    res.status(500).json({ message: 'Failed to create employee pass', error: error.message });
+    
+    // Check for common Prisma errors
+    if (error.code === 'P2021') {
+      return res.status(500).json({ 
+        message: 'Database table does not exist. Please run: npx prisma db push',
+        error: error.message 
+      });
+    }
+    if (error.code === 'P2002') {
+      return res.status(400).json({ 
+        message: 'A pass with this phone number already exists',
+        error: error.message 
+      });
+    }
+    
+    res.status(500).json({ 
+      message: 'Failed to create employee pass', 
+      error: error.message,
+      hint: 'If table does not exist, run: npx prisma db push'
+    });
   }
 };
 
@@ -546,6 +578,20 @@ exports.getStats = async (req, res) => {
     });
   } catch (error) {
     console.error('Get stats error:', error);
+    
+    // Check for table not exists error - return zeros instead of error
+    if (error.code === 'P2021') {
+      return res.json({
+        total: 0,
+        active: 0,
+        expired: 0,
+        revoked: 0,
+        createdToday: 0,
+        expiringThisWeek: 0,
+        warning: 'Employee Pass table does not exist. Please run: npx prisma db push'
+      });
+    }
+    
     res.status(500).json({ message: 'Failed to get statistics', error: error.message });
   }
 };
