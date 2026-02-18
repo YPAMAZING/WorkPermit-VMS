@@ -810,59 +810,59 @@ Pass Link: ${passUrl}
       {/* View Pass Modal */}
       {showPassModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full overflow-hidden">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-hidden flex flex-col">
             {/* Pass Header */}
-            <div className="bg-gradient-to-r from-teal-600 to-teal-700 p-6 text-white text-center">
-              <img src="/logo.png" alt="Logo" className="w-16 h-16 mx-auto bg-white rounded-lg p-2 mb-3" />
-              <h2 className="text-xl font-bold">Reliable Group</h2>
-              <p className="text-teal-100 text-sm">Employee Entry Pass</p>
+            <div className="bg-gradient-to-r from-teal-600 to-teal-700 p-4 text-white text-center flex-shrink-0">
+              <img src="/logo.png" alt="Logo" className="w-12 h-12 mx-auto bg-white rounded-lg p-1.5 mb-2" />
+              <h2 className="text-lg font-bold">Reliable Group</h2>
+              <p className="text-teal-100 text-xs">Employee Entry Pass</p>
             </div>
 
-            {/* Pass Content */}
-            <div className="p-6">
+            {/* Pass Content - Scrollable */}
+            <div className="p-4 overflow-y-auto flex-1">
               {/* Photo & Name */}
-              <div className="flex items-center gap-4 mb-6">
-                <div className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
                   {showPassModal.photo ? (
                     <img src={showPassModal.photo} alt="" className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center bg-teal-100">
-                      <User size={32} className="text-teal-600" />
+                      <User size={24} className="text-teal-600" />
                     </div>
                   )}
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-gray-800">
+                  <h3 className="text-lg font-bold text-gray-800">
                     {showPassModal.employeeName}
                   </h3>
-                  <p className="text-gray-500">{showPassModal.designation || 'New Joiner'}</p>
-                  <p className="text-sm text-gray-400">{showPassModal.department}</p>
+                  <p className="text-gray-500 text-sm">{showPassModal.designation || 'New Joiner'}</p>
+                  <p className="text-xs text-gray-400">{showPassModal.department}</p>
                 </div>
               </div>
 
               {/* Pass Details */}
-              <div className="space-y-3 mb-6">
-                <div className="flex justify-between py-2 border-b border-gray-100">
+              <div className="space-y-2 mb-4 text-sm">
+                <div className="flex justify-between py-1.5 border-b border-gray-100">
                   <span className="text-gray-500">Pass Number</span>
-                  <span className="font-mono font-semibold text-gray-800">{showPassModal.passNumber}</span>
+                  <span className="font-mono font-semibold text-gray-800 text-xs">{showPassModal.passNumber}</span>
                 </div>
-                <div className="flex justify-between py-2 border-b border-gray-100">
+                <div className="flex justify-between py-1.5 border-b border-gray-100">
                   <span className="text-gray-500">Phone</span>
                   <span className="text-gray-800">{showPassModal.phone}</span>
                 </div>
                 {showPassModal.joiningDate && (
-                  <div className="flex justify-between py-2 border-b border-gray-100">
+                  <div className="flex justify-between py-1.5 border-b border-gray-100">
                     <span className="text-gray-500">Joining Date</span>
                     <span className="text-gray-800">{formatDate(showPassModal.joiningDate)}</span>
                   </div>
                 )}
-                <div className="flex justify-between py-2 border-b border-gray-100">
+                <div className="flex justify-between py-1.5 border-b border-gray-100">
                   <span className="text-gray-500">Valid Until</span>
                   <span className="text-gray-800">{formatDate(showPassModal.validUntil)}</span>
                 </div>
-                <div className="flex justify-between py-2">
+                <div className="flex justify-between py-1.5">
                   <span className="text-gray-500">Status</span>
-                  <span className={`px-2 py-1 rounded-full text-xs ${
+                  <span className={`px-2 py-0.5 rounded-full text-xs ${
                     showPassModal.status === 'REVOKED' ? 'bg-gray-100 text-gray-700' :
                     new Date(showPassModal.validUntil) < new Date() 
                       ? 'bg-red-100 text-red-700' 
@@ -876,27 +876,27 @@ Pass Link: ${passUrl}
 
               {/* QR Code */}
               {showPassModal.qrCode && (
-                <div className="flex justify-center mb-6">
-                  <img src={showPassModal.qrCode} alt="QR Code" className="w-32 h-32" />
+                <div className="flex justify-center mb-4">
+                  <img src={showPassModal.qrCode} alt="QR Code" className="w-28 h-28" />
                 </div>
               )}
+            </div>
 
-              {/* Actions */}
-              <div className="flex gap-3">
-                <button
-                  onClick={() => handleShareWhatsApp(showPassModal)}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-                >
-                  <Share2 size={18} />
-                  Share on WhatsApp
-                </button>
-                <button
-                  onClick={() => setShowPassModal(null)}
-                  className="px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50"
-                >
-                  Close
-                </button>
-              </div>
+            {/* Actions - Fixed at bottom */}
+            <div className="p-4 border-t border-gray-100 flex gap-3 flex-shrink-0 bg-gray-50">
+              <button
+                onClick={() => handleShareWhatsApp(showPassModal)}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
+              >
+                <Share2 size={16} />
+                Share on WhatsApp
+              </button>
+              <button
+                onClick={() => setShowPassModal(null)}
+                className="px-4 py-2.5 border border-gray-200 rounded-lg hover:bg-gray-100 text-sm"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>
