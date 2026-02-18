@@ -216,8 +216,8 @@ export const employeePassApi = {
   // Verify pass by pass number (for QR scan)
   verify: (passNumber) => vmsApi.get(`/employee-passes/verify/${passNumber}`),
   
-  // Get statistics
-  getStats: () => vmsApi.get('/employee-passes/stats'),
+  // Get statistics (optional companyId filter for admin/reception)
+  getStats: (params) => vmsApi.get('/employee-passes/stats', { params }),
   
   // Create employee pass
   create: (data) => vmsApi.post('/employee-passes', data),

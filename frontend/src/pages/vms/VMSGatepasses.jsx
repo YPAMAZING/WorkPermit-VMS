@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useVMSAuth } from '../../context/VMSAuthContext'
-import { employeePassApi } from '../../services/vmsApi'
+import { employeePassApi, companySettingsApi } from '../../services/vmsApi'
 import {
   FileText,
   Search,
@@ -18,6 +18,7 @@ import {
   User,
   Phone,
   Building,
+  Building2,
   Briefcase,
   X,
   Save,
@@ -29,7 +30,10 @@ import {
 } from 'lucide-react'
 
 const VMSGatepasses = () => {
-  const { canCreateGatepasses, canEditGatepasses, isAdmin } = useVMSAuth()
+  const { canCreateGatepasses, canEditGatepasses, isAdmin, isReceptionist, isSecurityGuard, user } = useVMSAuth()
+  
+  // Can see all companies (admin, reception, guard)
+  const canSeeAllCompanies = isAdmin || isReceptionist || isSecurityGuard
   const [passes, setPasses] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -42,6 +46,8 @@ const VMSGatepasses = () => {
   const [message, setMessage] = useState({ type: '', text: '' })
   const [stats, setStats] = useState({ total: 0, active: 0, expired: 0, revoked: 0 })
   const [refreshing, setRefreshing] = useState(false)
+  const [companies, setCompanies] = useState([])
+  const [selectedCompanyId, setSelectedCompanyId] = useState('')
 
   // New employee pass form
   const [newPass, setNewPass] = useState({
@@ -53,6 +59,7 @@ const VMSGatepasses = () => {
     joiningDate: '',
     validUntil: '',
     photo: null,
+    companyId: user?.companyId || '',
   })
 
   const fetchPasses = async () => {
@@ -63,6 +70,7 @@ const VMSGatepasses = () => {
         limit: pagination.limit,
         search: search || undefined,
         status: filters.status || undefined,
+        companyId: selectedCompanyId || undefined,
       }
       const response = await employeePassApi.getAll(params)
       setPasses(response.data.passes || [])
@@ -80,17 +88,32 @@ const VMSGatepasses = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await employeePassApi.getStats()
+      const params = selectedCompanyId ? { companyId: selectedCompanyId } : {}
+      const response = await employeePassApi.getStats(params)
       setStats(response.data)
     } catch (error) {
       console.error('Failed to fetch stats:', error)
     }
   }
 
+  const fetchCompanies = async () => {
+    if (!canSeeAllCompanies) return
+    try {
+      const response = await companySettingsApi.getDropdown()
+      setCompanies(response.data || [])
+    } catch (error) {
+      console.error('Failed to fetch companies:', error)
+    }
+  }
+
+  useEffect(() => {
+    fetchCompanies()
+  }, [])
+
   useEffect(() => {
     fetchPasses()
     fetchStats()
-  }, [pagination.page, filters])
+  }, [pagination.page, filters, selectedCompanyId])
 
   useEffect(() => {
     const debounce = setTimeout(() => {
@@ -144,6 +167,7 @@ const VMSGatepasses = () => {
         designation: newPass.designation || null,
         joiningDate: newPass.joiningDate || null,
         validUntil: newPass.validUntil,
+        companyId: newPass.companyId || user?.companyId || null,
       })
       
       setMessage({ type: 'success', text: 'Employee pass created successfully!' })
@@ -157,6 +181,7 @@ const VMSGatepasses = () => {
         joiningDate: '',
         validUntil: '',
         photo: null,
+        companyId: user?.companyId || '',
       })
       fetchPasses()
       fetchStats()
@@ -374,6 +399,20 @@ Pass Link: ${passUrl}
 
         {showFilters && (
           <div className="mt-4 pt-4 border-t border-gray-100 flex flex-wrap gap-4">
+            {canSeeAllCompanies && companies.length > 0 && (
+              <select
+                value={selectedCompanyId}
+                onChange={(e) => setSelectedCompanyId(e.target.value)}
+                className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+              >
+                <option value="">All Companies</option>
+                {companies.map(company => (
+                  <option key={company.id} value={company.id}>
+                    {company.displayName || company.name}
+                  </option>
+                ))}
+              </select>
+            )}
             <select
               value={filters.status}
               onChange={(e) => setFilters({ ...filters, status: e.target.value })}
@@ -385,7 +424,10 @@ Pass Link: ${passUrl}
               <option value="REVOKED">Revoked</option>
             </select>
             <button
-              onClick={() => setFilters({ status: '' })}
+              onClick={() => {
+                setFilters({ status: '' })
+                setSelectedCompanyId('')
+              }}
               className="text-sm text-gray-500 hover:text-gray-700"
             >
               Clear filters
@@ -424,6 +466,9 @@ Pass Link: ${passUrl}
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Pass No.</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Employee</th>
+                    {canSeeAllCompanies && (
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Company</th>
+                    )}
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Department</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Valid Until</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Status</th>
@@ -462,6 +507,14 @@ Pass Link: ${passUrl}
                             </div>
                           </div>
                         </td>
+                        {canSeeAllCompanies && (
+                          <td className="px-4 py-4">
+                            <div className="flex items-center gap-2">
+                              <Building2 size={14} className="text-gray-400" />
+                              <p className="text-sm text-gray-600">{pass.companyName || pass.company?.displayName || pass.company?.name || '-'}</p>
+                            </div>
+                          </td>
+                        )}
                         <td className="px-4 py-4">
                           <p className="text-sm text-gray-600">{pass.department || '-'}</p>
                           {pass.designation && (
@@ -593,6 +646,29 @@ Pass Link: ${passUrl}
                   </label>
                 </div>
               </div>
+
+              {/* Company Selection - For Admin/Reception */}
+              {canSeeAllCompanies && companies.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <Building2 size={14} className="inline mr-1" />
+                    Company <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={newPass.companyId}
+                    onChange={(e) => setNewPass(prev => ({ ...prev, companyId: e.target.value }))}
+                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    required
+                  >
+                    <option value="">Select Company</option>
+                    {companies.map(company => (
+                      <option key={company.id} value={company.id}>
+                        {company.displayName || company.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
