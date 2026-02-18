@@ -201,20 +201,65 @@ exports.submitCheckInRequest = async (req, res) => {
       });
     }
     
-    // Check for duplicate pending request
-    const existingPending = await vmsPrisma.vMSVisitor.findFirst({
+    // Check for existing request within 8 hours (PENDING, APPROVED, CHECKED_IN, or REJECTED)
+    const existingRequest = await vmsPrisma.vMSVisitor.findFirst({
       where: {
         companyId: company.id,
         phone,
-        status: { in: ['PENDING', 'APPROVED'] },
-        createdAt: { gte: new Date(Date.now() - 4 * 60 * 60 * 1000) } // Within 4 hours
-      }
+        status: { in: ['PENDING', 'APPROVED', 'CHECKED_IN', 'REJECTED'] },
+        createdAt: { gte: new Date(Date.now() - 8 * 60 * 60 * 1000) } // Within 8 hours
+      },
+      include: {
+        gatepass: true,
+        company: {
+          select: { name: true, displayName: true, logo: true }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
     });
     
-    if (existingPending) {
-      return res.status(400).json({ 
-        message: 'You already have a pending check-in request',
-        requestNumber: existingPending.id
+    if (existingRequest) {
+      // Generate QR code if approved/checked-in
+      let qrCode = null;
+      if (existingRequest.gatepass && ['APPROVED', 'CHECKED_IN'].includes(existingRequest.status)) {
+        const qrData = JSON.stringify({ 
+          gatepassNumber: existingRequest.gatepass.gatepassNumber, 
+          visitorId: existingRequest.id 
+        });
+        qrCode = await QRCode.toDataURL(qrData);
+      }
+      
+      // Return appropriate response based on status
+      const statusMessages = {
+        'PENDING': 'You already have a pending check-in request. Please wait for approval.',
+        'APPROVED': 'Your visit has already been approved! Please show this pass to security.',
+        'CHECKED_IN': 'You are already checked in. Show this pass if needed.',
+        'REJECTED': 'Your previous request was rejected. Please contact the company or try again later.'
+      };
+      
+      return res.status(200).json({ 
+        success: true,
+        existingRequest: true,
+        message: statusMessages[existingRequest.status],
+        status: existingRequest.status,
+        visitorId: existingRequest.id,
+        requestNumber: existingRequest.gatepass?.gatepassNumber || `RGDGTLRQ-${existingRequest.id.substring(0, 8).toUpperCase()}`,
+        visitorName: existingRequest.visitorName,
+        phone: existingRequest.phone,
+        companyToVisit: existingRequest.companyToVisit,
+        personToMeet: existingRequest.personToMeet,
+        purpose: existingRequest.purpose,
+        photo: existingRequest.photo,
+        gatepass: existingRequest.gatepass ? {
+          ...existingRequest.gatepass,
+          qrCode
+        } : null,
+        gatepassNumber: existingRequest.gatepass?.gatepassNumber,
+        validUntil: existingRequest.gatepass?.validUntil,
+        checkInTime: existingRequest.gatepass?.validFrom || existingRequest.checkInTime,
+        rejectionReason: existingRequest.rejectionReason,
+        submittedAt: existingRequest.createdAt,
+        approvedAt: existingRequest.approvedAt
       });
     }
     

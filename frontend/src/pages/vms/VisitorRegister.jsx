@@ -357,6 +357,44 @@ const VisitorRegister = () => {
       console.log('📬 API Response:', response.data)
       
       if (response.data.success) {
+        // Check if this is an existing request
+        if (response.data.existingRequest) {
+          const data = response.data
+          const apiGatepass = data.gatepass || {}
+          
+          setGatepass({
+            ...apiGatepass,
+            status: data.status,
+            visitorId: data.visitorId,
+            requestNumber: data.requestNumber,
+            gatepassNumber: data.gatepassNumber || apiGatepass.gatepassNumber,
+            visitorName: data.visitorName,
+            phone: data.phone,
+            companyToVisit: data.companyToVisit,
+            personToMeet: data.personToMeet,
+            purpose: data.purpose,
+            photo: data.photo || capturedPhoto,
+            validUntil: data.validUntil || apiGatepass.validUntil,
+            checkInTime: data.checkInTime || apiGatepass.validFrom,
+            submittedAt: data.submittedAt,
+            approvedAt: data.approvedAt,
+            rejectionReason: data.rejectionReason
+          })
+          setStep(3)
+          
+          // Show appropriate toast based on status
+          if (data.status === 'APPROVED' || data.status === 'CHECKED_IN') {
+            toast.success(data.message || 'Your visit has already been approved!')
+          } else if (data.status === 'REJECTED') {
+            toast.error(data.message || 'Your previous request was rejected.')
+          } else {
+            toast.info(data.message || 'You have an existing request.')
+            setVisitorId(data.visitorId)
+            setIsPolling(true) // Start polling if still pending
+          }
+          return
+        }
+        
         if (requiresApproval && !response.data.gatepass) {
           // Approval required - show pending screen and start polling
           const visId = response.data.visitorId || response.data.requestNumber
