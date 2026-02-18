@@ -573,9 +573,10 @@ exports.getLiveFeed = async (req, res) => {
           pending: [],
           approved: [],
           checkedIn: [],
+          rejected: [],
           recent: [],
           timestamp: new Date().toISOString(),
-          counts: { pending: 0, approved: 0, checkedIn: 0 },
+          counts: { pending: 0, approved: 0, checkedIn: 0, rejected: 0 },
           warning: 'No company assigned to your account. Please contact admin.'
         });
       }
@@ -585,7 +586,7 @@ exports.getLiveFeed = async (req, res) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    const [pending, approved, checkedIn, recent] = await Promise.all([
+    const [pending, approved, checkedIn, rejected, recent] = await Promise.all([
       // Pending requests (last 24 hours)
       vmsPrisma.vMSVisitor.findMany({
         where: { 
@@ -607,7 +608,8 @@ exports.getLiveFeed = async (req, res) => {
           createdAt: { gte: today }
         },
         include: {
-          company: { select: { name: true, displayName: true } }
+          company: { select: { name: true, displayName: true } },
+          gatepass: { select: { gatepassNumber: true, validUntil: true } }
         },
         orderBy: { approvedAt: 'desc' },
         take: 20
@@ -616,10 +618,24 @@ exports.getLiveFeed = async (req, res) => {
       vmsPrisma.vMSVisitor.findMany({
         where: { ...baseWhere, status: 'CHECKED_IN' },
         include: {
-          company: { select: { name: true, displayName: true } }
+          company: { select: { name: true, displayName: true } },
+          gatepass: { select: { gatepassNumber: true, validUntil: true } }
         },
         orderBy: { checkInTime: 'desc' },
         take: 50
+      }),
+      // Rejected (today)
+      vmsPrisma.vMSVisitor.findMany({
+        where: { 
+          ...baseWhere, 
+          status: 'REJECTED',
+          createdAt: { gte: today }
+        },
+        include: {
+          company: { select: { name: true, displayName: true } }
+        },
+        orderBy: { updatedAt: 'desc' },
+        take: 20
       }),
       // Recent activity (today)
       vmsPrisma.vMSVisitor.findMany({
@@ -628,7 +644,8 @@ exports.getLiveFeed = async (req, res) => {
           createdAt: { gte: today }
         },
         include: {
-          company: { select: { name: true, displayName: true } }
+          company: { select: { name: true, displayName: true } },
+          gatepass: { select: { gatepassNumber: true, validUntil: true } }
         },
         orderBy: { createdAt: 'desc' },
         take: 30
@@ -639,6 +656,7 @@ exports.getLiveFeed = async (req, res) => {
     console.log('   - Pending:', pending.length);
     console.log('   - Approved:', approved.length);
     console.log('   - CheckedIn:', checkedIn.length);
+    console.log('   - Rejected:', rejected.length);
     console.log('   - Recent:', recent.length);
     if (pending.length > 0) {
       console.log('   - First pending visitor:', pending[0].visitorName, 'CompanyId:', pending[0].companyId);
@@ -648,12 +666,14 @@ exports.getLiveFeed = async (req, res) => {
       pending,
       approved,
       checkedIn,
+      rejected,
       recent,
       timestamp: new Date().toISOString(),
       counts: {
         pending: pending.length,
         approved: approved.length,
         checkedIn: checkedIn.length,
+        rejected: rejected.length,
       }
     });
   } catch (error) {

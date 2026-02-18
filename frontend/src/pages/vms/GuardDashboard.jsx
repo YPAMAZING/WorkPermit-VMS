@@ -27,8 +27,9 @@ const GuardDashboard = () => {
     pending: [],
     approved: [],
     checkedIn: [],
+    rejected: [],
     recent: [],
-    counts: { pending: 0, approved: 0, checkedIn: 0 }
+    counts: { pending: 0, approved: 0, checkedIn: 0, rejected: 0 }
   })
   const [stats, setStats] = useState(null)
   const [selectedRequest, setSelectedRequest] = useState(null)
@@ -291,6 +292,18 @@ const GuardDashboard = () => {
                 Approved
               </div>
             )}
+            {request.status === 'REJECTED' && (
+              <div className="flex-1 py-2 bg-red-100 text-red-700 text-xs lg:text-sm font-medium rounded-lg flex items-center justify-center gap-1">
+                <XCircle className="w-4 h-4" />
+                Rejected
+              </div>
+            )}
+            {request.status === 'CHECKED_IN' && (
+              <div className="flex-1 py-2 bg-blue-100 text-blue-700 text-xs lg:text-sm font-medium rounded-lg flex items-center justify-center gap-1">
+                <UserCheck className="w-4 h-4" />
+                Inside Premises
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -344,7 +357,7 @@ const GuardDashboard = () => {
       </div>
       
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 lg:gap-4">
         {/* Pending */}
         <div 
           className={`bg-white rounded-xl p-3 lg:p-4 border-l-4 border-yellow-500 shadow-sm cursor-pointer hover:shadow-md transition-shadow ${
@@ -396,6 +409,23 @@ const GuardDashboard = () => {
           <p className="text-xs text-blue-600 mt-1 lg:mt-2">Currently in premises</p>
         </div>
         
+        {/* Rejected */}
+        <div 
+          className={`bg-white rounded-xl p-3 lg:p-4 border-l-4 border-red-500 shadow-sm cursor-pointer hover:shadow-md transition-shadow ${
+            activeTab === 'rejected' ? 'ring-2 ring-red-500' : ''
+          }`}
+          onClick={() => setActiveTab('rejected')}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs lg:text-sm text-gray-500">Rejected</p>
+              <p className="text-2xl lg:text-3xl font-bold text-gray-800">{liveFeed.counts.rejected || 0}</p>
+            </div>
+            <XCircle className="w-8 h-8 lg:w-10 lg:h-10 text-red-500 opacity-50" />
+          </div>
+          <p className="text-xs text-red-600 mt-1 lg:mt-2">Denied entry</p>
+        </div>
+        
         {/* Today Total */}
         <div 
           className={`bg-white rounded-xl p-3 lg:p-4 border-l-4 border-purple-500 shadow-sm cursor-pointer hover:shadow-md transition-shadow ${
@@ -432,7 +462,7 @@ const GuardDashboard = () => {
         <div className="space-y-3 lg:space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-base lg:text-lg font-semibold text-gray-800 capitalize">
-              {activeTab === 'checkedIn' ? 'Currently Inside' : activeTab} Requests
+              {activeTab === 'checkedIn' ? 'Currently Inside' : activeTab === 'rejected' ? 'Rejected' : activeTab} Requests
             </h2>
             <span className="text-xs lg:text-sm text-gray-500">
               {filterRequests(liveFeed[activeTab] || []).length} items
@@ -467,7 +497,7 @@ const GuardDashboard = () => {
                 <RequestCard 
                   key={request.id} 
                   request={request}
-                  showActions={activeTab !== 'recent'}
+                  showActions={activeTab !== 'recent' && activeTab !== 'rejected'}
                 />
               ))
             )}
@@ -595,6 +625,14 @@ const GuardDashboard = () => {
                         className="mt-2 w-full max-h-48 object-contain rounded-lg border border-gray-200 bg-white"
                       />
                     )}
+                  </div>
+                )}
+                
+                {/* Rejection Reason (for rejected requests) */}
+                {selectedRequest.status === 'REJECTED' && selectedRequest.rejectionReason && (
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-xs text-red-600 font-medium mb-1">Rejection Reason</p>
+                    <p className="text-sm text-red-800">{selectedRequest.rejectionReason}</p>
                   </div>
                 )}
                 
