@@ -692,10 +692,14 @@ exports.getLiveFeed = async (req, res) => {
     // Format pre-approved entries for display
     const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
     const formattedPreApproved = preApproved.map(pa => {
-      const createdDate = new Date(pa.createdAt);
-      const month = months[createdDate.getMonth()];
-      const year = createdDate.getFullYear();
-      const passNumber = `RGDGTLGP ${month} ${year} - ${pa.id.substring(0, 4).toUpperCase()}`;
+      // Use stored pass number if available, otherwise generate fallback
+      let passNumber = pa.passNumber;
+      if (!passNumber) {
+        const createdDate = new Date(pa.createdAt);
+        const month = months[createdDate.getMonth()];
+        const year = createdDate.getFullYear();
+        passNumber = `RGDGTLGP ${month} ${year} - ${pa.id.substring(0, 4).toUpperCase()}`;
+      }
       
       return {
         id: pa.id,

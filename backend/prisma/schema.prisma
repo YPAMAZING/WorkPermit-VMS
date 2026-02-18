@@ -417,6 +417,7 @@ model VMSGatepass {
 
 model VMSPreApproval {
   id              String   @id @default(uuid()) @db.VarChar(36)
+  passNumber      String?  @db.VarChar(50)  // Stored pass number for consistency
   visitorName     String   @db.VarChar(255)
   phone           String   @db.VarChar(20)
   email           String?  @db.VarChar(255)

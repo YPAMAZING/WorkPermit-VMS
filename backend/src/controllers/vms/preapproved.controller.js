@@ -99,16 +99,19 @@ exports.getPreApprovedVisitors = async (req, res) => {
     }) : [];
     const companyMap = new Map(companies.map(c => [c.id, c]));
 
-    // Generate display pass numbers based on creation order
+    // Use stored pass numbers, or generate fallback for old entries
     const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 
     res.json({
       entries: entries.map((e, index) => {
-        const createdDate = new Date(e.createdAt);
-        const month = months[createdDate.getMonth()];
-        const year = createdDate.getFullYear();
-        // Generate a consistent pass number based on the entry
-        const passNumber = `RGDGTLGP ${month} ${year} - ${String(e.id.substring(0, 4)).toUpperCase()}`;
+        // Use stored pass number if available, otherwise generate fallback
+        let passNumber = e.passNumber;
+        if (!passNumber) {
+          const createdDate = new Date(e.createdAt);
+          const month = months[createdDate.getMonth()];
+          const year = createdDate.getFullYear();
+          passNumber = `RGDGTLGP ${month} ${year} - ${String(e.id.substring(0, 4)).toUpperCase()}`;
+        }
         const company = companyMap.get(e.companyId);
         
         return {
@@ -172,12 +175,15 @@ exports.getPreApprovedVisitor = async (req, res) => {
       }
     }
 
-    // Generate pass number for display
-    const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
-    const createdDate = new Date(entry.createdAt);
-    const month = months[createdDate.getMonth()];
-    const year = createdDate.getFullYear();
-    const passNumber = `RGDGTLGP ${month} ${year} - ${String(entry.id.substring(0, 4)).toUpperCase()}`;
+    // Generate pass number for display (use stored one if available, otherwise generate)
+    let passNumber = entry.passNumber;
+    if (!passNumber) {
+      const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+      const createdDate = new Date(entry.createdAt);
+      const month = months[createdDate.getMonth()];
+      const year = createdDate.getFullYear();
+      passNumber = `RGDGTLGP ${month} ${year} - ${String(entry.id.substring(0, 4)).toUpperCase()}`;
+    }
 
     res.json({
       ...entry,
@@ -272,9 +278,10 @@ exports.createPreApprovedVisitor = async (req, res) => {
     // Generate pass number for this pre-approval
     const passNumber = await generateDisplayPassNumber();
 
-    // Create pre-approval
+    // Create pre-approval with stored pass number
     const entry = await prisma.vMSPreApproval.create({
       data: {
+        passNumber, // Store the pass number in database
         visitorName,
         phone: phone.replace(/\D/g, ''),
         email: email || null,
