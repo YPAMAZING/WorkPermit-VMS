@@ -44,7 +44,7 @@ const VMSVisitorPasses = () => {
         limit: pagination.limit,
         search: search || undefined,
         status: filters.status || undefined,
-        type: 'VISITOR', // Only fetch visitor passes
+        // All gate passes are visitor passes (employee passes will have separate table)
       }
       const response = await gatepassesApi.getAll(params)
       setPasses(response.data.gatepasses || [])
