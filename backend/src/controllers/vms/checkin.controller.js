@@ -574,9 +574,10 @@ exports.getLiveFeed = async (req, res) => {
           approved: [],
           checkedIn: [],
           rejected: [],
+          preApproved: [],
           recent: [],
           timestamp: new Date().toISOString(),
-          counts: { pending: 0, approved: 0, checkedIn: 0, rejected: 0 },
+          counts: { pending: 0, approved: 0, checkedIn: 0, rejected: 0, preApproved: 0 },
           warning: 'No company assigned to your account. Please contact admin.'
         });
       }
@@ -586,7 +587,19 @@ exports.getLiveFeed = async (req, res) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    const [pending, approved, checkedIn, rejected, recent] = await Promise.all([
+    // Build preApproval where clause
+    const preApprovalWhere = {
+      status: 'ACTIVE',
+      validFrom: { lte: new Date() },
+      validUntil: { gte: new Date() }
+    };
+    
+    // If user has companyId, filter pre-approvals by company
+    if (baseWhere.companyId) {
+      preApprovalWhere.companyId = baseWhere.companyId;
+    }
+    
+    const [pending, approved, checkedIn, rejected, preApproved, recent] = await Promise.all([
       // Pending requests (last 24 hours)
       vmsPrisma.vMSVisitor.findMany({
         where: { 
@@ -637,6 +650,15 @@ exports.getLiveFeed = async (req, res) => {
         orderBy: { updatedAt: 'desc' },
         take: 20
       }),
+      // Pre-approved visitors (active, valid for today)
+      vmsPrisma.vMSPreApproval.findMany({
+        where: preApprovalWhere,
+        include: {
+          company: { select: { name: true, displayName: true, logo: true } }
+        },
+        orderBy: { validFrom: 'asc' },
+        take: 30
+      }),
       // Recent activity (today)
       vmsPrisma.vMSVisitor.findMany({
         where: {
@@ -652,11 +674,41 @@ exports.getLiveFeed = async (req, res) => {
       })
     ]);
     
+    // Format pre-approved entries for display
+    const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+    const formattedPreApproved = preApproved.map(pa => {
+      const createdDate = new Date(pa.createdAt);
+      const month = months[createdDate.getMonth()];
+      const year = createdDate.getFullYear();
+      const passNumber = `RGDGTLGP ${month} ${year} - ${pa.id.substring(0, 4).toUpperCase()}`;
+      
+      return {
+        id: pa.id,
+        visitorName: pa.visitorName,
+        phone: pa.phone,
+        email: pa.email,
+        companyFrom: pa.companyFrom,
+        companyId: pa.companyId,
+        companyToVisit: pa.company?.displayName || pa.company?.name,
+        company: pa.company,
+        purpose: pa.purpose,
+        personToMeet: null,
+        status: 'PRE_APPROVED',
+        passNumber,
+        approvalCode: passNumber,
+        validFrom: pa.validFrom,
+        validUntil: pa.validUntil,
+        createdAt: pa.createdAt,
+        entryType: 'PRE_APPROVED'
+      };
+    });
+    
     console.log('📊 Live Feed Results:');
     console.log('   - Pending:', pending.length);
     console.log('   - Approved:', approved.length);
     console.log('   - CheckedIn:', checkedIn.length);
     console.log('   - Rejected:', rejected.length);
+    console.log('   - PreApproved:', formattedPreApproved.length);
     console.log('   - Recent:', recent.length);
     if (pending.length > 0) {
       console.log('   - First pending visitor:', pending[0].visitorName, 'CompanyId:', pending[0].companyId);
@@ -667,6 +719,7 @@ exports.getLiveFeed = async (req, res) => {
       approved,
       checkedIn,
       rejected,
+      preApproved: formattedPreApproved,
       recent,
       timestamp: new Date().toISOString(),
       counts: {
@@ -674,6 +727,7 @@ exports.getLiveFeed = async (req, res) => {
         approved: approved.length,
         checkedIn: checkedIn.length,
         rejected: rejected.length,
+        preApproved: formattedPreApproved.length,
       }
     });
   } catch (error) {

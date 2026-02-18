@@ -28,8 +28,9 @@ const GuardDashboard = () => {
     approved: [],
     checkedIn: [],
     rejected: [],
+    preApproved: [],
     recent: [],
-    counts: { pending: 0, approved: 0, checkedIn: 0, rejected: 0 }
+    counts: { pending: 0, approved: 0, checkedIn: 0, rejected: 0, preApproved: 0 }
   })
   const [stats, setStats] = useState(null)
   const [selectedRequest, setSelectedRequest] = useState(null)
@@ -175,6 +176,7 @@ const GuardDashboard = () => {
       REJECTED: { bg: 'bg-red-100', text: 'text-red-800', label: 'Rejected' },
       CHECKED_OUT: { bg: 'bg-gray-100', text: 'text-gray-800', label: 'Left' },
       EXPIRED: { bg: 'bg-orange-100', text: 'text-orange-800', label: 'Expired' },
+      PRE_APPROVED: { bg: 'bg-purple-100', text: 'text-purple-800', label: 'Pre-Approved' },
     }
     const badge = badges[status] || badges.PENDING
     return (
@@ -304,6 +306,12 @@ const GuardDashboard = () => {
                 Inside Premises
               </div>
             )}
+            {request.status === 'PRE_APPROVED' && (
+              <div className="flex-1 py-2 bg-purple-100 text-purple-700 text-xs lg:text-sm font-medium rounded-lg flex items-center justify-center gap-1">
+                <CheckCircle className="w-4 h-4" />
+                Pre-Approved - Expected
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -357,7 +365,24 @@ const GuardDashboard = () => {
       </div>
       
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 lg:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-3 lg:gap-4">
+        {/* Pre-Approved */}
+        <div 
+          className={`bg-white rounded-xl p-3 lg:p-4 border-l-4 border-purple-500 shadow-sm cursor-pointer hover:shadow-md transition-shadow ${
+            activeTab === 'preApproved' ? 'ring-2 ring-purple-500' : ''
+          }`}
+          onClick={() => setActiveTab('preApproved')}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs lg:text-sm text-gray-500">Pre-Approved</p>
+              <p className="text-2xl lg:text-3xl font-bold text-gray-800">{liveFeed.counts.preApproved || 0}</p>
+            </div>
+            <CheckCircle className="w-8 h-8 lg:w-10 lg:h-10 text-purple-500 opacity-50" />
+          </div>
+          <p className="text-xs text-purple-600 mt-1 lg:mt-2">Expected visitors</p>
+        </div>
+        
         {/* Pending */}
         <div 
           className={`bg-white rounded-xl p-3 lg:p-4 border-l-4 border-yellow-500 shadow-sm cursor-pointer hover:shadow-md transition-shadow ${
@@ -462,7 +487,7 @@ const GuardDashboard = () => {
         <div className="space-y-3 lg:space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-base lg:text-lg font-semibold text-gray-800 capitalize">
-              {activeTab === 'checkedIn' ? 'Currently Inside' : activeTab === 'rejected' ? 'Rejected' : activeTab} Requests
+              {activeTab === 'checkedIn' ? 'Currently Inside' : activeTab === 'rejected' ? 'Rejected' : activeTab === 'preApproved' ? 'Pre-Approved Visitors' : activeTab} Requests
             </h2>
             <span className="text-xs lg:text-sm text-gray-500">
               {filterRequests(liveFeed[activeTab] || []).length} items
@@ -497,7 +522,7 @@ const GuardDashboard = () => {
                 <RequestCard 
                   key={request.id} 
                   request={request}
-                  showActions={activeTab !== 'recent' && activeTab !== 'rejected'}
+                  showActions={activeTab !== 'recent' && activeTab !== 'rejected' && activeTab !== 'preApproved'}
                 />
               ))
             )}

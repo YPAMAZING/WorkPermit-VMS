@@ -151,15 +151,32 @@ const PreApproval = () => {
       const response = await vmsAPI.createPreApproval(payload)
       
       if (response.data.success) {
-        setPreApproval(response.data.preApproval)
+        // Use the backend response which includes proper pass number
+        const apiPreApproval = response.data.preApproval
+        setPreApproval({
+          ...apiPreApproval,
+          approvalCode: apiPreApproval.approvalCode || apiPreApproval.passNumber,
+          visitDate: formData.visitDate,
+          visitTime: formData.visitTime,
+          personToMeet: formData.personToMeet,
+          qrCode: `https://reliablespaces.cloud/vms/checkin/${apiPreApproval.id}`,
+        })
         setStep(2)
         toast.success('Pre-approval created successfully!')
       }
     } catch (error) {
       console.error('Error creating pre-approval:', error)
-      // For demo, create mock pre-approval
+      
+      // Generate proper pass number format even for fallback
+      const now = new Date()
+      const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
+      const month = months[now.getMonth()]
+      const year = now.getFullYear()
+      const seq = Date.now().toString().slice(-4)
+      const passNumber = `RGDGTLGP ${month} ${year} - ${seq}`
+      
       const mockPreApproval = {
-        approvalCode: `PA-${Date.now().toString().slice(-8)}`,
+        approvalCode: passNumber,
         visitorName: formData.visitorName,
         phone: formData.phone,
         companyToVisit: formData.companyToVisit,

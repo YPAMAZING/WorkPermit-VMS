@@ -3,7 +3,22 @@
 
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
-// Pass number generation removed - not using passNumber field
+const { generateGuestPassNumber } = require('../../utils/passNumberGenerator');
+
+// Helper to generate pass number for display (not stored in DB)
+const generateDisplayPassNumber = async () => {
+  try {
+    return await generateGuestPassNumber(prisma);
+  } catch (error) {
+    // Fallback format
+    const now = new Date();
+    const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+    const month = months[now.getMonth()];
+    const year = now.getFullYear();
+    const timestamp = Date.now().toString().slice(-4);
+    return `RGDGTLGP ${month} ${year} - ${timestamp}`;
+  }
+};
 
 // Auto-expire pre-approvals that have passed their validUntil date
 const autoExpirePreApprovals = async () => {
@@ -72,29 +87,47 @@ exports.getPreApprovedVisitors = async (req, res) => {
         skip,
         take,
         orderBy: { [sortBy]: sortOrder },
+        include: {
+          company: {
+            select: { name: true, displayName: true, logo: true }
+          }
+        }
       }),
       prisma.vMSPreApproval.count({ where }),
     ]);
 
+    // Generate display pass numbers based on creation order
+    const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+
     res.json({
-      entries: entries.map(e => ({
-        id: e.id,
-        // passNumber removed - field doesn't exist in database
-        visitorName: e.visitorName,
-        phone: e.phone,
-        email: e.email,
-        companyFrom: e.companyFrom,
-        companyId: e.companyId,
-        purpose: e.purpose,
-        validFrom: e.validFrom,
-        validUntil: e.validUntil,
-        status: e.status,
-        usedAt: e.usedAt,
-        sharedVia: e.sharedVia,
-        sharedAt: e.sharedAt,
-        createdAt: e.createdAt,
-        createdBy: e.createdBy,
-      })),
+      entries: entries.map((e, index) => {
+        const createdDate = new Date(e.createdAt);
+        const month = months[createdDate.getMonth()];
+        const year = createdDate.getFullYear();
+        // Generate a consistent pass number based on the entry
+        const passNumber = `RGDGTLGP ${month} ${year} - ${String(e.id.substring(0, 4)).toUpperCase()}`;
+        
+        return {
+          id: e.id,
+          passNumber,
+          approvalCode: passNumber,
+          visitorName: e.visitorName,
+          phone: e.phone,
+          email: e.email,
+          companyFrom: e.companyFrom,
+          companyId: e.companyId,
+          companyName: e.company?.displayName || e.company?.name,
+          purpose: e.purpose,
+          validFrom: e.validFrom,
+          validUntil: e.validUntil,
+          status: e.status,
+          usedAt: e.usedAt,
+          sharedVia: e.sharedVia,
+          sharedAt: e.sharedAt,
+          createdAt: e.createdAt,
+          createdBy: e.createdBy,
+        };
+      }),
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
@@ -205,6 +238,9 @@ exports.createPreApprovedVisitor = async (req, res) => {
       });
     }
 
+    // Generate pass number for this pre-approval
+    const passNumber = await generateDisplayPassNumber();
+
     // Create pre-approval
     const entry = await prisma.vMSPreApproval.create({
       data: {
@@ -219,11 +255,36 @@ exports.createPreApprovedVisitor = async (req, res) => {
         status: 'ACTIVE',
         createdBy: req.user?.userId || 'system',
       },
+      include: {
+        company: {
+          select: { name: true, displayName: true, logo: true }
+        }
+      }
     });
 
     res.status(201).json({
+      success: true,
       message: 'Pre-approval created successfully',
-      entry,
+      entry: {
+        ...entry,
+        passNumber, // Include generated pass number
+      },
+      preApproval: {
+        id: entry.id,
+        approvalCode: passNumber,
+        passNumber,
+        visitorName: entry.visitorName,
+        phone: entry.phone,
+        email: entry.email,
+        companyFrom: entry.companyFrom,
+        companyId: entry.companyId,
+        companyToVisit: entry.company?.displayName || entry.company?.name,
+        purpose: entry.purpose,
+        validFrom: entry.validFrom,
+        validUntil: entry.validUntil,
+        status: entry.status,
+        createdAt: entry.createdAt,
+      }
     });
   } catch (error) {
     console.error('Create pre-approved visitor error:', error);
