@@ -204,6 +204,38 @@ export const companySettingsApi = {
 }
 
 // ================================
+// EMPLOYEE PASS API
+// ================================
+export const employeePassApi = {
+  // Get all employee passes with pagination
+  getAll: (params) => vmsApi.get('/employee-passes', { params }),
+  
+  // Get single employee pass
+  getById: (id) => vmsApi.get(`/employee-passes/${id}`),
+  
+  // Verify pass by pass number (for QR scan)
+  verify: (passNumber) => vmsApi.get(`/employee-passes/verify/${passNumber}`),
+  
+  // Get statistics
+  getStats: () => vmsApi.get('/employee-passes/stats'),
+  
+  // Create employee pass
+  create: (data) => vmsApi.post('/employee-passes', data),
+  
+  // Update employee pass
+  update: (id, data) => vmsApi.put(`/employee-passes/${id}`, data),
+  
+  // Revoke employee pass
+  revoke: (id, reason) => vmsApi.patch(`/employee-passes/${id}/revoke`, { reason }),
+  
+  // Mark as shared
+  markShared: (id, method) => vmsApi.patch(`/employee-passes/${id}/shared`, { method }),
+  
+  // Delete employee pass
+  delete: (id) => vmsApi.delete(`/employee-passes/${id}`),
+}
+
+// ================================
 // COMBINED VMS API (for convenience)
 // ================================
 export const vmsAPI = {

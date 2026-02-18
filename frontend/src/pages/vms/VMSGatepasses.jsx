@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useVMSAuth } from '../../context/VMSAuthContext'
+import { employeePassApi } from '../../services/vmsApi'
 import {
   FileText,
   Search,
@@ -23,14 +24,24 @@ import {
   Share2,
   Download,
   Trash2,
-  Construction,
+  RefreshCw,
+  Loader2,
 } from 'lucide-react'
 
 const VMSGatepasses = () => {
   const { canCreateGatepasses, canEditGatepasses, isAdmin } = useVMSAuth()
+  const [passes, setPasses] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
+  const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, totalPages: 0 })
+  const [filters, setFilters] = useState({ status: '' })
+  const [showFilters, setShowFilters] = useState(false)
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [showPassModal, setShowPassModal] = useState(null)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState({ type: '', text: '' })
+  const [stats, setStats] = useState({ total: 0, active: 0, expired: 0, revoked: 0 })
+  const [refreshing, setRefreshing] = useState(false)
 
   // New employee pass form
   const [newPass, setNewPass] = useState({
@@ -43,6 +54,66 @@ const VMSGatepasses = () => {
     validUntil: '',
     photo: null,
   })
+
+  const fetchPasses = async () => {
+    try {
+      setLoading(true)
+      const params = {
+        page: pagination.page,
+        limit: pagination.limit,
+        search: search || undefined,
+        status: filters.status || undefined,
+      }
+      const response = await employeePassApi.getAll(params)
+      setPasses(response.data.passes || [])
+      setPagination(prev => ({
+        ...prev,
+        ...response.data.pagination,
+      }))
+    } catch (error) {
+      console.error('Failed to fetch passes:', error)
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
+    }
+  }
+
+  const fetchStats = async () => {
+    try {
+      const response = await employeePassApi.getStats()
+      setStats(response.data)
+    } catch (error) {
+      console.error('Failed to fetch stats:', error)
+    }
+  }
+
+  useEffect(() => {
+    fetchPasses()
+    fetchStats()
+  }, [pagination.page, filters])
+
+  useEffect(() => {
+    const debounce = setTimeout(() => {
+      if (pagination.page === 1) {
+        fetchPasses()
+      } else {
+        setPagination(prev => ({ ...prev, page: 1 }))
+      }
+    }, 500)
+    return () => clearTimeout(debounce)
+  }, [search])
+
+  const handleRefresh = () => {
+    setRefreshing(true)
+    fetchPasses()
+    fetchStats()
+  }
+
+  const statusColors = {
+    ACTIVE: { bg: 'bg-green-100', text: 'text-green-700', icon: CheckCircle },
+    EXPIRED: { bg: 'bg-red-100', text: 'text-red-700', icon: XCircle },
+    REVOKED: { bg: 'bg-gray-100', text: 'text-gray-700', icon: XCircle },
+  }
 
   const handlePhotoChange = (e) => {
     const file = e.target.files[0]
@@ -62,8 +133,93 @@ const VMSGatepasses = () => {
       return
     }
 
-    // TODO: Implement backend API for employee passes
-    setMessage({ type: 'error', text: 'Employee Pass feature is coming soon. Backend implementation required.' })
+    setSaving(true)
+    try {
+      const response = await employeePassApi.create({
+        employeeName: newPass.employeeName,
+        phone: newPass.phone,
+        email: newPass.email || null,
+        photo: newPass.photo || null,
+        department: newPass.department,
+        designation: newPass.designation || null,
+        joiningDate: newPass.joiningDate || null,
+        validUntil: newPass.validUntil,
+      })
+      
+      setMessage({ type: 'success', text: 'Employee pass created successfully!' })
+      setShowCreateModal(false)
+      setNewPass({
+        employeeName: '',
+        phone: '',
+        email: '',
+        department: '',
+        designation: '',
+        joiningDate: '',
+        validUntil: '',
+        photo: null,
+      })
+      fetchPasses()
+      fetchStats()
+      
+      // Show the created pass
+      if (response.data.pass) {
+        setShowPassModal(response.data.pass)
+      }
+    } catch (error) {
+      console.error('Failed to create pass:', error)
+      setMessage({ type: 'error', text: error.response?.data?.message || 'Failed to create pass' })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleShareWhatsApp = (pass) => {
+    const passUrl = `${window.location.origin}/vms/employee-pass/${pass.id}`
+    const message = `
+*Employee Pass - Reliable Group*
+
+Name: ${pass.employeeName}
+Pass No: ${pass.passNumber}
+Department: ${pass.department || 'N/A'}
+${pass.designation ? `Designation: ${pass.designation}` : ''}
+Valid Until: ${new Date(pass.validUntil).toLocaleDateString()}
+
+Show this pass at entry gate.
+Pass Link: ${passUrl}
+    `.trim()
+    
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`
+    window.open(whatsappUrl, '_blank')
+    
+    // Mark as shared
+    employeePassApi.markShared(pass.id, 'WHATSAPP').catch(console.error)
+  }
+
+  const handleRevokePass = async (passId) => {
+    const reason = window.prompt('Enter reason for revoking this pass (optional):')
+    if (reason === null) return // User cancelled
+    
+    try {
+      await employeePassApi.revoke(passId, reason)
+      setMessage({ type: 'success', text: 'Pass revoked successfully' })
+      fetchPasses()
+      fetchStats()
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Failed to revoke pass' })
+    }
+  }
+
+  const handleDeletePass = async (passId) => {
+    if (!window.confirm('Are you sure you want to delete this pass? This cannot be undone.')) return
+    
+    try {
+      await employeePassApi.delete(passId)
+      setMessage({ type: 'success', text: 'Pass deleted successfully' })
+      fetchPasses()
+      fetchStats()
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Failed to delete pass' })
+    }
   }
 
   // Calculate default valid until (2 months from today)
@@ -71,6 +227,15 @@ const VMSGatepasses = () => {
     const date = new Date()
     date.setMonth(date.getMonth() + 2)
     return date.toISOString().split('T')[0]
+  }
+
+  const formatDate = (date) => {
+    if (!date) return '-'
+    return new Date(date).toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    })
   }
 
   return (
@@ -81,18 +246,75 @@ const VMSGatepasses = () => {
           <h1 className="text-2xl font-bold text-gray-800">Employee Pass</h1>
           <p className="text-gray-500 mt-1">Create temporary passes for new employees (before ID card issuance)</p>
         </div>
-        {(canCreateGatepasses || isAdmin) && (
+        <div className="flex items-center gap-3">
           <button
-            onClick={() => {
-              setNewPass(prev => ({ ...prev, validUntil: getDefaultValidUntil() }))
-              setShowCreateModal(true)
-            }}
-            className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50"
           >
-            <Plus size={18} />
-            Create Employee Pass
+            <RefreshCw size={18} className={refreshing ? 'animate-spin' : ''} />
           </button>
-        )}
+          {(canCreateGatepasses || isAdmin) && (
+            <button
+              onClick={() => {
+                setNewPass(prev => ({ ...prev, validUntil: getDefaultValidUntil() }))
+                setShowCreateModal(true)
+              }}
+              className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
+            >
+              <Plus size={18} />
+              Create Employee Pass
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <FileText size={20} className="text-blue-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-gray-800">{stats.total}</p>
+              <p className="text-xs text-gray-500">Total Passes</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-green-100 rounded-lg">
+              <CheckCircle size={20} className="text-green-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-gray-800">{stats.active}</p>
+              <p className="text-xs text-gray-500">Active</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-red-100 rounded-lg">
+              <Clock size={20} className="text-red-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-gray-800">{stats.expired}</p>
+              <p className="text-xs text-gray-500">Expired</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-gray-100 rounded-lg">
+              <XCircle size={20} className="text-gray-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-gray-800">{stats.revoked}</p>
+              <p className="text-xs text-gray-500">Revoked</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Message */}
@@ -126,40 +348,213 @@ const VMSGatepasses = () => {
         </div>
       </div>
 
-      {/* Coming Soon / Empty State */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
-          <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center mb-4">
-            <Construction size={40} className="text-orange-500" />
+      {/* Search and Filters */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+            <input
+              type="text"
+              placeholder="Search by name, phone, pass number..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+            />
           </div>
-          <h3 className="text-xl font-semibold text-gray-800 mb-2">Employee Pass Feature Coming Soon</h3>
-          <p className="text-gray-500 max-w-md mb-6">
-            This feature is under development. Employee passes will allow you to create temporary entry passes 
-            for new employees who haven't received their official ID cards yet.
-          </p>
-          <div className="bg-gray-50 rounded-lg p-4 max-w-md">
-            <h4 className="font-medium text-gray-700 mb-2">Planned Features:</h4>
-            <ul className="text-sm text-gray-500 text-left space-y-1">
-              <li>• Create temporary passes for new employees</li>
-              <li>• Set validity period (up to 2 months)</li>
-              <li>• Share passes via WhatsApp</li>
-              <li>• QR code for quick verification at entry gate</li>
-              <li>• Track pass usage and expiry</li>
-            </ul>
-          </div>
-          {(canCreateGatepasses || isAdmin) && (
-            <button
-              onClick={() => {
-                setNewPass(prev => ({ ...prev, validUntil: getDefaultValidUntil() }))
-                setShowCreateModal(true)
-              }}
-              className="mt-6 flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
-            >
-              <Plus size={18} />
-              Try Create Employee Pass
-            </button>
-          )}
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className={`flex items-center gap-2 px-4 py-2 border rounded-lg transition-colors ${
+              showFilters ? 'bg-teal-50 border-teal-300 text-teal-700' : 'border-gray-200 hover:bg-gray-50'
+            }`}
+          >
+            <Filter size={18} />
+            Filters
+          </button>
         </div>
+
+        {showFilters && (
+          <div className="mt-4 pt-4 border-t border-gray-100 flex flex-wrap gap-4">
+            <select
+              value={filters.status}
+              onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+              className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+            >
+              <option value="">All Status</option>
+              <option value="ACTIVE">Active</option>
+              <option value="EXPIRED">Expired</option>
+              <option value="REVOKED">Revoked</option>
+            </select>
+            <button
+              onClick={() => setFilters({ status: '' })}
+              className="text-sm text-gray-500 hover:text-gray-700"
+            >
+              Clear filters
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Passes List */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        {loading ? (
+          <div className="flex items-center justify-center h-64">
+            <div className="animate-spin rounded-full h-10 w-10 border-4 border-teal-500 border-t-transparent" />
+          </div>
+        ) : passes.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-64 text-gray-500">
+            <Briefcase size={48} className="mb-3 text-gray-300" />
+            <p>No employee passes found</p>
+            {(canCreateGatepasses || isAdmin) && (
+              <button
+                onClick={() => {
+                  setNewPass(prev => ({ ...prev, validUntil: getDefaultValidUntil() }))
+                  setShowCreateModal(true)
+                }}
+                className="mt-4 text-teal-600 hover:text-teal-700"
+              >
+                Create your first employee pass
+              </button>
+            )}
+          </div>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b border-gray-100">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Pass No.</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Employee</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Department</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Valid Until</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Status</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {passes.map((pass) => {
+                    const isExpired = new Date(pass.validUntil) < new Date()
+                    const status = pass.status === 'REVOKED' ? 'REVOKED' : (isExpired ? 'EXPIRED' : 'ACTIVE')
+                    const statusStyle = statusColors[status] || statusColors.ACTIVE
+                    const StatusIcon = statusStyle.icon
+                    
+                    return (
+                      <tr key={pass.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-4 py-4">
+                          <p className="font-mono font-medium text-gray-800">{pass.passNumber}</p>
+                          <p className="text-xs text-gray-400">
+                            Created {formatDate(pass.createdAt)}
+                          </p>
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-teal-100 rounded-full flex items-center justify-center overflow-hidden">
+                              {pass.photo ? (
+                                <img src={pass.photo} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                <span className="text-teal-600 font-semibold text-sm">
+                                  {pass.employeeName?.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                                </span>
+                              )}
+                            </div>
+                            <div>
+                              <p className="font-medium text-gray-800">{pass.employeeName}</p>
+                              <p className="text-xs text-gray-500">{pass.phone}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-4">
+                          <p className="text-sm text-gray-600">{pass.department || '-'}</p>
+                          {pass.designation && (
+                            <p className="text-xs text-gray-400">{pass.designation}</p>
+                          )}
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="flex items-center gap-2">
+                            <Calendar size={14} className="text-gray-400" />
+                            <p className="text-sm text-gray-600">
+                              {formatDate(pass.validUntil)}
+                            </p>
+                          </div>
+                        </td>
+                        <td className="px-4 py-4">
+                          <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs ${statusStyle.bg} ${statusStyle.text}`}>
+                            <StatusIcon size={12} />
+                            {status}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => setShowPassModal(pass)}
+                              className="p-2 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
+                              title="View Pass"
+                            >
+                              <Eye size={18} />
+                            </button>
+                            <button
+                              onClick={() => handleShareWhatsApp(pass)}
+                              className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                              title="Share on WhatsApp"
+                            >
+                              <Share2 size={18} />
+                            </button>
+                            {status === 'ACTIVE' && isAdmin && (
+                              <button
+                                onClick={() => handleRevokePass(pass.id)}
+                                className="p-2 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                                title="Revoke Pass"
+                              >
+                                <XCircle size={18} />
+                              </button>
+                            )}
+                            {status !== 'ACTIVE' && isAdmin && (
+                              <button
+                                onClick={() => handleDeletePass(pass.id)}
+                                className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                title="Delete Pass"
+                              >
+                                <Trash2 size={18} />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination */}
+            {pagination.totalPages > 1 && (
+              <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
+                <p className="text-sm text-gray-500">
+                  Showing {((pagination.page - 1) * pagination.limit) + 1} to{' '}
+                  {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total}
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setPagination(prev => ({ ...prev, page: prev.page - 1 }))}
+                    disabled={pagination.page === 1}
+                    className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <ChevronLeft size={18} />
+                  </button>
+                  <span className="px-4 py-2 text-sm">
+                    Page {pagination.page} of {pagination.totalPages}
+                  </span>
+                  <button
+                    onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
+                    disabled={pagination.page === pagination.totalPages}
+                    className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <ChevronRight size={18} />
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </div>
 
       {/* Create Employee Pass Modal */}
@@ -174,17 +569,6 @@ const VMSGatepasses = () => {
               <button onClick={() => setShowCreateModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
                 <X size={20} />
               </button>
-            </div>
-
-            {/* Feature Not Ready Notice */}
-            <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
-              <div className="flex items-center gap-2 text-orange-700">
-                <AlertTriangle size={18} />
-                <span className="text-sm font-medium">Backend implementation required</span>
-              </div>
-              <p className="text-xs text-orange-600 mt-1">
-                This form is ready but the backend API needs to be implemented to save employee passes.
-              </p>
             </div>
             
             <form onSubmit={handleCreatePass} className="space-y-4">
@@ -235,7 +619,7 @@ const VMSGatepasses = () => {
                     value={newPass.phone}
                     onChange={(e) => setNewPass(prev => ({ ...prev, phone: e.target.value }))}
                     className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
-                    placeholder="+91 9876543210"
+                    placeholder="9876543210"
                   />
                 </div>
                 <div>
@@ -324,7 +708,7 @@ const VMSGatepasses = () => {
                 >
                   {saving ? (
                     <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                      <Loader2 size={18} className="animate-spin" />
                       Creating...
                     </>
                   ) : (
@@ -336,6 +720,101 @@ const VMSGatepasses = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* View Pass Modal */}
+      {showPassModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full overflow-hidden">
+            {/* Pass Header */}
+            <div className="bg-gradient-to-r from-teal-600 to-teal-700 p-6 text-white text-center">
+              <img src="/logo.png" alt="Logo" className="w-16 h-16 mx-auto bg-white rounded-lg p-2 mb-3" />
+              <h2 className="text-xl font-bold">Reliable Group</h2>
+              <p className="text-teal-100 text-sm">Employee Entry Pass</p>
+            </div>
+
+            {/* Pass Content */}
+            <div className="p-6">
+              {/* Photo & Name */}
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+                  {showPassModal.photo ? (
+                    <img src={showPassModal.photo} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-teal-100">
+                      <User size={32} className="text-teal-600" />
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-800">
+                    {showPassModal.employeeName}
+                  </h3>
+                  <p className="text-gray-500">{showPassModal.designation || 'New Joiner'}</p>
+                  <p className="text-sm text-gray-400">{showPassModal.department}</p>
+                </div>
+              </div>
+
+              {/* Pass Details */}
+              <div className="space-y-3 mb-6">
+                <div className="flex justify-between py-2 border-b border-gray-100">
+                  <span className="text-gray-500">Pass Number</span>
+                  <span className="font-mono font-semibold text-gray-800">{showPassModal.passNumber}</span>
+                </div>
+                <div className="flex justify-between py-2 border-b border-gray-100">
+                  <span className="text-gray-500">Phone</span>
+                  <span className="text-gray-800">{showPassModal.phone}</span>
+                </div>
+                {showPassModal.joiningDate && (
+                  <div className="flex justify-between py-2 border-b border-gray-100">
+                    <span className="text-gray-500">Joining Date</span>
+                    <span className="text-gray-800">{formatDate(showPassModal.joiningDate)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between py-2 border-b border-gray-100">
+                  <span className="text-gray-500">Valid Until</span>
+                  <span className="text-gray-800">{formatDate(showPassModal.validUntil)}</span>
+                </div>
+                <div className="flex justify-between py-2">
+                  <span className="text-gray-500">Status</span>
+                  <span className={`px-2 py-1 rounded-full text-xs ${
+                    showPassModal.status === 'REVOKED' ? 'bg-gray-100 text-gray-700' :
+                    new Date(showPassModal.validUntil) < new Date() 
+                      ? 'bg-red-100 text-red-700' 
+                      : 'bg-green-100 text-green-700'
+                  }`}>
+                    {showPassModal.status === 'REVOKED' ? 'REVOKED' :
+                     new Date(showPassModal.validUntil) < new Date() ? 'EXPIRED' : 'ACTIVE'}
+                  </span>
+                </div>
+              </div>
+
+              {/* QR Code */}
+              {showPassModal.qrCode && (
+                <div className="flex justify-center mb-6">
+                  <img src={showPassModal.qrCode} alt="QR Code" className="w-32 h-32" />
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => handleShareWhatsApp(showPassModal)}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                >
+                  <Share2 size={18} />
+                  Share on WhatsApp
+                </button>
+                <button
+                  onClick={() => setShowPassModal(null)}
+                  className="px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

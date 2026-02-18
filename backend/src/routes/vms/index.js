@@ -10,6 +10,7 @@ const companySettingsRoutes = require('./company-settings.routes');
 const checkinRoutes = require('./checkin.routes');
 const visitorRoutes = require('./visitor.routes');
 const gatepassRoutes = require('./gatepass.routes');
+const employeePassRoutes = require('./employeepass.routes');
 const blacklistRoutes = require('./blacklist.routes');
 const preapprovedRoutes = require('./preapproved.routes');
 const dashboardRoutes = require('./dashboard.routes');
@@ -42,8 +43,11 @@ router.use('/company-settings', companySettingsRoutes);
 // Visitor management
 router.use('/visitors', visitorRoutes);
 
-// Gatepass management
+// Gatepass management (visitor passes)
 router.use('/gatepasses', gatepassRoutes);
+
+// Employee pass management (temporary passes for new employees)
+router.use('/employee-passes', employeePassRoutes);
 
 // Blacklist management
 router.use('/blacklist', blacklistRoutes);

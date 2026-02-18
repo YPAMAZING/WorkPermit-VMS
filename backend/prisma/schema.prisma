@@ -480,3 +480,50 @@ model VMSBlacklist {
   @@index([reason])
   @@map("vms_blacklist")
 }
+
+// Employee Pass - Temporary passes for new employees before ID card issuance
+model VMSEmployeePass {
+  id              String   @id @default(uuid()) @db.VarChar(36)
+  passNumber      String   @unique @db.VarChar(50)  // RGDGTLEP FEB 2026 - 0001
+  
+  // Employee Info
+  employeeName    String   @db.VarChar(255)
+  phone           String   @db.VarChar(20)
+  email           String?  @db.VarChar(255)
+  photo           String?  @db.Text  // Base64 or URL
+  
+  // Employment Details
+  department      String   @db.VarChar(100)
+  designation     String?  @db.VarChar(100)
+  employeeId      String?  @db.VarChar(50)  // If assigned
+  joiningDate     DateTime?
+  
+  // Company
+  companyId       String?  @db.VarChar(36)
+  
+  // Validity
+  validFrom       DateTime @default(now())
+  validUntil      DateTime
+  
+  // Status
+  status          String   @default("ACTIVE") @db.VarChar(20)  // ACTIVE, EXPIRED, REVOKED
+  revokedAt       DateTime?
+  revokedBy       String?  @db.VarChar(36)
+  revokeReason    String?  @db.VarChar(255)
+  
+  // Sharing
+  sharedVia       String?  @db.VarChar(50)  // WHATSAPP, EMAIL, SMS
+  sharedAt        DateTime?
+  
+  // Created by
+  createdBy       String   @db.VarChar(36)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([phone])
+  @@index([status])
+  @@index([companyId])
+  @@index([passNumber])
+  @@map("vms_employee_passes")
+}
