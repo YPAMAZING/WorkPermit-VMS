@@ -693,12 +693,14 @@ exports.getLiveFeed = async (req, res) => {
     const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
     const formattedPreApproved = preApproved.map(pa => {
       // Use stored pass number if available, otherwise generate fallback
+      // NOTE: Pre-approval uses RGDGTLPA prefix (Pre-Approval pass)
+      // Different from: RGDGTLGP (Guest/Visitor Gate Pass), RGDGTLEP (Employee Pass)
       let passNumber = pa.passNumber;
       if (!passNumber) {
         const createdDate = new Date(pa.createdAt);
         const month = months[createdDate.getMonth()];
         const year = createdDate.getFullYear();
-        passNumber = `RGDGTLGP ${month} ${year} - ${pa.id.substring(0, 4).toUpperCase()}`;
+        passNumber = `RGDGTLPA ${month} ${year} - ${pa.id.substring(0, 4).toUpperCase()}`;
       }
       
       return {

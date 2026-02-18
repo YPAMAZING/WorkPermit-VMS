@@ -35,6 +35,9 @@ const VMSGatepasses = () => {
   // Can see all companies (admin, reception, guard)
   const canSeeAllCompanies = isAdmin || isReceptionist || isSecurityGuard
   
+  // Company user without a companyId needs to select a company when creating pass
+  const companyUserNeedsSelection = isCompanyUser && !user?.companyId
+  
   // Can create employee passes: Admin, Reception, or Company Users (for their own company)
   const canCreateEmployeePass = isAdmin || isReceptionist || isCompanyUser || canCreateGatepasses || user?.companyId
   const [passes, setPasses] = useState([])
@@ -100,7 +103,8 @@ const VMSGatepasses = () => {
   }
 
   const fetchCompanies = async () => {
-    if (!canSeeAllCompanies) return
+    // Fetch companies for admin/reception OR company users who need to select a company
+    if (!canSeeAllCompanies && !companyUserNeedsSelection) return
     try {
       const response = await companySettingsApi.getDropdown()
       setCompanies(response.data || [])
@@ -650,8 +654,8 @@ Pass Link: ${passUrl}
                 </div>
               </div>
 
-              {/* Company Selection - For Admin/Reception */}
-              {canSeeAllCompanies && companies.length > 0 && (
+              {/* Company Selection - For Admin/Reception or Company Users without assigned company */}
+              {(canSeeAllCompanies || companyUserNeedsSelection) && companies.length > 0 && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     <Building2 size={14} className="inline mr-1" />

@@ -258,17 +258,17 @@ exports.createEmployeePass = async (req, res) => {
     } = req.body;
 
     // Determine companyId - use provided or user's company
-    // For company users, always use their companyId regardless of what's sent
+    // For company users, allow them to use provided companyId if they don't have one in profile
     let effectiveCompanyId;
     if (canSeeAllCompanies(req.user)) {
       // Admin/Reception can specify any company or leave blank
       effectiveCompanyId = companyId || req.user?.companyId || null;
     } else {
-      // Company users MUST use their own companyId
-      effectiveCompanyId = req.user?.companyId;
+      // Company users - prefer their assigned companyId, but allow provided companyId if none assigned
+      effectiveCompanyId = req.user?.companyId || companyId;
       
-      // If company user tries to specify a different company, reject
-      if (companyId && companyId !== req.user?.companyId) {
+      // If company user has a companyId AND tries to specify a different one, reject
+      if (req.user?.companyId && companyId && companyId !== req.user?.companyId) {
         return res.status(403).json({
           message: 'You can only create employee passes for your own company'
         });
@@ -282,10 +282,10 @@ exports.createEmployeePass = async (req, res) => {
       });
     }
 
-    // Company users must have a companyId
+    // Company users must have a companyId (either from profile or from request)
     if (!canSeeAllCompanies(req.user) && !effectiveCompanyId) {
       return res.status(403).json({
-        message: 'Your account is not associated with a company. Please contact admin.'
+        message: 'Your account is not associated with a company and no company was selected. Please contact admin to link your account to a company.'
       });
     }
 

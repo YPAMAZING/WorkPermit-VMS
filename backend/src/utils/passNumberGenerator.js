@@ -5,9 +5,11 @@
  * Uses count-based sequential numbering.
  * 
  * Pass Number Formats:
- * 1. Pre-Approved Guest Pass: RGDGTLGP FEB 2026 - 0001
- * 2. Walk-in Visitor Pass: RGDGTLVP FEB 2026 - 0001
- * 3. Request Number: RGDGTLRQ FEB 2026 - 0001
+ * 1. Pre-Approved Pass: RGDGTLPA FEB 2026 - 0001 (Pre-Approval)
+ * 2. Visitor Gate Pass: RGDGTLGP FEB 2026 - 0001 (Gate Pass issued after check-in)
+ * 3. Walk-in Visitor Pass: RGDGTLVP FEB 2026 - 0001 (Walk-in visitor)
+ * 4. Employee Pass: RGDGTLEP FEB 2026 - 0001 (Temporary employee pass)
+ * 5. Request Number: RGDGTLRQ FEB 2026 - 0001 (Check-in request)
  */
 
 // Month abbreviations
@@ -32,12 +34,12 @@ const getStartOfMonth = () => {
 };
 
 /**
- * Generate Guest Pass Number (for Pre-Approved visitors)
- * Format: RGDGTLGP FEB 2026 - 0001
+ * Generate Pre-Approval Pass Number (for Pre-Approved visitors)
+ * Format: RGDGTLPA FEB 2026 - 0001
  */
 const generateGuestPassNumber = async (prisma) => {
   const { month, year } = getMonthYear();
-  const prefix = 'RGDGTLGP';
+  const prefix = 'RGDGTLPA';  // PA = Pre-Approval
   
   try {
     const startOfMonth = getStartOfMonth();

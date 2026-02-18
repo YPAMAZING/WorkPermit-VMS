@@ -10,13 +10,13 @@ const generateDisplayPassNumber = async () => {
   try {
     return await generateGuestPassNumber(prisma);
   } catch (error) {
-    // Fallback format
+    // Fallback format - use RGDGTLPA prefix for Pre-Approval
     const now = new Date();
     const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
     const month = months[now.getMonth()];
     const year = now.getFullYear();
     const timestamp = Date.now().toString().slice(-4);
-    return `RGDGTLGP ${month} ${year} - ${timestamp}`;
+    return `RGDGTLPA ${month} ${year} - ${timestamp}`;
   }
 };
 
