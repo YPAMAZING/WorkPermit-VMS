@@ -20,6 +20,8 @@ import {
   FileText,
   Copy,
   MessageCircle,
+  Hash,
+  UserCheck as PersonIcon,
 } from 'lucide-react'
 
 const PreApprovalDetail = () => {
@@ -206,6 +208,21 @@ Please show this at the reception desk upon arrival.`
           </div>
         </div>
 
+        {/* Pass Number / Request ID */}
+        <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-teal-50 to-cyan-50">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-teal-600 uppercase font-semibold mb-1">Pass Number / Request ID</p>
+              <p className="text-xl font-bold text-teal-800 font-mono tracking-wide">
+                {entry.passNumber || entry.approvalCode || `RGDGTLGP ${new Date(entry.createdAt).toLocaleDateString('en-US', { month: 'short' }).toUpperCase()} ${new Date(entry.createdAt).getFullYear()} - ${entry.id?.substring(0, 4).toUpperCase()}`}
+              </p>
+            </div>
+            <div className="w-12 h-12 bg-teal-100 rounded-lg flex items-center justify-center">
+              <Hash size={24} className="text-teal-600" />
+            </div>
+          </div>
+        </div>
+
         {/* Visit Details */}
         <div className="p-6 border-b border-gray-100 grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
@@ -220,6 +237,13 @@ Please show this at the reception desk upon arrival.`
             <p className="text-gray-800 flex items-center gap-2">
               <Building size={16} className="text-gray-400" />
               {entry.companyName || entry.companyId || '-'}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-500 uppercase font-semibold mb-1">Person to Meet</p>
+            <p className="text-gray-800 flex items-center gap-2">
+              <PersonIcon size={16} className="text-gray-400" />
+              {entry.personToMeet || '-'}
             </p>
           </div>
         </div>
