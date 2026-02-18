@@ -2,17 +2,12 @@
  * VMS Pass Number Generator
  * 
  * Generates unique pass numbers similar to Work Permit system.
- * Uses transaction-based sequential numbering to prevent collisions.
+ * Uses count-based sequential numbering.
  * 
  * Pass Number Formats:
  * 1. Pre-Approved Guest Pass: RGDGTLGP FEB 2026 - 0001
- *    (Reliable Group Digital Guest Pass Month Year - Serial)
- * 
  * 2. Walk-in Visitor Pass: RGDGTLVP FEB 2026 - 0001
- *    (Reliable Group Digital Visitor Pass Month Year - Serial)
- * 
  * 3. Request Number: RGDGTLRQ FEB 2026 - 0001
- *    (Reliable Group Digital Request Month Year - Serial)
  */
 
 // Month abbreviations
@@ -29,45 +24,34 @@ const getMonthYear = () => {
 };
 
 /**
+ * Get start of current month
+ */
+const getStartOfMonth = () => {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+};
+
+/**
  * Generate Guest Pass Number (for Pre-Approved visitors)
  * Format: RGDGTLGP FEB 2026 - 0001
- * 
- * @param {PrismaClient} prisma - Prisma client instance
- * @returns {Promise<string>} The generated pass number
  */
 const generateGuestPassNumber = async (prisma) => {
   const { month, year } = getMonthYear();
   const prefix = 'RGDGTLGP';
   
   try {
-    // Find all guest passes this month
-    const allPassesThisMonth = await prisma.vMSPreApproval.findMany({
+    const startOfMonth = getStartOfMonth();
+    
+    // Count pre-approvals created this month
+    const count = await prisma.vMSPreApproval.count({
       where: {
-        passNumber: {
-          contains: `${prefix} ${month}`,
+        createdAt: {
+          gte: startOfMonth,
         },
-      },
-      select: {
-        passNumber: true,
       },
     });
     
-    let maxNumber = 0;
-    
-    // Find the highest number from all passes this month
-    for (const pass of allPassesThisMonth) {
-      if (pass.passNumber) {
-        const match = pass.passNumber.match(/- (\d+)$/);
-        if (match) {
-          const num = parseInt(match[1], 10);
-          if (num > maxNumber) {
-            maxNumber = num;
-          }
-        }
-      }
-    }
-    
-    const nextNumber = maxNumber + 1;
+    const nextNumber = count + 1;
     const sequentialNumber = String(nextNumber).padStart(4, '0');
     
     return `${prefix} ${month} ${year} - ${sequentialNumber}`;
@@ -82,43 +66,24 @@ const generateGuestPassNumber = async (prisma) => {
 /**
  * Generate Visitor Pass Number (for Walk-in visitors)
  * Format: RGDGTLVP FEB 2026 - 0001
- * 
- * @param {PrismaClient} prisma - Prisma client instance
- * @returns {Promise<string>} The generated pass number
  */
 const generateVisitorPassNumber = async (prisma) => {
   const { month, year } = getMonthYear();
   const prefix = 'RGDGTLVP';
   
   try {
-    // Find all visitor passes this month
-    const allPassesThisMonth = await prisma.vMSGatepass.findMany({
+    const startOfMonth = getStartOfMonth();
+    
+    // Count gatepasses created this month (use validFrom as it always exists)
+    const count = await prisma.vMSGatepass.count({
       where: {
-        gatepassNumber: {
-          contains: `${prefix} ${month}`,
+        validFrom: {
+          gte: startOfMonth,
         },
-      },
-      select: {
-        gatepassNumber: true,
       },
     });
     
-    let maxNumber = 0;
-    
-    // Find the highest number from all passes this month
-    for (const pass of allPassesThisMonth) {
-      if (pass.gatepassNumber) {
-        const match = pass.gatepassNumber.match(/- (\d+)$/);
-        if (match) {
-          const num = parseInt(match[1], 10);
-          if (num > maxNumber) {
-            maxNumber = num;
-          }
-        }
-      }
-    }
-    
-    const nextNumber = maxNumber + 1;
+    const nextNumber = count + 1;
     const sequentialNumber = String(nextNumber).padStart(4, '0');
     
     return `${prefix} ${month} ${year} - ${sequentialNumber}`;
@@ -133,20 +98,15 @@ const generateVisitorPassNumber = async (prisma) => {
 /**
  * Generate Request Number (for pending check-in requests)
  * Format: RGDGTLRQ FEB 2026 - 0001
- * 
- * @param {PrismaClient} prisma - Prisma client instance
- * @returns {Promise<string>} The generated request number
  */
 const generateRequestNumber = async (prisma) => {
   const { month, year } = getMonthYear();
   const prefix = 'RGDGTLRQ';
   
   try {
-    // Count existing visitors this month by checking createdAt
-    const startOfMonth = new Date();
-    startOfMonth.setDate(1);
-    startOfMonth.setHours(0, 0, 0, 0);
+    const startOfMonth = getStartOfMonth();
     
+    // Count visitors created this month
     const count = await prisma.vMSVisitor.count({
       where: {
         createdAt: {
