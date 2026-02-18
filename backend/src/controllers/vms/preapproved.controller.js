@@ -3,7 +3,7 @@
 
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
-const { generateGuestPassNumber } = require('../../utils/passNumberGenerator');
+// Pass number generation removed - not using passNumber field
 
 // Auto-expire pre-approvals that have passed their validUntil date
 const autoExpirePreApprovals = async () => {
@@ -79,7 +79,7 @@ exports.getPreApprovedVisitors = async (req, res) => {
     res.json({
       entries: entries.map(e => ({
         id: e.id,
-        passNumber: e.passNumber,  // RGDGTLGP format
+        // passNumber removed - field doesn't exist in database
         visitorName: e.visitorName,
         phone: e.phone,
         email: e.email,
@@ -205,13 +205,9 @@ exports.createPreApprovedVisitor = async (req, res) => {
       });
     }
 
-    // Generate guest pass number (RGDGTLGP format)
-    const passNumber = await generateGuestPassNumber(prisma);
-
     // Create pre-approval
     const entry = await prisma.vMSPreApproval.create({
       data: {
-        passNumber,
         visitorName,
         phone: phone.replace(/\D/g, ''),
         email: email || null,
