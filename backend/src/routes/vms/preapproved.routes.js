@@ -16,6 +16,9 @@ router.get('/', vmsPermissionMiddleware('vms.preapproved.view'), preapprovedCont
 // Get pre-approval statistics
 router.get('/stats', vmsPermissionMiddleware('vms.preapproved.view'), preapprovedController.getPreApprovalStats);
 
+// Backfill pass numbers for existing entries (admin only)
+router.post('/backfill-pass-numbers', vmsPermissionMiddleware('vms.preapproved.edit'), preapprovedController.backfillPassNumbers);
+
 // Get single pre-approved visitor
 router.get('/:id', vmsPermissionMiddleware('vms.preapproved.view'), preapprovedController.getPreApprovedVisitor);
 

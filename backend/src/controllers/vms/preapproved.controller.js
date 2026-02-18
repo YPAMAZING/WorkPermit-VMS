@@ -529,3 +529,39 @@ exports.getPreApprovalStats = async (req, res) => {
     res.status(500).json({ message: 'Failed to get statistics', error: error.message });
   }
 };
+
+// Backfill pass numbers for existing pre-approvals that don't have one
+exports.backfillPassNumbers = async (req, res) => {
+  try {
+    // Find all pre-approvals without a pass number
+    const entriesWithoutPassNumber = await prisma.vMSPreApproval.findMany({
+      where: {
+        OR: [
+          { passNumber: null },
+          { passNumber: '' }
+        ]
+      }
+    });
+
+    console.log(`[PreApproved] Found ${entriesWithoutPassNumber.length} entries without pass numbers`);
+
+    let updatedCount = 0;
+    for (const entry of entriesWithoutPassNumber) {
+      const passNumber = await generateDisplayPassNumber();
+      await prisma.vMSPreApproval.update({
+        where: { id: entry.id },
+        data: { passNumber }
+      });
+      updatedCount++;
+    }
+
+    res.json({
+      success: true,
+      message: `Updated ${updatedCount} pre-approval(s) with pass numbers`,
+      updatedCount
+    });
+  } catch (error) {
+    console.error('Backfill pass numbers error:', error);
+    res.status(500).json({ message: 'Failed to backfill pass numbers', error: error.message });
+  }
+};
