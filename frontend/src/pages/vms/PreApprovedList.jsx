@@ -159,7 +159,7 @@ const PreApprovedList = () => {
           </button>
           {canCreate && (
             <button
-              onClick={() => navigate('/vms/admin/preapproved/new')}
+              onClick={() => navigate('/vms/pre-approval')}
               className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
             >
               <Plus size={18} />
