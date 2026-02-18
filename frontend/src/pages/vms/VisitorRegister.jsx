@@ -725,10 +725,10 @@ const VisitorRegister = () => {
                   {showCompanyDropdown && filteredCompanies.length > 0 && (
                     <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                       {filteredCompanies.map(c => (
-                        <button
+                        <div
                           key={c.id}
-                          type="button"
-                          onClick={() => {
+                          onMouseDown={(e) => {
+                            e.preventDefault() // Prevent blur from firing
                             const companyName = c.displayName || c.name
                             setCompanySearchText(companyName)
                             setFormData(prev => ({ 
@@ -743,11 +743,11 @@ const VisitorRegister = () => {
                             setShowCompanyDropdown(false)
                             setFilteredCompanies([])
                           }}
-                          className="w-full px-4 py-3 text-left hover:bg-teal-50 border-b border-gray-100 last:border-0 flex items-center gap-3"
+                          className="w-full px-4 py-3 text-left hover:bg-teal-50 border-b border-gray-100 last:border-0 flex items-center gap-3 cursor-pointer"
                         >
                           <Building2 className="w-4 h-4 text-gray-400" />
                           <span className="text-gray-800">{c.displayName || c.name}</span>
-                        </button>
+                        </div>
                       ))}
                     </div>
                   )}
