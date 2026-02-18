@@ -246,6 +246,9 @@ exports.submitCheckInRequest = async (req, res) => {
     console.log('   - Status:', status);
     console.log('   - CompanyId:', company.id);
     
+    // Generate request number in the format: RGDGTLRQ MMM YYYY - NNNN
+    const formattedRequestNumber = await generateRequestNumber(vmsPrisma);
+    
     // Create visitor record
     const visitor = await vmsPrisma.vMSVisitor.create({
       data: {
@@ -267,6 +270,8 @@ exports.submitCheckInRequest = async (req, res) => {
         entryType: preApproved ? 'PRE_APPROVED' : 'WALK_IN',
       }
     });
+    
+    console.log('   - Request Number:', formattedRequestNumber);
     
     console.log('✅ VISITOR CREATED SUCCESSFULLY!');
     console.log('   - Visitor ID:', visitor.id);
@@ -311,7 +316,7 @@ exports.submitCheckInRequest = async (req, res) => {
     
     res.status(201).json({
       success: true,
-      requestNumber: visitor.id,
+      requestNumber: formattedRequestNumber,
       visitorId: visitor.id,
       status,
       gatepass: gatepass ? { ...gatepass, qrCode } : null,
@@ -707,8 +712,8 @@ exports.approveRequest = async (req, res) => {
     
     console.log('✅ Visitor status updated to APPROVED');
     
-    // Create gatepass
-    const gatepassNumber = generateGatepassNumber();
+    // Create gatepass - use the visitor pass number generator
+    const gatepassNumber = await generateVisitorPassNumber(vmsPrisma);
     
     // Use visitor's companyId, or user's companyId as fallback
     const gatepassCompanyId = visitor.companyId || companyId;
