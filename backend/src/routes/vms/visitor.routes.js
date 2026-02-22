@@ -7,6 +7,24 @@ const { vmsAuthMiddleware, vmsPermissionMiddleware } = require('../../middleware
 // All routes require authentication
 router.use(vmsAuthMiddleware);
 
+// DEBUG: Test endpoint to check database directly
+router.get('/debug-count', async (req, res) => {
+  const { PrismaClient } = require('@prisma/client');
+  const prisma = new PrismaClient();
+  try {
+    const visitorCount = await prisma.vMSVisitor.count();
+    const gatepassCount = await prisma.vMSGatepass.count();
+    const visitors = await prisma.vMSVisitor.findMany({ take: 5, orderBy: { createdAt: 'desc' } });
+    res.json({
+      visitorCount,
+      gatepassCount,
+      sampleVisitors: visitors.map(v => ({ id: v.id, name: v.visitorName, phone: v.phone, status: v.status })),
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get visitors (with search, pagination, filters)
 router.get('/', vmsPermissionMiddleware('vms.visitors.view'), visitorController.getVisitors);
 
