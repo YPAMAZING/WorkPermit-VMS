@@ -118,6 +118,11 @@ exports.getVisitors = async (req, res) => {
     ]);
 
     console.log(`Found ${visitors.length} visitors (filtered: ${total}, total in DB: ${totalAllVisitors})`);
+    
+    // Debug: Log first visitor's raw data to see what's in the database
+    if (visitors.length > 0) {
+      console.log('Sample visitor raw data:', JSON.stringify(visitors[0], null, 2));
+    }
     console.log('=== END DEBUG ===');
 
     // Format response - include all visitor details and gatepass if available
