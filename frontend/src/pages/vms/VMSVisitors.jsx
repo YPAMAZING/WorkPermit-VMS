@@ -56,6 +56,11 @@ const VMSVisitors = () => {
         status: filters.status || undefined,
       }
       const response = await visitorsApi.getAll(params)
+      console.log('Visitors API response:', response.data)
+      // Log debug info if available
+      if (response.data._debug) {
+        console.log('VISITORS DEBUG INFO:', response.data._debug)
+      }
       setVisitors(response.data.visitors || [])
       setPagination(prev => ({
         ...prev,

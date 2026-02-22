@@ -204,6 +204,7 @@ exports.getVisitors = async (req, res) => {
       updatedAt: v.updatedAt,
     }));
 
+    // Return debug info in response when empty (helps troubleshoot)
     res.json({
       success: true,
       visitors: formattedVisitors,
@@ -212,6 +213,13 @@ exports.getVisitors = async (req, res) => {
         limit: parseInt(limit),
         total,
         totalPages: Math.ceil(total / take),
+      },
+      // Debug info (can be removed later)
+      _debug: {
+        totalInDb,
+        totalGatepasses,
+        userIsAdmin,
+        whereClause: where,
       },
     });
   } catch (error) {
