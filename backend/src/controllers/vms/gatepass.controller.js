@@ -66,12 +66,15 @@ exports.getGatepasses = async (req, res) => {
 
     if (date) {
       const dateObj = new Date(date);
-      const nextDay = new Date(dateObj);
-      nextDay.setDate(nextDay.getDate() + 1);
-      where.createdAt = {
-        gte: dateObj,
-        lt: nextDay,
-      };
+      // Only apply date filter if date is valid
+      if (!isNaN(dateObj.getTime())) {
+        const nextDay = new Date(dateObj);
+        nextDay.setDate(nextDay.getDate() + 1);
+        where.createdAt = {
+          gte: dateObj,
+          lt: nextDay,
+        };
+      }
     }
 
     // Get gatepasses with pagination
@@ -212,9 +215,22 @@ exports.createGatepass = async (req, res) => {
     // Generate gatepass number using new format (RGDGTLVP)
     const gatepassNumber = await generateVisitorPassNumber(vmsPrisma);
 
-    // Calculate validity
-    const validFromDate = validFrom ? new Date(validFrom) : new Date();
-    const validUntilDate = validUntil ? new Date(validUntil) : new Date(validFromDate.getTime() + 8 * 60 * 60 * 1000); // Default 8 hours
+    // Calculate validity with date validation
+    let validFromDate = new Date();
+    if (validFrom) {
+      const parsed = new Date(validFrom);
+      if (!isNaN(parsed.getTime())) {
+        validFromDate = parsed;
+      }
+    }
+    
+    let validUntilDate = new Date(validFromDate.getTime() + 8 * 60 * 60 * 1000); // Default 8 hours
+    if (validUntil) {
+      const parsed = new Date(validUntil);
+      if (!isNaN(parsed.getTime())) {
+        validUntilDate = parsed;
+      }
+    }
 
     // Generate QR code data
     const qrData = {
