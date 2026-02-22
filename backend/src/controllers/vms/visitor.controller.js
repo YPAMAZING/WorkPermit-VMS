@@ -114,6 +114,17 @@ exports.getVisitors = async (req, res) => {
     // First, let's check total visitors in database (for debugging)
     const totalInDb = await vmsPrisma.vMSVisitor.count({});
     console.log('VISITORS DEBUG - Total visitors in database (no filter):', totalInDb);
+    
+    // Also check gatepasses for reference
+    const totalGatepasses = await vmsPrisma.vMSGatepass.count({});
+    console.log('VISITORS DEBUG - Total gatepasses in database:', totalGatepasses);
+    
+    // For admin users, ensure where clause is truly empty (no accidental filters)
+    if (userIsAdmin && !companyId && !status && !search) {
+      console.log('VISITORS DEBUG - Admin with no filters, clearing where clause');
+      // Clear any accidental filters
+      Object.keys(where).forEach(key => delete where[key]);
+    }
 
     // Get visitors with pagination - include gatepass relationship
     const [visitors, total] = await Promise.all([
