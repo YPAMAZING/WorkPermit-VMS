@@ -4,15 +4,28 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-// Helper to check if user is admin
+// Helper to check if user can see all visitors (admin, reception, security)
 const isUserAdmin = (user) => {
   if (!user) return false;
   if (user.isAdmin) return true;
   if (user.isFromWorkPermit) return true;
-  const adminRoles = ['VMS_ADMIN', 'ADMIN', 'admin', 'FIREMAN', 'SUPER_ADMIN', 'SYSTEM_ADMIN', 'VMS Administrator'];
+  
+  // Roles that can view ALL visitors
+  const adminRoles = [
+    'VMS_ADMIN', 'ADMIN', 'admin', 'FIREMAN', 'SUPER_ADMIN', 'SYSTEM_ADMIN', 'VMS Administrator',
+    'RECEPTION', 'Reception', 'SECURITY', 'Security', 'SECURITY_GUARD', 'Security Guard',
+    'RECEPTIONIST', 'Receptionist'
+  ];
+  
   if (adminRoles.includes(user.role) || adminRoles.includes(user.roleName)) return true;
-  // Also check if role name contains 'admin' (case-insensitive)
-  if (user.role?.toLowerCase().includes('admin') || user.roleName?.toLowerCase().includes('admin')) return true;
+  
+  // Also check if role name contains 'admin' or 'reception' (case-insensitive)
+  const role = (user.role || '').toLowerCase();
+  const roleName = (user.roleName || '').toLowerCase();
+  if (role.includes('admin') || roleName.includes('admin')) return true;
+  if (role.includes('reception') || roleName.includes('reception')) return true;
+  if (role.includes('security') || roleName.includes('security')) return true;
+  
   return false;
 };
 
