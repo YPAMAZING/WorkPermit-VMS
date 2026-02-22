@@ -36,8 +36,8 @@ router.get('/debug-db', async (req, res) => {
   }
 });
 
-// Get all recent visitors (public dashboard)
-router.get('/visitors', openController.getAllVisitors);
+// Get all recent visitors (public dashboard) - RENAMED to avoid conflict with protected /visitors route
+router.get('/public/visitors', openController.getAllVisitors);
 
 // Get visitor statistics
 router.get('/stats', openController.getVisitorStats);
