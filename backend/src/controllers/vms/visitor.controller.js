@@ -8,7 +8,10 @@ const isUserAdmin = (user) => {
   if (user.isAdmin) return true;
   if (user.isFromWorkPermit) return true;
   const adminRoles = ['VMS_ADMIN', 'ADMIN', 'admin', 'FIREMAN', 'SUPER_ADMIN', 'SYSTEM_ADMIN', 'VMS Administrator'];
-  return adminRoles.includes(user.role) || adminRoles.includes(user.roleName);
+  if (adminRoles.includes(user.role) || adminRoles.includes(user.roleName)) return true;
+  // Also check if role name contains 'admin' (case-insensitive)
+  if (user.role?.toLowerCase().includes('admin') || user.roleName?.toLowerCase().includes('admin')) return true;
+  return false;
 };
 
 // Get all VMS visitors with pagination and filters

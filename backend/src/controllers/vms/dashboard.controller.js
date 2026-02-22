@@ -26,14 +26,20 @@ const autoExpirePreApprovals = async () => {
 };
 
 // Helper: Check if user is admin (can see all companies)
-const isUserAdmin = (userRole) => {
-  const adminRoles = ['ADMIN', 'VMS_ADMIN', 'SECURITY_SUPERVISOR'];
-  return adminRoles.includes(userRole);
+const isUserAdmin = (user) => {
+  if (!user) return false;
+  const role = user.role || '';
+  const roleName = user.roleName || '';
+  const adminRoles = ['ADMIN', 'VMS_ADMIN', 'SECURITY_SUPERVISOR', 'SUPER_ADMIN', 'SYSTEM_ADMIN'];
+  if (adminRoles.includes(role)) return true;
+  // Also check if role name contains 'admin' (case-insensitive)
+  if (role.toLowerCase().includes('admin') || roleName.toLowerCase().includes('admin')) return true;
+  return user.isAdmin === true;
 };
 
 // Helper: Build company filter based on user
 const getCompanyFilter = (req) => {
-  if (req.user && !isUserAdmin(req.user.role) && req.user.companyId) {
+  if (req.user && !isUserAdmin(req.user) && req.user.companyId) {
     return { companyId: req.user.companyId };
   }
   return {};
