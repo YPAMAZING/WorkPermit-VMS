@@ -1,6 +1,8 @@
 // VMS Visitor Controller
 // Handles VMSVisitor model for Visitor Management System
-const vmsPrisma = require('../../config/vms-prisma');
+// Using direct PrismaClient to match dashboard controller
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 
 // Helper to check if user is admin
 const isUserAdmin = (user) => {
@@ -30,52 +32,43 @@ exports.getVisitors = async (req, res) => {
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const take = parseInt(limit);
 
-    // Build where clause
-    const where = {};
-
-    // Check if user is admin - using same logic as dashboard controller
+    // Check if user is admin
     const userIsAdmin = isUserAdmin(req.user);
     
-    // Build company filter same as dashboard controller does
-    // Admin users see ALL visitors, non-admin users see only their company's visitors
-    const companyFilter = (req.user?.companyId && !userIsAdmin) 
-      ? { companyId: req.user.companyId } 
-      : {};
-    
-    console.log('Visitors API - User admin check:', { 
-      userId: req.user?.userId, 
-      role: req.user?.role, 
+    console.log('=== VISITORS API DEBUG ===');
+    console.log('User:', {
+      userId: req.user?.userId,
+      role: req.user?.role,
       roleName: req.user?.roleName,
-      isAdmin: req.user?.isAdmin, 
-      isFromWorkPermit: req.user?.isFromWorkPermit,
-      userCompanyId: req.user?.companyId,
-      queryCompanyId: companyId,
+      isAdmin: req.user?.isAdmin,
+      companyId: req.user?.companyId,
       userIsAdmin,
-      companyFilter,
     });
+
+    // Build where clause - same logic as dashboard
+    let where = {};
     
-    // Apply company filter for non-admin users
-    if (Object.keys(companyFilter).length > 0) {
-      where.companyId = companyFilter.companyId;
+    // Company filter for non-admin users
+    if (!userIsAdmin && req.user?.companyId) {
+      where.companyId = req.user.companyId;
     } else if (companyId) {
-      // If specific companyId requested in query params
       where.companyId = companyId;
     }
-    // If admin and no specific companyId filter, where clause stays empty = show ALL visitors
+    // Admin with no companyId filter = empty where = ALL visitors
 
-    // Status filter - handle different formats (simplified)
-    if (status) {
+    // Status filter
+    if (status && status.toUpperCase() !== 'ALL') {
       const statusUpper = status.toUpperCase();
       if (statusUpper === 'PENDING' || statusUpper === 'PENDING_APPROVAL') {
         where.status = { in: ['PENDING', 'PENDING_APPROVAL'] };
       } else if (statusUpper === 'CHECKEDIN' || statusUpper === 'CHECKED_IN') {
         where.status = 'CHECKED_IN';
-      } else if (statusUpper !== 'ALL') {
+      } else {
         where.status = statusUpper;
       }
     }
 
-    // Search filter - using simple contains (MySQL is case-insensitive by default)
+    // Search filter
     if (search && search.trim()) {
       where.OR = [
         { visitorName: { contains: search } },
@@ -85,26 +78,15 @@ exports.getVisitors = async (req, res) => {
       ];
     }
 
-    console.log('Fetching visitors with where:', JSON.stringify(where));
-    
-    // First, let's check total visitors in database (for debugging)
-    const totalInDb = await vmsPrisma.vMSVisitor.count({});
-    console.log('VISITORS DEBUG - Total visitors in database (no filter):', totalInDb);
-    
-    // Also check gatepasses for reference
-    const totalGatepasses = await vmsPrisma.vMSGatepass.count({});
-    console.log('VISITORS DEBUG - Total gatepasses in database:', totalGatepasses);
-    
-    // For admin users, ensure where clause is truly empty (no accidental filters)
-    if (userIsAdmin && !companyId && !status && !search) {
-      console.log('VISITORS DEBUG - Admin with no filters, clearing where clause');
-      // Clear any accidental filters
-      Object.keys(where).forEach(key => delete where[key]);
-    }
+    console.log('Where clause:', JSON.stringify(where));
 
-    // Get visitors with pagination - include gatepass relationship
+    // Debug: Count ALL visitors in database (no filters)
+    const totalAllVisitors = await prisma.vMSVisitor.count({});
+    console.log('Total visitors in DB (no filter):', totalAllVisitors);
+
+    // Get visitors with filters
     const [visitors, total] = await Promise.all([
-      vmsPrisma.vMSVisitor.findMany({
+      prisma.vMSVisitor.findMany({
         where,
         skip,
         take,
@@ -118,13 +100,6 @@ exports.getVisitors = async (req, res) => {
               validUntil: true,
               status: true,
               companyId: true,
-              company: {
-                select: {
-                  id: true,
-                  name: true,
-                  displayName: true,
-                }
-              }
             }
           },
           company: {
@@ -136,10 +111,11 @@ exports.getVisitors = async (req, res) => {
           }
         }
       }),
-      vmsPrisma.vMSVisitor.count({ where }),
+      prisma.vMSVisitor.count({ where }),
     ]);
 
-    console.log(`Found ${visitors.length} visitors out of ${total} total`);
+    console.log(`Found ${visitors.length} visitors (filtered: ${total}, total in DB: ${totalAllVisitors})`);
+    console.log('=== END DEBUG ===');
 
     // Format response
     const formattedVisitors = visitors.map(v => ({
@@ -190,10 +166,9 @@ exports.getVisitors = async (req, res) => {
         total,
         totalPages: Math.ceil(total / take),
       },
-      // Debug info (can be removed later)
+      // Debug info
       _debug: {
-        totalInDb,
-        totalGatepasses,
+        totalAllVisitors,
         userIsAdmin,
         whereClause: where,
       },
@@ -214,7 +189,7 @@ exports.getVisitor = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const visitor = await vmsPrisma.vMSVisitor.findUnique({
+    const visitor = await prisma.vMSVisitor.findUnique({
       where: { id },
     });
 
@@ -238,7 +213,7 @@ exports.searchByPhone = async (req, res) => {
       return res.status(400).json({ message: 'Phone number is required' });
     }
 
-    const visitor = await vmsPrisma.vMSVisitor.findFirst({
+    const visitor = await prisma.vMSVisitor.findFirst({
       where: { phone },
       orderBy: { createdAt: 'desc' },
     });
@@ -247,7 +222,7 @@ exports.searchByPhone = async (req, res) => {
     let isBlacklisted = false;
     let blacklistReason = null;
     try {
-      const blacklistEntry = await vmsPrisma.vMSBlacklist.findFirst({
+      const blacklistEntry = await prisma.vMSBlacklist.findFirst({
         where: {
           phone,
           isActive: true,
@@ -314,7 +289,7 @@ exports.createVisitor = async (req, res) => {
     let requireApproval = false;
     if (companyId) {
       try {
-        const company = await vmsPrisma.vMSCompany.findUnique({
+        const company = await prisma.vMSCompany.findUnique({
           where: { id: companyId },
           select: { requireApproval: true },
         });
@@ -324,7 +299,7 @@ exports.createVisitor = async (req, res) => {
       }
     }
 
-    const visitor = await vmsPrisma.vMSVisitor.create({
+    const visitor = await prisma.vMSVisitor.create({
       data: {
         visitorName,
         phone,
@@ -367,7 +342,7 @@ exports.updateVisitor = async (req, res) => {
     delete updateData.id;
     delete updateData.createdAt;
 
-    const visitor = await vmsPrisma.vMSVisitor.update({
+    const visitor = await prisma.vMSVisitor.update({
       where: { id },
       data: updateData,
     });
@@ -392,7 +367,7 @@ exports.deleteVisitor = async (req, res) => {
     const { id } = req.params;
 
     // Check if visitor exists
-    const visitor = await vmsPrisma.vMSVisitor.findUnique({
+    const visitor = await prisma.vMSVisitor.findUnique({
       where: { id },
     });
 
@@ -402,12 +377,12 @@ exports.deleteVisitor = async (req, res) => {
 
     // Delete gatepass first if exists
     try {
-      await vmsPrisma.vMSGatepass.deleteMany({ where: { visitorId: id } });
+      await prisma.vMSGatepass.deleteMany({ where: { visitorId: id } });
     } catch (e) {
       console.log('No gatepass to delete or error:', e.message);
     }
 
-    await vmsPrisma.vMSVisitor.delete({ where: { id } });
+    await prisma.vMSVisitor.delete({ where: { id } });
 
     res.json({ success: true, message: 'Visitor deleted successfully' });
   } catch (error) {
@@ -438,12 +413,12 @@ exports.getVisitorStats = async (req, res) => {
       checkedOut,
       todayTotal,
     ] = await Promise.all([
-      vmsPrisma.vMSVisitor.count({ where: { ...companyFilter, status: { in: ['PENDING', 'PENDING_APPROVAL'] } } }).catch(() => 0),
-      vmsPrisma.vMSVisitor.count({ where: { ...companyFilter, status: 'APPROVED' } }).catch(() => 0),
-      vmsPrisma.vMSVisitor.count({ where: { ...companyFilter, status: 'REJECTED' } }).catch(() => 0),
-      vmsPrisma.vMSVisitor.count({ where: { ...companyFilter, status: 'CHECKED_IN' } }).catch(() => 0),
-      vmsPrisma.vMSVisitor.count({ where: { ...companyFilter, status: 'CHECKED_OUT' } }).catch(() => 0),
-      vmsPrisma.vMSVisitor.count({
+      prisma.vMSVisitor.count({ where: { ...companyFilter, status: { in: ['PENDING', 'PENDING_APPROVAL'] } } }).catch(() => 0),
+      prisma.vMSVisitor.count({ where: { ...companyFilter, status: 'APPROVED' } }).catch(() => 0),
+      prisma.vMSVisitor.count({ where: { ...companyFilter, status: 'REJECTED' } }).catch(() => 0),
+      prisma.vMSVisitor.count({ where: { ...companyFilter, status: 'CHECKED_IN' } }).catch(() => 0),
+      prisma.vMSVisitor.count({ where: { ...companyFilter, status: 'CHECKED_OUT' } }).catch(() => 0),
+      prisma.vMSVisitor.count({
         where: {
           ...companyFilter,
           createdAt: { gte: today, lt: tomorrow },
@@ -472,7 +447,7 @@ exports.approveVisitor = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const visitor = await vmsPrisma.vMSVisitor.update({
+    const visitor = await prisma.vMSVisitor.update({
       where: { id },
       data: {
         status: 'APPROVED',
@@ -501,7 +476,7 @@ exports.rejectVisitor = async (req, res) => {
     const { id } = req.params;
     const { reason } = req.body;
 
-    const visitor = await vmsPrisma.vMSVisitor.update({
+    const visitor = await prisma.vMSVisitor.update({
       where: { id },
       data: {
         status: 'REJECTED',
@@ -528,7 +503,7 @@ exports.checkInVisitor = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const visitor = await vmsPrisma.vMSVisitor.update({
+    const visitor = await prisma.vMSVisitor.update({
       where: { id },
       data: {
         status: 'CHECKED_IN',
@@ -555,7 +530,7 @@ exports.checkOutVisitor = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const visitor = await vmsPrisma.vMSVisitor.update({
+    const visitor = await prisma.vMSVisitor.update({
       where: { id },
       data: {
         status: 'CHECKED_OUT',
