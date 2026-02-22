@@ -6,6 +6,36 @@ const openController = require('../../controllers/vms/open.controller');
 // OPEN ACCESS ROUTES (NO AUTH REQUIRED)
 // ================================
 
+// DEBUG: Public endpoint to check database counts
+router.get('/debug-db', async (req, res) => {
+  const { PrismaClient } = require('@prisma/client');
+  const prisma = new PrismaClient();
+  try {
+    const visitorCount = await prisma.vMSVisitor.count();
+    const gatepassCount = await prisma.vMSGatepass.count();
+    const sampleGatepasses = await prisma.vMSGatepass.findMany({ 
+      take: 3, 
+      orderBy: { createdAt: 'desc' },
+      include: { visitor: { select: { visitorName: true, phone: true } } }
+    });
+    res.json({
+      visitorCount,
+      gatepassCount,
+      message: gatepassCount > visitorCount 
+        ? 'Gatepasses have more entries - visitors API should query gatepasses!' 
+        : 'Visitor table has data',
+      sampleGatepasses: sampleGatepasses.map(g => ({
+        gatepassNumber: g.gatepassNumber,
+        status: g.status,
+        visitorName: g.visitor?.visitorName,
+        phone: g.visitor?.phone
+      }))
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get all recent visitors (public dashboard)
 router.get('/visitors', openController.getAllVisitors);
 
