@@ -28,16 +28,10 @@ exports.getVisitors = async (req, res) => {
       where.status = status.toUpperCase();
     }
 
-    // Search filter - search in related visitor fields
+    // Search filter - search in gatepassNumber only for simplicity
+    // Nested visitor searches can cause issues
     if (search && search.trim()) {
-      where.OR = [
-        { gatepassNumber: { contains: search } },
-        { visitor: { visitorName: { contains: search } } },
-        { visitor: { phone: { contains: search } } },
-        { visitor: { companyToVisit: { contains: search } } },
-        { visitor: { personToMeet: { contains: search } } },
-        { visitor: { companyFrom: { contains: search } } },
-      ];
+      where.gatepassNumber = { contains: search };
     }
 
     // Count totals
