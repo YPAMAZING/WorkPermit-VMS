@@ -4,6 +4,15 @@ const router = express.Router();
 const visitorController = require('../../controllers/vms/visitor.controller');
 const { vmsAuthMiddleware, vmsPermissionMiddleware } = require('../../middleware/vms-auth');
 
+// DEBUG: Log all requests to visitor routes
+router.use((req, res, next) => {
+  console.log('======= VISITOR ROUTE HIT =======');
+  console.log('Method:', req.method, 'Path:', req.path);
+  console.log('Full URL:', req.originalUrl);
+  console.log('=================================');
+  next();
+});
+
 // All routes require authentication
 router.use(vmsAuthMiddleware);
 

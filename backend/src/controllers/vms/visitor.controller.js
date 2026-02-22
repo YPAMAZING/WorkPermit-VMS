@@ -5,6 +5,7 @@ const prisma = new PrismaClient();
 
 // Get all visitors - queries VMSVisitor table directly
 exports.getVisitors = async (req, res) => {
+  console.log('!!! VISITOR CONTROLLER REACHED !!!');
   try {
     const {
       page = 1,
