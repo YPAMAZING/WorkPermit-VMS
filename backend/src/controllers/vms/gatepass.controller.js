@@ -400,7 +400,21 @@ exports.getTodaySummary = async (req, res) => {
 exports.getGatepassStats = async (req, res) => {
   try {
     const { period = '7' } = req.query;
-    const days = parseInt(period);
+    
+    // Handle different period formats
+    let days = 7; // default
+    if (period === 'month') {
+      days = 30;
+    } else if (period === 'week') {
+      days = 7;
+    } else if (period === 'year') {
+      days = 365;
+    } else {
+      const parsed = parseInt(period);
+      if (!isNaN(parsed) && parsed > 0) {
+        days = parsed;
+      }
+    }
     
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
@@ -419,21 +433,21 @@ exports.getGatepassStats = async (req, res) => {
     ] = await Promise.all([
       vmsPrisma.vMSGatepass.count({
         where: { createdAt: { gte: startDate } },
-      }),
+      }).catch(() => 0),
       vmsPrisma.vMSGatepass.count({
         where: { createdAt: { gte: today, lt: tomorrow } },
-      }),
+      }).catch(() => 0),
       vmsPrisma.vMSGatepass.count({
         where: {
           createdAt: { gte: today, lt: tomorrow },
           status: 'ACTIVE',
         },
-      }),
+      }).catch(() => 0),
       vmsPrisma.vMSGatepass.groupBy({
         by: ['status'],
         where: { createdAt: { gte: startDate } },
         _count: { status: true },
-      }),
+      }).catch(() => []),
     ]);
 
     res.json({
