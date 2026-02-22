@@ -342,7 +342,9 @@ ${passUrl ? `Pass Link: ${passUrl}` : ''}
                         </td>
                         <td className="px-4 py-4">
                           <div>
-                            <p className="text-sm text-gray-700">{visitor.companyToVisit || '-'}</p>
+                            <p className="text-sm text-gray-700">
+                              {visitor.company?.displayName || visitor.company?.name || visitor.gatepass?.company?.displayName || visitor.companyToVisit || '-'}
+                            </p>
                             {visitor.companyFrom && (
                               <p className="text-xs text-gray-400">From: {visitor.companyFrom}</p>
                             )}

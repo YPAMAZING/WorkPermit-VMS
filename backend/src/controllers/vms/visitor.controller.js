@@ -45,35 +45,75 @@ exports.getVisitors = async (req, res) => {
       userIsAdmin 
     });
     
+    // For non-admin users with companyId, filter by company
+    // Check both visitor.companyId AND gatepass.companyId
     if (req.user?.companyId && !userIsAdmin) {
-      where.companyId = req.user.companyId;
+      where.OR = [
+        { companyId: req.user.companyId },
+        { gatepass: { companyId: req.user.companyId } }
+      ];
     } else if (companyId) {
-      where.companyId = companyId;
+      where.OR = [
+        { companyId: companyId },
+        { gatepass: { companyId: companyId } }
+      ];
     }
+    // If admin and no specific companyId filter, show ALL visitors (no where clause for company)
 
     // Status filter - handle different formats
     if (status) {
       const statusUpper = status.toUpperCase();
       if (statusUpper === 'PENDING' || statusUpper === 'PENDING_APPROVAL') {
-        where.status = { in: ['PENDING', 'PENDING_APPROVAL'] };
+        if (where.OR) {
+          where.AND = [{ OR: where.OR }, { status: { in: ['PENDING', 'PENDING_APPROVAL'] } }];
+          delete where.OR;
+        } else {
+          where.status = { in: ['PENDING', 'PENDING_APPROVAL'] };
+        }
       } else if (statusUpper === 'CHECKEDIN' || statusUpper === 'CHECKED_IN') {
-        where.status = 'CHECKED_IN';
+        if (where.OR) {
+          where.AND = [{ OR: where.OR }, { status: 'CHECKED_IN' }];
+          delete where.OR;
+        } else {
+          where.status = 'CHECKED_IN';
+        }
       } else if (statusUpper !== 'ALL') {
-        where.status = statusUpper;
+        if (where.OR) {
+          where.AND = [{ OR: where.OR }, { status: statusUpper }];
+          delete where.OR;
+        } else {
+          where.status = statusUpper;
+        }
       }
     }
 
     // Search filter - using simple contains (MySQL is case-insensitive by default)
     if (search && search.trim()) {
-      where.OR = [
-        { visitorName: { contains: search } },
-        { phone: { contains: search } },
-        { companyToVisit: { contains: search } },
-        { personToMeet: { contains: search } },
-      ];
+      const searchFilter = {
+        OR: [
+          { visitorName: { contains: search } },
+          { phone: { contains: search } },
+          { companyToVisit: { contains: search } },
+          { personToMeet: { contains: search } },
+          { gatepass: { gatepassNumber: { contains: search } } },
+        ]
+      };
+      
+      if (where.AND) {
+        where.AND.push(searchFilter);
+      } else if (where.OR) {
+        where.AND = [{ OR: where.OR }, searchFilter];
+        delete where.OR;
+      } else {
+        where.OR = searchFilter.OR;
+      }
     }
 
     console.log('Fetching visitors with where:', JSON.stringify(where));
+    
+    // First, let's check total visitors in database (for debugging)
+    const totalInDb = await vmsPrisma.vMSVisitor.count({});
+    console.log('VISITORS DEBUG - Total visitors in database (no filter):', totalInDb);
 
     // Get visitors with pagination - include gatepass relationship
     const [visitors, total] = await Promise.all([
@@ -90,6 +130,21 @@ exports.getVisitors = async (req, res) => {
               validFrom: true,
               validUntil: true,
               status: true,
+              companyId: true,
+              company: {
+                select: {
+                  id: true,
+                  name: true,
+                  displayName: true,
+                }
+              }
+            }
+          },
+          company: {
+            select: {
+              id: true,
+              name: true,
+              displayName: true,
             }
           }
         }
@@ -123,12 +178,16 @@ exports.getVisitors = async (req, res) => {
       checkOutTime: v.checkOutTime,
       entryType: v.entryType,
       requestNumber: v.id?.slice(0, 8)?.toUpperCase(), // Generate a short request number
+      // Include company info from visitor or gatepass
+      company: v.company || v.gatepass?.company || null,
       gatepass: v.gatepass ? {
         id: v.gatepass.id,
         gatepassNumber: v.gatepass.gatepassNumber,
         validFrom: v.gatepass.validFrom,
         validUntil: v.gatepass.validUntil,
         status: v.gatepass.status,
+        companyId: v.gatepass.companyId,
+        company: v.gatepass.company,
       } : null,
       createdAt: v.createdAt,
       updatedAt: v.updatedAt,
