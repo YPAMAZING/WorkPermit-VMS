@@ -511,7 +511,8 @@ const VMSReports = () => {
                   All Visitors
                 </h2>
                 <p className="text-sm text-gray-500 mt-1">
-                  Total: {visitorPagination.total} visitors
+                  Showing {allVisitors.length} of {visitorPagination.total} visitors
+                  {visitorPagination.total === 0 && ' (Check backend logs for debug info)'}
                 </p>
               </div>
               <div className="flex items-center gap-3">
