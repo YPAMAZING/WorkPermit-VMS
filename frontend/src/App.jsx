@@ -106,7 +106,8 @@ const VMSLogin = lazy(() => import('./pages/vms/VMSLogin'))
 const VMSDashboard = lazy(() => import('./pages/vms/VMSDashboard'))
 const VMSVisitors = lazy(() => import('./pages/vms/VMSVisitors'))
 const VMSGatepasses = lazy(() => import('./pages/vms/VMSGatepasses'))
-const VMSVisitorPasses = lazy(() => import('./pages/vms/VMSVisitorPasses'))
+// VMSVisitorPasses removed - functionality consolidated into VMSVisitors
+// const VMSVisitorPasses = lazy(() => import('./pages/vms/VMSVisitorPasses'))
 
 // VMS Admin pages - lazy loaded
 const PreApprovedList = lazy(() => import('./pages/vms/PreApprovedList'))
@@ -402,8 +403,8 @@ function App() {
             <Route path="gatepasses/:id" element={<ComingSoon title="Pass Details" />} />
             <Route path="gatepasses/scan" element={<GuardDashboard />} />
             
-            {/* Visitor Passes (Gate passes for visitors) */}
-            <Route path="visitor-passes" element={<VMSVisitorPasses />} />
+            {/* Visitor Passes - Redirect to Visitors page (consolidated) */}
+            <Route path="visitor-passes" element={<Navigate to="/vms/admin/visitors" replace />} />
             
             {/* Guard/Reception Live Dashboard */}
             <Route path="guard" element={<GuardDashboard />} />

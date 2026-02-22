@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useVMSAuth } from '../../context/VMSAuthContext'
-import { visitorsApi } from '../../services/vmsApi'
+import { visitorsApi, gatepassesApi } from '../../services/vmsApi'
 import {
   Users,
   Search,
-  Plus,
   Edit,
   Trash2,
   Eye,
@@ -23,15 +22,20 @@ import {
   Car,
   CheckCircle,
   Save,
+  Share2,
+  RefreshCw,
+  XCircle,
+  QrCode,
+  Ticket,
 } from 'lucide-react'
 
 const VMSVisitors = () => {
-  const { canCreateVisitors, canEditVisitors, canDeleteVisitors, isAdmin } = useVMSAuth()
+  const { canCreateVisitors, canEditVisitors, canDeleteVisitors, isAdmin, hasPermission } = useVMSAuth()
   const [visitors, setVisitors] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, totalPages: 0 })
-  const [filters, setFilters] = useState({ isBlacklisted: '' })
+  const [filters, setFilters] = useState({ status: '', dateRange: '' })
   const [showFilters, setShowFilters] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState(null)
   const [error, setError] = useState(null)
@@ -39,6 +43,7 @@ const VMSVisitors = () => {
   const [editVisitor, setEditVisitor] = useState(null)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState({ type: '', text: '' })
+  const [refreshing, setRefreshing] = useState(false)
 
   const fetchVisitors = async () => {
     try {
@@ -48,7 +53,7 @@ const VMSVisitors = () => {
         page: pagination.page,
         limit: pagination.limit,
         search: search || undefined,
-        isBlacklisted: filters.isBlacklisted || undefined,
+        status: filters.status || undefined,
       }
       const response = await visitorsApi.getAll(params)
       setVisitors(response.data.visitors || [])
@@ -61,6 +66,7 @@ const VMSVisitors = () => {
       setError(error.response?.data?.message || 'Failed to load visitors. Please try again.')
     } finally {
       setLoading(false)
+      setRefreshing(false)
     }
   }
 
@@ -78,6 +84,11 @@ const VMSVisitors = () => {
     }, 500)
     return () => clearTimeout(debounce)
   }, [search])
+
+  const handleRefresh = () => {
+    setRefreshing(true)
+    fetchVisitors()
+  }
 
   const handleDelete = async (id) => {
     try {
@@ -107,14 +118,70 @@ const VMSVisitors = () => {
     }
   }
 
+  const handleShareWhatsApp = (visitor) => {
+    const passUrl = visitor.gatepass?.id ? `${window.location.origin}/vms/pass/${visitor.gatepass.id}` : ''
+    const message = `
+*Visitor Pass - Reliable Group*
+
+Name: ${visitor.visitorName || 'N/A'}
+${visitor.gatepass?.gatepassNumber ? `Pass No: ${visitor.gatepass.gatepassNumber}` : `Request No: ${visitor.requestNumber || 'N/A'}`}
+Purpose: ${visitor.purpose || 'Visit'}
+Company: ${visitor.companyToVisit || 'N/A'}
+${visitor.gatepass?.validUntil ? `Valid Until: ${new Date(visitor.gatepass.validUntil).toLocaleDateString()}` : ''}
+
+Show this at entry gate.
+${passUrl ? `Pass Link: ${passUrl}` : ''}
+    `.trim()
+    
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`
+    window.open(whatsappUrl, '_blank')
+  }
+
+  const formatDateTime = (date) => {
+    if (!date) return '-'
+    return new Date(date).toLocaleString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  }
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'CHECKED_IN':
+        return { bg: 'bg-green-100', text: 'text-green-700', icon: CheckCircle }
+      case 'APPROVED':
+        return { bg: 'bg-blue-100', text: 'text-blue-700', icon: CheckCircle }
+      case 'PENDING':
+      case 'PENDING_APPROVAL':
+        return { bg: 'bg-yellow-100', text: 'text-yellow-700', icon: Clock }
+      case 'REJECTED':
+        return { bg: 'bg-red-100', text: 'text-red-700', icon: XCircle }
+      case 'CHECKED_OUT':
+        return { bg: 'bg-gray-100', text: 'text-gray-700', icon: CheckCircle }
+      default:
+        return { bg: 'bg-gray-100', text: 'text-gray-600', icon: Clock }
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Visitors</h1>
-          <p className="text-gray-500 mt-1">Manage registered visitors</p>
+          <p className="text-gray-500 mt-1">View and manage all visitors and their passes</p>
         </div>
+        <button
+          onClick={handleRefresh}
+          disabled={refreshing}
+          className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50"
+        >
+          <RefreshCw size={18} className={refreshing ? 'animate-spin' : ''} />
+          Refresh
+        </button>
       </div>
 
       {/* Message */}
@@ -162,16 +229,19 @@ const VMSVisitors = () => {
         {showFilters && (
           <div className="mt-4 pt-4 border-t border-gray-100 flex flex-wrap gap-4">
             <select
-              value={filters.isBlacklisted}
-              onChange={(e) => setFilters({ ...filters, isBlacklisted: e.target.value })}
+              value={filters.status}
+              onChange={(e) => setFilters({ ...filters, status: e.target.value })}
               className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
             >
-              <option value="">All Visitors</option>
-              <option value="false">Active Only</option>
-              <option value="true">Blacklisted Only</option>
+              <option value="">All Status</option>
+              <option value="CHECKED_IN">Checked In</option>
+              <option value="APPROVED">Approved</option>
+              <option value="PENDING">Pending</option>
+              <option value="REJECTED">Rejected</option>
+              <option value="CHECKED_OUT">Checked Out</option>
             </select>
             <button
-              onClick={() => setFilters({ isBlacklisted: '' })}
+              onClick={() => setFilters({ status: '', dateRange: '' })}
               className="text-sm text-gray-500 hover:text-gray-700"
             >
               Clear filters
@@ -214,138 +284,166 @@ const VMSVisitors = () => {
               <table className="w-full">
                 <thead className="bg-gray-50 border-b border-gray-100">
                   <tr>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Pass/Request No.</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Visitor</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Contact</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Company</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Visits</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Purpose</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Check-in Time</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Status</th>
                     <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  {visitors.map((visitor) => (
-                    <tr key={visitor.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-teal-100 rounded-full flex items-center justify-center overflow-hidden">
-                            {visitor.photo ? (
-                              <img src={visitor.photo} alt="" className="w-full h-full object-cover" />
+                  {visitors.map((visitor) => {
+                    const statusStyle = getStatusColor(visitor.status)
+                    const StatusIcon = statusStyle.icon
+                    const hasGatepass = visitor.gatepass?.gatepassNumber
+                    
+                    return (
+                      <tr key={visitor.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-4 py-4">
+                          <div className="flex items-center gap-2">
+                            {hasGatepass ? (
+                              <Ticket size={14} className="text-teal-600" />
                             ) : (
-                              <span className="text-teal-600 font-semibold">
-                                {visitor.visitorName?.[0] || 'V'}
-                              </span>
+                              <FileText size={14} className="text-gray-400" />
+                            )}
+                            <div>
+                              <p className="font-mono font-medium text-gray-800 text-sm">
+                                {visitor.gatepass?.gatepassNumber || visitor.requestNumber || '-'}
+                              </p>
+                              <p className="text-xs text-gray-400">
+                                {new Date(visitor.createdAt).toLocaleDateString()}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-teal-100 rounded-full flex items-center justify-center overflow-hidden">
+                              {visitor.photo ? (
+                                <img src={visitor.photo} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                <span className="text-teal-600 font-semibold">
+                                  {visitor.visitorName?.[0] || 'V'}
+                                </span>
+                              )}
+                            </div>
+                            <div>
+                              <p className="font-medium text-gray-800">
+                                {visitor.visitorName}
+                              </p>
+                              <p className="text-xs text-gray-500 flex items-center gap-1">
+                                <Phone size={12} />
+                                {visitor.phone}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-4">
+                          <div>
+                            <p className="text-sm text-gray-700">{visitor.companyToVisit || '-'}</p>
+                            {visitor.companyFrom && (
+                              <p className="text-xs text-gray-400">From: {visitor.companyFrom}</p>
                             )}
                           </div>
+                        </td>
+                        <td className="px-4 py-4">
                           <div>
-                            <p className="font-medium text-gray-800">
-                              {visitor.visitorName}
-                            </p>
-                            <p className="text-xs text-gray-400">{visitor.id?.slice(0, 8)}...</p>
+                            <p className="text-sm text-gray-600">{visitor.purpose || '-'}</p>
+                            {visitor.personToMeet && (
+                              <p className="text-xs text-gray-400">Meeting: {visitor.personToMeet}</p>
+                            )}
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="space-y-1">
-                          <p className="text-sm text-gray-600 flex items-center gap-1">
-                            <Phone size={14} className="text-gray-400" />
-                            {visitor.phone}
-                          </p>
-                          {visitor.email && (
-                            <p className="text-sm text-gray-500 flex items-center gap-1">
-                              <Mail size={14} className="text-gray-400" />
-                              {visitor.email}
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="flex items-center gap-2">
+                            <Clock size={14} className="text-gray-400" />
+                            <p className="text-sm text-gray-600">
+                              {visitor.checkInTime 
+                                ? formatDateTime(visitor.checkInTime)
+                                : formatDateTime(visitor.createdAt)
+                              }
                             </p>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-4 py-4">
-                        {visitor.companyToVisit ? (
-                          <p className="text-sm text-gray-600 flex items-center gap-1">
-                            <Building size={14} className="text-gray-400" />
-                            {visitor.companyToVisit}
-                          </p>
-                        ) : (
-                          <span className="text-gray-400 text-sm">-</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-4">
-                        <span className="text-sm font-medium text-gray-700">
-                          {visitor.totalVisits || 0}
-                        </span>
-                      </td>
-                      <td className="px-4 py-4">
-                        <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded-full ${
-                          visitor.status === 'CHECKED_IN' ? 'bg-green-100 text-green-700' :
-                          visitor.status === 'APPROVED' ? 'bg-blue-100 text-blue-700' :
-                          visitor.status === 'PENDING' || visitor.status === 'PENDING_APPROVAL' ? 'bg-yellow-100 text-yellow-700' :
-                          visitor.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
-                          visitor.status === 'CHECKED_OUT' ? 'bg-gray-100 text-gray-700' :
-                          'bg-gray-100 text-gray-600'
-                        }`}>
-                          {visitor.status?.replace('_', ' ') || 'Unknown'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => setViewVisitor(visitor)}
-                            className="p-2 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
-                            title="View"
-                          >
-                            <Eye size={18} />
-                          </button>
-                          {(canEditVisitors || isAdmin) && (
+                          </div>
+                        </td>
+                        <td className="px-4 py-4">
+                          <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded-full ${statusStyle.bg} ${statusStyle.text}`}>
+                            <StatusIcon size={12} />
+                            {visitor.status?.replace('_', ' ') || 'Unknown'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="flex items-center justify-end gap-2">
                             <button
-                              onClick={() => setEditVisitor({...visitor})}
-                              className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                              title="Edit"
+                              onClick={() => setViewVisitor(visitor)}
+                              className="p-2 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
+                              title="View Details"
                             >
-                              <Edit size={18} />
+                              <Eye size={18} />
                             </button>
-                          )}
-                          {(canDeleteVisitors || isAdmin) && (
                             <button
-                              onClick={() => setDeleteConfirm(visitor)}
-                              className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                              title="Delete"
+                              onClick={() => handleShareWhatsApp(visitor)}
+                              className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                              title="Share on WhatsApp"
                             >
-                              <Trash2 size={18} />
+                              <Share2 size={18} />
                             </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                            {(canEditVisitors || isAdmin) && (
+                              <button
+                                onClick={() => setEditVisitor({...visitor})}
+                                className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                title="Edit"
+                              >
+                                <Edit size={18} />
+                              </button>
+                            )}
+                            {(canDeleteVisitors || isAdmin) && (
+                              <button
+                                onClick={() => setDeleteConfirm(visitor)}
+                                className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                title="Delete"
+                              >
+                                <Trash2 size={18} />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
 
             {/* Pagination */}
-            <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
-              <p className="text-sm text-gray-500">
-                Showing {((pagination.page - 1) * pagination.limit) + 1} to{' '}
-                {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} visitors
-              </p>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setPagination(prev => ({ ...prev, page: prev.page - 1 }))}
-                  disabled={pagination.page === 1}
-                  className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <ChevronLeft size={18} />
-                </button>
-                <span className="px-4 py-2 text-sm">
-                  Page {pagination.page} of {pagination.totalPages}
-                </span>
-                <button
-                  onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
-                  disabled={pagination.page === pagination.totalPages}
-                  className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <ChevronRight size={18} />
-                </button>
+            {pagination.totalPages > 1 && (
+              <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
+                <p className="text-sm text-gray-500">
+                  Showing {((pagination.page - 1) * pagination.limit) + 1} to{' '}
+                  {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} visitors
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setPagination(prev => ({ ...prev, page: prev.page - 1 }))}
+                    disabled={pagination.page === 1}
+                    className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <ChevronLeft size={18} />
+                  </button>
+                  <span className="px-4 py-2 text-sm">
+                    Page {pagination.page} of {pagination.totalPages}
+                  </span>
+                  <button
+                    onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
+                    disabled={pagination.page === pagination.totalPages}
+                    className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <ChevronRight size={18} />
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
           </>
         )}
       </div>
@@ -357,7 +455,14 @@ const VMSVisitors = () => {
             {/* Header */}
             <div className="bg-gradient-to-r from-teal-600 to-teal-700 p-6 text-white">
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold">Visitor Details</h2>
+                <div>
+                  <h2 className="text-xl font-bold">Visitor Details</h2>
+                  {viewVisitor.gatepass?.gatepassNumber && (
+                    <p className="text-teal-100 text-sm mt-1">
+                      Pass: {viewVisitor.gatepass.gatepassNumber}
+                    </p>
+                  )}
+                </div>
                 <button onClick={() => setViewVisitor(null)} className="p-1 hover:bg-white/20 rounded">
                   <X size={20} />
                 </button>
@@ -381,14 +486,37 @@ const VMSVisitors = () => {
                   <h3 className="text-xl font-bold text-gray-800">{viewVisitor.visitorName}</h3>
                   <p className="text-gray-500">{viewVisitor.purpose || 'Visitor'}</p>
                   <span className={`inline-flex items-center mt-2 px-2 py-1 text-xs rounded-full ${
-                    viewVisitor.status === 'CHECKED_IN' ? 'bg-green-100 text-green-700' :
-                    viewVisitor.status === 'APPROVED' ? 'bg-blue-100 text-blue-700' :
-                    'bg-gray-100 text-gray-600'
-                  }`}>
+                    getStatusColor(viewVisitor.status).bg
+                  } ${getStatusColor(viewVisitor.status).text}`}>
                     {viewVisitor.status?.replace('_', ' ') || 'Unknown'}
                   </span>
                 </div>
               </div>
+
+              {/* Pass Info (if available) */}
+              {viewVisitor.gatepass && (
+                <div className="mb-4 p-4 bg-teal-50 border border-teal-200 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Ticket size={18} className="text-teal-600" />
+                    <h4 className="font-semibold text-teal-800">Gate Pass</h4>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <p className="text-xs text-teal-600">Pass Number</p>
+                      <p className="font-mono font-medium text-teal-800">{viewVisitor.gatepass.gatepassNumber}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-teal-600">Valid Until</p>
+                      <p className="font-medium text-teal-800">
+                        {viewVisitor.gatepass.validUntil 
+                          ? formatDateTime(viewVisitor.gatepass.validUntil)
+                          : '-'
+                        }
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Details */}
               <div className="space-y-4">
@@ -446,32 +574,17 @@ const VMSVisitors = () => {
                 )}
 
                 <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
-                    <Calendar size={18} className="text-gray-400" />
-                    <div>
-                      <p className="text-xs text-gray-500">Check-in Time</p>
-                      <p className="font-medium text-gray-800 text-sm">
-                        {viewVisitor.checkInTime 
-                          ? new Date(viewVisitor.checkInTime).toLocaleString('en-IN', {
-                              day: '2-digit',
-                              month: 'short',
-                              year: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit',
-                              hour12: true
-                            })
-                          : viewVisitor.createdAt 
-                            ? new Date(viewVisitor.createdAt).toLocaleString('en-IN', {
-                                day: '2-digit',
-                                month: 'short',
-                                year: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit',
-                                hour12: true
-                              })
-                            : '-'}
-                      </p>
-                    </div>
+                  <Calendar size={18} className="text-gray-400" />
+                  <div>
+                    <p className="text-xs text-gray-500">Check-in Time</p>
+                    <p className="font-medium text-gray-800 text-sm">
+                      {viewVisitor.checkInTime 
+                        ? formatDateTime(viewVisitor.checkInTime)
+                        : formatDateTime(viewVisitor.createdAt)
+                      }
+                    </p>
                   </div>
+                </div>
 
                 {/* Company From */}
                 {viewVisitor.companyFrom && (
@@ -485,11 +598,18 @@ const VMSVisitors = () => {
                 )}
               </div>
 
-              {/* Close Button */}
-              <div className="mt-6 flex justify-end">
+              {/* Actions */}
+              <div className="mt-6 flex gap-3">
+                <button
+                  onClick={() => handleShareWhatsApp(viewVisitor)}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                >
+                  <Share2 size={18} />
+                  Share on WhatsApp
+                </button>
                 <button
                   onClick={() => setViewVisitor(null)}
-                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+                  className="px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50"
                 >
                   Close
                 </button>

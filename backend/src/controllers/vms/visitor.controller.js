@@ -70,13 +70,24 @@ exports.getVisitors = async (req, res) => {
 
     console.log('Fetching visitors with where:', JSON.stringify(where));
 
-    // Get visitors with pagination - simplified query
+    // Get visitors with pagination - include gatepass relationship
     const [visitors, total] = await Promise.all([
       vmsPrisma.vMSVisitor.findMany({
         where,
         skip,
         take,
         orderBy: { [sortBy]: sortOrder },
+        include: {
+          gatepass: {
+            select: {
+              id: true,
+              gatepassNumber: true,
+              validFrom: true,
+              validUntil: true,
+              status: true,
+            }
+          }
+        }
       }),
       vmsPrisma.vMSVisitor.count({ where }),
     ]);
@@ -106,6 +117,14 @@ exports.getVisitors = async (req, res) => {
       checkInTime: v.checkInTime,
       checkOutTime: v.checkOutTime,
       entryType: v.entryType,
+      requestNumber: v.id?.slice(0, 8)?.toUpperCase(), // Generate a short request number
+      gatepass: v.gatepass ? {
+        id: v.gatepass.id,
+        gatepassNumber: v.gatepass.gatepassNumber,
+        validFrom: v.gatepass.validFrom,
+        validUntil: v.gatepass.validUntil,
+        status: v.gatepass.status,
+      } : null,
       createdAt: v.createdAt,
       updatedAt: v.updatedAt,
     }));
