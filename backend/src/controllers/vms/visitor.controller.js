@@ -68,6 +68,20 @@ exports.getVisitors = async (req, res) => {
     });
 
     console.log(`Found ${visitors.length} visitors`);
+    
+    // Log raw visitor data for debugging
+    if (visitors.length > 0) {
+      console.log('First visitor raw data:', JSON.stringify({
+        id: visitors[0].id,
+        visitorName: visitors[0].visitorName,
+        phone: visitors[0].phone,
+        email: visitors[0].email,
+        companyToVisit: visitors[0].companyToVisit,
+        status: visitors[0].status,
+        hasGatepass: !!visitors[0].gatepass,
+        hasCompany: !!visitors[0].company,
+      }, null, 2));
+    }
 
     // Format visitor records for frontend
     const formattedVisitors = visitors.map(v => ({
