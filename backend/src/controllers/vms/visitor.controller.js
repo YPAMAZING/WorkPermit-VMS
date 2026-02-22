@@ -33,80 +33,56 @@ exports.getVisitors = async (req, res) => {
     // Build where clause
     const where = {};
 
-    // Filter by company if user is not admin
+    // Check if user is admin - using same logic as dashboard controller
     const userIsAdmin = isUserAdmin(req.user);
+    
+    // Build company filter same as dashboard controller does
+    // Admin users see ALL visitors, non-admin users see only their company's visitors
+    const companyFilter = (req.user?.companyId && !userIsAdmin) 
+      ? { companyId: req.user.companyId } 
+      : {};
+    
     console.log('Visitors API - User admin check:', { 
       userId: req.user?.userId, 
       role: req.user?.role, 
       roleName: req.user?.roleName,
       isAdmin: req.user?.isAdmin, 
       isFromWorkPermit: req.user?.isFromWorkPermit,
-      companyId: req.user?.companyId,
-      userIsAdmin 
+      userCompanyId: req.user?.companyId,
+      queryCompanyId: companyId,
+      userIsAdmin,
+      companyFilter,
     });
     
-    // For non-admin users with companyId, filter by company
-    // Check both visitor.companyId AND gatepass.companyId
-    if (req.user?.companyId && !userIsAdmin) {
-      where.OR = [
-        { companyId: req.user.companyId },
-        { gatepass: { companyId: req.user.companyId } }
-      ];
+    // Apply company filter for non-admin users
+    if (Object.keys(companyFilter).length > 0) {
+      where.companyId = companyFilter.companyId;
     } else if (companyId) {
-      where.OR = [
-        { companyId: companyId },
-        { gatepass: { companyId: companyId } }
-      ];
+      // If specific companyId requested in query params
+      where.companyId = companyId;
     }
-    // If admin and no specific companyId filter, show ALL visitors (no where clause for company)
+    // If admin and no specific companyId filter, where clause stays empty = show ALL visitors
 
-    // Status filter - handle different formats
+    // Status filter - handle different formats (simplified)
     if (status) {
       const statusUpper = status.toUpperCase();
       if (statusUpper === 'PENDING' || statusUpper === 'PENDING_APPROVAL') {
-        if (where.OR) {
-          where.AND = [{ OR: where.OR }, { status: { in: ['PENDING', 'PENDING_APPROVAL'] } }];
-          delete where.OR;
-        } else {
-          where.status = { in: ['PENDING', 'PENDING_APPROVAL'] };
-        }
+        where.status = { in: ['PENDING', 'PENDING_APPROVAL'] };
       } else if (statusUpper === 'CHECKEDIN' || statusUpper === 'CHECKED_IN') {
-        if (where.OR) {
-          where.AND = [{ OR: where.OR }, { status: 'CHECKED_IN' }];
-          delete where.OR;
-        } else {
-          where.status = 'CHECKED_IN';
-        }
+        where.status = 'CHECKED_IN';
       } else if (statusUpper !== 'ALL') {
-        if (where.OR) {
-          where.AND = [{ OR: where.OR }, { status: statusUpper }];
-          delete where.OR;
-        } else {
-          where.status = statusUpper;
-        }
+        where.status = statusUpper;
       }
     }
 
     // Search filter - using simple contains (MySQL is case-insensitive by default)
     if (search && search.trim()) {
-      const searchFilter = {
-        OR: [
-          { visitorName: { contains: search } },
-          { phone: { contains: search } },
-          { companyToVisit: { contains: search } },
-          { personToMeet: { contains: search } },
-          { gatepass: { gatepassNumber: { contains: search } } },
-        ]
-      };
-      
-      if (where.AND) {
-        where.AND.push(searchFilter);
-      } else if (where.OR) {
-        where.AND = [{ OR: where.OR }, searchFilter];
-        delete where.OR;
-      } else {
-        where.OR = searchFilter.OR;
-      }
+      where.OR = [
+        { visitorName: { contains: search } },
+        { phone: { contains: search } },
+        { companyToVisit: { contains: search } },
+        { personToMeet: { contains: search } },
+      ];
     }
 
     console.log('Fetching visitors with where:', JSON.stringify(where));
