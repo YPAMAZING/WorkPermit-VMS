@@ -7,8 +7,8 @@ const isUserAdmin = (user) => {
   if (!user) return false;
   if (user.isAdmin) return true;
   if (user.isFromWorkPermit) return true;
-  const adminRoles = ['VMS_ADMIN', 'ADMIN', 'admin', 'FIREMAN', 'SUPER_ADMIN'];
-  return adminRoles.includes(user.role);
+  const adminRoles = ['VMS_ADMIN', 'ADMIN', 'admin', 'FIREMAN', 'SUPER_ADMIN', 'SYSTEM_ADMIN', 'VMS Administrator'];
+  return adminRoles.includes(user.role) || adminRoles.includes(user.roleName);
 };
 
 // Get all VMS visitors with pagination and filters
@@ -32,11 +32,13 @@ exports.getVisitors = async (req, res) => {
 
     // Filter by company if user is not admin
     const userIsAdmin = isUserAdmin(req.user);
-    console.log('User admin check:', { 
+    console.log('Visitors API - User admin check:', { 
       userId: req.user?.userId, 
       role: req.user?.role, 
+      roleName: req.user?.roleName,
       isAdmin: req.user?.isAdmin, 
       isFromWorkPermit: req.user?.isFromWorkPermit,
+      companyId: req.user?.companyId,
       userIsAdmin 
     });
     

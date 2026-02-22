@@ -50,7 +50,9 @@ const vmsAuthMiddleware = async (req, res, next) => {
 
       // Check if user is admin (multiple ways to be admin)
       const roleName = user.vmsRole?.name || 'VMS_USER';
-      const isAdminRole = ['VMS_ADMIN', 'ADMIN', 'admin', 'FIREMAN', 'SUPER_ADMIN'].includes(roleName);
+      const roleDisplayName = user.vmsRole?.displayName || '';
+      const isAdminRole = ['VMS_ADMIN', 'ADMIN', 'admin', 'FIREMAN', 'SUPER_ADMIN', 'SYSTEM_ADMIN'].includes(roleName) ||
+                          roleDisplayName.toLowerCase().includes('admin');
       
       // Check if user is company user
       const isCompanyRole = ['COMPANY_USER', 'company_user'].includes(roleName);
