@@ -17,6 +17,7 @@ const isUserAdmin = (user) => {
 };
 
 // Get all VMS visitors with pagination and filters
+// This now queries GATEPASSES to get all visitor passes (same as dashboard)
 exports.getVisitors = async (req, res) => {
   try {
     const {
@@ -45,7 +46,7 @@ exports.getVisitors = async (req, res) => {
       userIsAdmin,
     });
 
-    // Build where clause - same logic as dashboard
+    // Build where clause for gatepasses
     let where = {};
     
     // Company filter for non-admin users
@@ -54,54 +55,41 @@ exports.getVisitors = async (req, res) => {
     } else if (companyId) {
       where.companyId = companyId;
     }
-    // Admin with no companyId filter = empty where = ALL visitors
+    // Admin with no companyId filter = empty where = ALL gatepasses
 
-    // Status filter
+    // Status filter on gatepass
     if (status && status.toUpperCase() !== 'ALL') {
-      const statusUpper = status.toUpperCase();
-      if (statusUpper === 'PENDING' || statusUpper === 'PENDING_APPROVAL') {
-        where.status = { in: ['PENDING', 'PENDING_APPROVAL'] };
-      } else if (statusUpper === 'CHECKEDIN' || statusUpper === 'CHECKED_IN') {
-        where.status = 'CHECKED_IN';
-      } else {
-        where.status = statusUpper;
-      }
+      where.status = status.toUpperCase();
     }
 
-    // Search filter
+    // Search filter - search in visitor fields
     if (search && search.trim()) {
-      where.OR = [
-        { visitorName: { contains: search } },
-        { phone: { contains: search } },
-        { companyToVisit: { contains: search } },
-        { personToMeet: { contains: search } },
-      ];
+      where.visitor = {
+        OR: [
+          { visitorName: { contains: search } },
+          { phone: { contains: search } },
+          { companyToVisit: { contains: search } },
+          { personToMeet: { contains: search } },
+          { companyFrom: { contains: search } },
+        ]
+      };
     }
 
     console.log('Where clause:', JSON.stringify(where));
 
-    // Debug: Count ALL visitors in database (no filters)
-    const totalAllVisitors = await prisma.vMSVisitor.count({});
-    console.log('Total visitors in DB (no filter):', totalAllVisitors);
+    // Debug: Count ALL gatepasses in database (no filters)
+    const totalAllGatepasses = await prisma.vMSGatepass.count({});
+    console.log('Total gatepasses in DB (no filter):', totalAllGatepasses);
 
-    // Get visitors with filters
-    const [visitors, total] = await Promise.all([
-      prisma.vMSVisitor.findMany({
+    // Query GATEPASSES with visitor info (same as dashboard "Recent Visitors")
+    const [gatepasses, total] = await Promise.all([
+      prisma.vMSGatepass.findMany({
         where,
         skip,
         take,
         orderBy: { [sortBy]: sortOrder },
         include: {
-          gatepass: {
-            select: {
-              id: true,
-              gatepassNumber: true,
-              validFrom: true,
-              validUntil: true,
-              status: true,
-              companyId: true,
-            }
-          },
+          visitor: true,
           company: {
             select: {
               id: true,
@@ -111,52 +99,50 @@ exports.getVisitors = async (req, res) => {
           }
         }
       }),
-      prisma.vMSVisitor.count({ where }),
+      prisma.vMSGatepass.count({ where }),
     ]);
 
-    console.log(`Found ${visitors.length} visitors (filtered: ${total}, total in DB: ${totalAllVisitors})`);
+    console.log(`Found ${gatepasses.length} gatepasses (filtered: ${total}, total in DB: ${totalAllGatepasses})`);
     console.log('=== END DEBUG ===');
 
-    // Format response
-    const formattedVisitors = visitors.map(v => ({
-      id: v.id,
-      visitorName: v.visitorName,
-      phone: v.phone,
-      email: v.email,
-      companyFrom: v.companyFrom,
-      companyToVisit: v.companyToVisit,
-      companyId: v.companyId,
-      personToMeet: v.personToMeet,
-      purpose: v.purpose,
-      idProofType: v.idProofType,
-      idProofNumber: v.idProofNumber,
-      photo: v.photo,
-      vehicleNumber: v.vehicleNumber,
-      numberOfVisitors: v.numberOfVisitors,
-      status: v.status,
-      approvedBy: v.approvedBy,
-      approvedAt: v.approvedAt,
-      rejectionReason: v.rejectionReason,
-      checkInTime: v.checkInTime,
-      checkOutTime: v.checkOutTime,
-      entryType: v.entryType,
-      requestNumber: v.id?.slice(0, 8)?.toUpperCase(), // Generate a short request number
-      // Include company info from visitor or gatepass
-      company: v.company || v.gatepass?.company || null,
-      gatepass: v.gatepass ? {
-        id: v.gatepass.id,
-        gatepassNumber: v.gatepass.gatepassNumber,
-        validFrom: v.gatepass.validFrom,
-        validUntil: v.gatepass.validUntil,
-        status: v.gatepass.status,
-        companyId: v.gatepass.companyId,
-        company: v.gatepass.company,
-      } : null,
-      createdAt: v.createdAt,
-      updatedAt: v.updatedAt,
+    // Format response - transform gatepasses to visitor format for frontend compatibility
+    const formattedVisitors = gatepasses.map(gp => ({
+      id: gp.visitor?.id || gp.id,
+      visitorName: gp.visitor?.visitorName || 'Unknown',
+      phone: gp.visitor?.phone || '',
+      email: gp.visitor?.email || '',
+      companyFrom: gp.visitor?.companyFrom || '',
+      companyToVisit: gp.visitor?.companyToVisit || gp.company?.displayName || gp.company?.name || '',
+      companyId: gp.companyId,
+      personToMeet: gp.visitor?.personToMeet || '',
+      purpose: gp.visitor?.purpose || '',
+      idProofType: gp.visitor?.idProofType || '',
+      idProofNumber: gp.visitor?.idProofNumber || '',
+      photo: gp.visitor?.photo || null,
+      vehicleNumber: gp.visitor?.vehicleNumber || '',
+      numberOfVisitors: gp.visitor?.numberOfVisitors || 1,
+      status: gp.status, // Use gatepass status (ACTIVE, USED, etc.)
+      visitorStatus: gp.visitor?.status || '', // Original visitor status
+      approvedBy: gp.visitor?.approvedBy || '',
+      approvedAt: gp.visitor?.approvedAt || null,
+      rejectionReason: gp.visitor?.rejectionReason || '',
+      checkInTime: gp.visitor?.checkInTime || gp.validFrom,
+      checkOutTime: gp.visitor?.checkOutTime || null,
+      entryType: gp.visitor?.entryType || 'WALK_IN',
+      requestNumber: gp.gatepassNumber, // Use gatepass number as request number
+      company: gp.company,
+      gatepass: {
+        id: gp.id,
+        gatepassNumber: gp.gatepassNumber,
+        validFrom: gp.validFrom,
+        validUntil: gp.validUntil,
+        status: gp.status,
+        companyId: gp.companyId,
+      },
+      createdAt: gp.createdAt,
+      updatedAt: gp.updatedAt,
     }));
 
-    // Return debug info in response when empty (helps troubleshoot)
     res.json({
       success: true,
       visitors: formattedVisitors,
@@ -166,11 +152,11 @@ exports.getVisitors = async (req, res) => {
         total,
         totalPages: Math.ceil(total / take),
       },
-      // Debug info
       _debug: {
-        totalAllVisitors,
+        totalAllGatepasses,
         userIsAdmin,
         whereClause: where,
+        source: 'gatepasses', // Indicate data source
       },
     });
   } catch (error) {
@@ -179,7 +165,7 @@ exports.getVisitors = async (req, res) => {
     res.status(500).json({ 
       message: 'Failed to get visitors', 
       error: error.message,
-      hint: 'Check if vms_visitors table exists and Prisma client is generated'
+      hint: 'Check if vms_gatepasses table exists and Prisma client is generated'
     });
   }
 };
