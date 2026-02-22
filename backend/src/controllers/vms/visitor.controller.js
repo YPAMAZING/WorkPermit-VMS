@@ -1,5 +1,5 @@
 // VMS Visitor Controller
-// Shows visitor data from VMSVisitor table (49 visitors exist!)
+// Shows visitor data from VMSVisitor table
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
@@ -18,8 +18,11 @@ exports.getVisitors = async (req, res) => {
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const take = parseInt(limit);
 
-    console.log('=== VISITORS API (from VMSVisitor table) ===');
+    console.log('========================================');
+    console.log('=== VISITORS API REQUEST ===');
+    console.log('User:', req.user?.email, 'Role:', req.user?.roleName);
     console.log('Query params:', { page, limit, search, status });
+    console.log('========================================');
 
     // Build where clause for visitors
     let where = {};
@@ -29,7 +32,7 @@ exports.getVisitors = async (req, res) => {
       where.status = status.toUpperCase();
     }
 
-    // Search filter
+    // Search filter - only add if search is provided and not empty
     if (search && search.trim()) {
       where.OR = [
         { visitorName: { contains: search } },
@@ -39,6 +42,8 @@ exports.getVisitors = async (req, res) => {
         { personToMeet: { contains: search } },
       ];
     }
+
+    console.log('Where clause:', JSON.stringify(where));
 
     // Count total
     const total = await prisma.vMSVisitor.count({ where });
