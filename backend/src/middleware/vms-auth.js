@@ -99,8 +99,16 @@ const vmsAuthMiddleware = async (req, res, next) => {
 // Permission check middleware
 const vmsPermissionMiddleware = (requiredPermission) => {
   return (req, res, next) => {
+    console.log('Permission check:', {
+      requiredPermission,
+      isAdmin: req.user?.isAdmin,
+      role: req.user?.role,
+      email: req.user?.email
+    });
+    
     // Admin has all permissions
     if (req.user.isAdmin) {
+      console.log('Admin bypass - permission granted');
       return next();
     }
 
