@@ -512,7 +512,7 @@ const VMSReports = () => {
     <div class="visitor-card">
       <div class="visitor-header">
         ${v.photo 
-          ? \`<img src="\${v.photo}" class="visitor-photo" alt="Photo" onerror="this.outerHTML='<div class=visitor-photo-placeholder>👤</div>'" />\`
+          ? '<img src="' + v.photo + '" class="visitor-photo" alt="Photo" onerror="this.outerHTML=\'<div class=visitor-photo-placeholder>👤</div>\'" />'
           : '<div class="visitor-photo-placeholder">👤</div>'
         }
         <div>
@@ -564,12 +564,7 @@ const VMSReports = () => {
         </div>
       </div>
       
-      ${v.idDocumentImage ? \`
-        <div class="id-section">
-          <h4>📄 ID Document</h4>
-          <img src="\${v.idDocumentImage}" class="id-image" alt="ID Document" onerror="this.style.display='none'" />
-        </div>
-      \` : ''}
+      ${v.idDocumentImage ? '<div class="id-section"><h4>📄 ID Document</h4><img src="' + v.idDocumentImage + '" class="id-image" alt="ID Document" onerror="this.style.display=\'none\'" /></div>' : ''}
     </div>
   `).join('')}
   
