@@ -82,6 +82,7 @@ exports.getVisitors = async (req, res) => {
       purpose: v.purpose || '',
       idProofType: v.idProofType || '',
       idProofNumber: v.idProofNumber || '',
+      idDocumentImage: v.idDocumentImage || null,
       photo: v.photo || null,
       vehicleNumber: v.vehicleNumber || '',
       numberOfVisitors: v.numberOfVisitors || 1,

@@ -167,27 +167,39 @@ const VMSReports = () => {
         return
       }
       
+      // Helper function to escape CSV values
+      const escapeCSV = (value) => {
+        if (value === null || value === undefined) return ''
+        const str = String(value)
+        // If contains comma, newline, or quote, wrap in quotes and escape internal quotes
+        if (str.includes(',') || str.includes('\n') || str.includes('"')) {
+          return '"' + str.replace(/"/g, '""') + '"'
+        }
+        return str
+      }
+      
       // Create properly formatted CSV with headers
-      let csvContent = 'S.No,Name,Phone,Email,Company From,Company To Visit,Person To Meet,Purpose,Vehicle Number,ID Proof Type,ID Proof Number,Number of Visitors,Status,Check-in Time,Gatepass Number,Created At\n'
+      const headers = ['S.No', 'Name', 'Phone', 'Email', 'Company From', 'Company To Visit', 'Person To Meet', 'Purpose', 'Vehicle Number', 'ID Proof Type', 'ID Proof Number', 'Visitors', 'Status', 'Check-in Time', 'Pass Number', 'Created At']
+      let csvContent = headers.join(',') + '\n'
       
       visitors.forEach((v, index) => {
         const row = [
           index + 1,
-          (v.visitorName || '').replace(/,/g, ' '),
-          v.phone || '',
-          (v.email || '').replace(/,/g, ' '),
-          (v.companyFrom || '').replace(/,/g, ' '),
-          (v.companyToVisit || '').replace(/,/g, ' '),
-          (v.personToMeet || '').replace(/,/g, ' '),
-          (v.purpose || '').replace(/,/g, ' '),
-          (v.vehicleNumber || '').replace(/,/g, ' '),
-          (v.idProofType || '').replace(/,/g, ' '),
-          (v.idProofNumber || '').replace(/,/g, ' '),
+          escapeCSV(v.visitorName),
+          escapeCSV(v.phone),
+          escapeCSV(v.email),
+          escapeCSV(v.companyFrom),
+          escapeCSV(v.companyToVisit),
+          escapeCSV(v.personToMeet),
+          escapeCSV(v.purpose),
+          escapeCSV(v.vehicleNumber),
+          escapeCSV(v.idProofType),
+          escapeCSV(v.idProofNumber),
           v.numberOfVisitors || 1,
-          v.status || '',
-          v.checkInTime ? new Date(v.checkInTime).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' }) : '',
-          v.gatepass?.gatepassNumber || v.requestNumber || '',
-          v.createdAt ? new Date(v.createdAt).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' }) : '',
+          escapeCSV(v.status),
+          v.checkInTime ? new Date(v.checkInTime).toLocaleString('en-IN', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit', hour12: true }) : '',
+          escapeCSV(v.gatepass?.gatepassNumber || v.requestNumber),
+          v.createdAt ? new Date(v.createdAt).toLocaleString('en-IN', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit', hour12: true }) : '',
         ]
         csvContent += row.join(',') + '\n'
       })
