@@ -150,7 +150,7 @@ const VMSReports = () => {
     window.URL.revokeObjectURL(url)
   }
 
-  // Export all visitors to CSV with full details
+  // Export all visitors to CSV with full details (properly formatted)
   const handleExportAllVisitors = async () => {
     try {
       // Fetch all visitors within date range (up to 5000)
@@ -167,32 +167,34 @@ const VMSReports = () => {
         return
       }
       
-      const csvData = [
-        ['Name', 'Phone', 'Email', 'Company From', 'Company To Visit', 'Person To Meet', 'Purpose', 'Vehicle Number', 'ID Proof Type', 'ID Proof Number', 'Number of Visitors', 'Status', 'Check-in Time', 'Gatepass Number', 'Created At']
-      ]
+      // Create properly formatted CSV with headers
+      let csvContent = 'S.No,Name,Phone,Email,Company From,Company To Visit,Person To Meet,Purpose,Vehicle Number,ID Proof Type,ID Proof Number,Number of Visitors,Status,Check-in Time,Gatepass Number,Created At\n'
       
-      visitors.forEach(v => {
-        csvData.push([
-          v.visitorName || '',
+      visitors.forEach((v, index) => {
+        const row = [
+          index + 1,
+          (v.visitorName || '').replace(/,/g, ' '),
           v.phone || '',
-          v.email || '',
-          v.companyFrom || '',
-          v.companyToVisit || '',
-          v.personToMeet || '',
-          v.purpose || '',
-          v.vehicleNumber || '',
-          v.idProofType || '',
-          v.idProofNumber || '',
+          (v.email || '').replace(/,/g, ' '),
+          (v.companyFrom || '').replace(/,/g, ' '),
+          (v.companyToVisit || '').replace(/,/g, ' '),
+          (v.personToMeet || '').replace(/,/g, ' '),
+          (v.purpose || '').replace(/,/g, ' '),
+          (v.vehicleNumber || '').replace(/,/g, ' '),
+          (v.idProofType || '').replace(/,/g, ' '),
+          (v.idProofNumber || '').replace(/,/g, ' '),
           v.numberOfVisitors || 1,
           v.status || '',
-          v.checkInTime ? new Date(v.checkInTime).toLocaleString('en-IN') : '',
+          v.checkInTime ? new Date(v.checkInTime).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' }) : '',
           v.gatepass?.gatepassNumber || v.requestNumber || '',
-          v.createdAt ? new Date(v.createdAt).toLocaleString('en-IN') : '',
-        ])
+          v.createdAt ? new Date(v.createdAt).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' }) : '',
+        ]
+        csvContent += row.join(',') + '\n'
       })
       
-      const csvString = csvData.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n')
-      const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' })
+      // Add BOM for Excel to recognize UTF-8
+      const BOM = '\uFEFF'
+      const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' })
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
@@ -202,6 +204,190 @@ const VMSReports = () => {
     } catch (error) {
       console.error('Failed to export visitors:', error)
       alert('Failed to export visitors. Please try again.')
+    }
+  }
+
+  // Export visitors to PDF with photos and ID documents
+  const handleExportPDF = async () => {
+    try {
+      // Fetch all visitors within date range
+      const response = await visitorsApi.getAll({ 
+        page: 1, 
+        limit: 100, // Limit for PDF to avoid huge files
+        startDate: dateRange.from,
+        endDate: dateRange.to
+      })
+      const visitors = response.data.visitors || []
+      
+      if (visitors.length === 0) {
+        alert('No visitors found in the selected date range')
+        return
+      }
+
+      // Create printable HTML content
+      const printContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Visitors Report - ${dateRange.from} to ${dateRange.to}</title>
+          <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { font-family: Arial, sans-serif; padding: 20px; }
+            .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #0d9488; padding-bottom: 15px; }
+            .header h1 { color: #0d9488; font-size: 24px; }
+            .header p { color: #666; margin-top: 5px; }
+            .visitor-card { 
+              border: 1px solid #ddd; 
+              border-radius: 8px; 
+              padding: 15px; 
+              margin-bottom: 20px; 
+              page-break-inside: avoid;
+              background: #fafafa;
+            }
+            .visitor-header { 
+              display: flex; 
+              align-items: center; 
+              gap: 15px; 
+              margin-bottom: 15px;
+              padding-bottom: 10px;
+              border-bottom: 1px solid #eee;
+            }
+            .visitor-photo { 
+              width: 80px; 
+              height: 80px; 
+              border-radius: 50%; 
+              object-fit: cover;
+              border: 2px solid #0d9488;
+            }
+            .visitor-photo-placeholder {
+              width: 80px; 
+              height: 80px; 
+              border-radius: 50%;
+              background: #e5e7eb;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              color: #9ca3af;
+              font-size: 24px;
+              border: 2px solid #d1d5db;
+            }
+            .visitor-name { font-size: 18px; font-weight: bold; color: #1f2937; }
+            .visitor-status { 
+              display: inline-block;
+              padding: 4px 10px; 
+              border-radius: 12px; 
+              font-size: 11px; 
+              font-weight: 600;
+              margin-top: 5px;
+            }
+            .status-active, .status-checked_in, .status-approved { background: #d1fae5; color: #065f46; }
+            .status-used, .status-checked_out { background: #dbeafe; color: #1e40af; }
+            .status-pending, .status-pending_approval { background: #fef3c7; color: #92400e; }
+            .status-expired, .status-rejected, .status-cancelled { background: #fee2e2; color: #991b1b; }
+            .details-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+            .detail-item { padding: 8px; background: white; border-radius: 4px; }
+            .detail-label { font-size: 10px; color: #6b7280; text-transform: uppercase; }
+            .detail-value { font-size: 13px; color: #1f2937; font-weight: 500; margin-top: 2px; }
+            .id-section { margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee; }
+            .id-section h4 { font-size: 12px; color: #6b7280; margin-bottom: 10px; }
+            .id-image { max-width: 200px; max-height: 120px; border-radius: 4px; border: 1px solid #ddd; }
+            .footer { text-align: center; margin-top: 30px; padding-top: 15px; border-top: 1px solid #ddd; color: #666; font-size: 11px; }
+            @media print {
+              body { padding: 10px; }
+              .visitor-card { break-inside: avoid; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>Visitors Report</h1>
+            <p>Date Range: ${dateRange.from} to ${dateRange.to} | Total Visitors: ${visitors.length}</p>
+          </div>
+          
+          ${visitors.map((v, i) => `
+            <div class="visitor-card">
+              <div class="visitor-header">
+                ${v.photo 
+                  ? `<img src="${v.photo}" class="visitor-photo" alt="Photo" />`
+                  : `<div class="visitor-photo-placeholder">👤</div>`
+                }
+                <div>
+                  <div class="visitor-name">${i + 1}. ${v.visitorName || 'N/A'}</div>
+                  <span class="visitor-status status-${(v.status || '').toLowerCase()}">${v.status || 'N/A'}</span>
+                </div>
+              </div>
+              
+              <div class="details-grid">
+                <div class="detail-item">
+                  <div class="detail-label">Phone</div>
+                  <div class="detail-value">${v.phone || '-'}</div>
+                </div>
+                <div class="detail-item">
+                  <div class="detail-label">Email</div>
+                  <div class="detail-value">${v.email || '-'}</div>
+                </div>
+                <div class="detail-item">
+                  <div class="detail-label">Company From</div>
+                  <div class="detail-value">${v.companyFrom || '-'}</div>
+                </div>
+                <div class="detail-item">
+                  <div class="detail-label">Company To Visit</div>
+                  <div class="detail-value">${v.companyToVisit || '-'}</div>
+                </div>
+                <div class="detail-item">
+                  <div class="detail-label">Person To Meet</div>
+                  <div class="detail-value">${v.personToMeet || '-'}</div>
+                </div>
+                <div class="detail-item">
+                  <div class="detail-label">Purpose</div>
+                  <div class="detail-value">${v.purpose || '-'}</div>
+                </div>
+                <div class="detail-item">
+                  <div class="detail-label">Vehicle Number</div>
+                  <div class="detail-value">${v.vehicleNumber || '-'}</div>
+                </div>
+                <div class="detail-item">
+                  <div class="detail-label">Check-in Time</div>
+                  <div class="detail-value">${v.checkInTime ? new Date(v.checkInTime).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' }) : '-'}</div>
+                </div>
+                <div class="detail-item">
+                  <div class="detail-label">ID Proof</div>
+                  <div class="detail-value">${v.idProofType || '-'}: ${v.idProofNumber || '-'}</div>
+                </div>
+                <div class="detail-item">
+                  <div class="detail-label">Pass Number</div>
+                  <div class="detail-value">${v.gatepass?.gatepassNumber || v.requestNumber || '-'}</div>
+                </div>
+              </div>
+              
+              ${v.idDocumentImage ? `
+                <div class="id-section">
+                  <h4>ID Document</h4>
+                  <img src="${v.idDocumentImage}" class="id-image" alt="ID Document" />
+                </div>
+              ` : ''}
+            </div>
+          `).join('')}
+          
+          <div class="footer">
+            Generated on ${new Date().toLocaleString('en-IN')} | Reliable Group VMS
+          </div>
+        </body>
+        </html>
+      `
+
+      // Open print dialog (user can save as PDF)
+      const printWindow = window.open('', '_blank')
+      printWindow.document.write(printContent)
+      printWindow.document.close()
+      printWindow.focus()
+      setTimeout(() => {
+        printWindow.print()
+      }, 500)
+      
+    } catch (error) {
+      console.error('Failed to export PDF:', error)
+      alert('Failed to generate PDF. Please try again.')
     }
   }
 
@@ -294,7 +480,14 @@ const VMSReports = () => {
               className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
             >
               <Download size={18} />
-              Export Visitors
+              Export CSV
+            </button>
+            <button
+              onClick={handleExportPDF}
+              className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+            >
+              <FileText size={18} />
+              Export PDF
             </button>
           </div>
         </div>
@@ -467,17 +660,29 @@ const VMSReports = () => {
       {/* Quick Actions */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
         <h2 className="text-lg font-semibold text-gray-800 mb-4">Quick Report Actions</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <button
             onClick={handleExportAllVisitors}
             className="flex items-center gap-3 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
           >
             <div className="p-2 bg-teal-100 rounded-lg">
-              <Users size={20} className="text-teal-600" />
+              <Download size={20} className="text-teal-600" />
             </div>
             <div className="text-left">
-              <p className="font-medium text-gray-800">Export Visitor Report</p>
-              <p className="text-sm text-gray-500">Download all visitor details as CSV</p>
+              <p className="font-medium text-gray-800">Export CSV</p>
+              <p className="text-sm text-gray-500">Download visitor data</p>
+            </div>
+          </button>
+          <button
+            onClick={handleExportPDF}
+            className="flex items-center gap-3 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <div className="p-2 bg-purple-100 rounded-lg">
+              <FileText size={20} className="text-purple-600" />
+            </div>
+            <div className="text-left">
+              <p className="font-medium text-gray-800">Export PDF</p>
+              <p className="text-sm text-gray-500">With photos & ID docs</p>
             </div>
           </button>
           <button
@@ -485,7 +690,7 @@ const VMSReports = () => {
             className="flex items-center gap-3 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
           >
             <div className="p-2 bg-blue-100 rounded-lg">
-              <FileText size={20} className="text-blue-600" />
+              <Users size={20} className="text-blue-600" />
             </div>
             <div className="text-left">
               <p className="font-medium text-gray-800">View All Visitors</p>
@@ -496,8 +701,8 @@ const VMSReports = () => {
             onClick={() => window.print()}
             className="flex items-center gap-3 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
           >
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <BarChart3 size={20} className="text-purple-600" />
+            <div className="p-2 bg-gray-100 rounded-lg">
+              <BarChart3 size={20} className="text-gray-600" />
             </div>
             <div className="text-left">
               <p className="font-medium text-gray-800">Print Dashboard</p>
