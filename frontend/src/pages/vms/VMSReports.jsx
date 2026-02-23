@@ -150,10 +150,9 @@ const VMSReports = () => {
     window.URL.revokeObjectURL(url)
   }
 
-  // Export all visitors to CSV with full details (properly formatted)
+  // Export all visitors to Excel format (Tab-separated for perfect Excel compatibility)
   const handleExportAllVisitors = async () => {
     try {
-      // Fetch all visitors within date range (up to 5000)
       const response = await visitorsApi.getAll({ 
         page: 1, 
         limit: 5000,
@@ -167,50 +166,80 @@ const VMSReports = () => {
         return
       }
       
-      // Helper function to escape CSV values
-      const escapeCSV = (value) => {
-        if (value === null || value === undefined) return ''
-        const str = String(value)
-        // If contains comma, newline, or quote, wrap in quotes and escape internal quotes
-        if (str.includes(',') || str.includes('\n') || str.includes('"')) {
-          return '"' + str.replace(/"/g, '""') + '"'
-        }
-        return str
-      }
+      // Use Tab separator for perfect Excel compatibility
+      const TAB = '\t'
       
-      // Create properly formatted CSV with headers
-      const headers = ['S.No', 'Name', 'Phone', 'Email', 'Company From', 'Company To Visit', 'Person To Meet', 'Purpose', 'Vehicle Number', 'ID Proof Type', 'ID Proof Number', 'Visitors', 'Status', 'Check-in Time', 'Pass Number', 'Created At']
-      let csvContent = headers.join(',') + '\n'
+      // Headers
+      const headers = [
+        'S.No',
+        'Name', 
+        'Phone',
+        'Email',
+        'Company From',
+        'Company To Visit',
+        'Person To Meet',
+        'Purpose',
+        'Vehicle Number',
+        'ID Proof Type',
+        'ID Proof Number',
+        'No. of Visitors',
+        'Status',
+        'Check-in Time',
+        'Pass Number',
+        'Created At',
+        'Has Photo',
+        'Has ID Document'
+      ]
+      
+      let content = headers.join(TAB) + '\n'
       
       visitors.forEach((v, index) => {
+        const formatDate = (date) => {
+          if (!date) return '-'
+          return new Date(date).toLocaleString('en-IN', { 
+            day: '2-digit', 
+            month: 'short', 
+            year: 'numeric',
+            hour: '2-digit', 
+            minute: '2-digit', 
+            hour12: true 
+          })
+        }
+        
+        // Clean value - remove tabs and newlines
+        const clean = (val) => String(val || '-').replace(/[\t\n\r]/g, ' ').trim()
+        
         const row = [
           index + 1,
-          escapeCSV(v.visitorName),
-          escapeCSV(v.phone),
-          escapeCSV(v.email),
-          escapeCSV(v.companyFrom),
-          escapeCSV(v.companyToVisit),
-          escapeCSV(v.personToMeet),
-          escapeCSV(v.purpose),
-          escapeCSV(v.vehicleNumber),
-          escapeCSV(v.idProofType),
-          escapeCSV(v.idProofNumber),
+          clean(v.visitorName),
+          clean(v.phone),
+          clean(v.email),
+          clean(v.companyFrom),
+          clean(v.companyToVisit),
+          clean(v.personToMeet),
+          clean(v.purpose),
+          clean(v.vehicleNumber),
+          clean(v.idProofType),
+          clean(v.idProofNumber),
           v.numberOfVisitors || 1,
-          escapeCSV(v.status),
-          v.checkInTime ? new Date(v.checkInTime).toLocaleString('en-IN', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit', hour12: true }) : '',
-          escapeCSV(v.gatepass?.gatepassNumber || v.requestNumber),
-          v.createdAt ? new Date(v.createdAt).toLocaleString('en-IN', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit', hour12: true }) : '',
+          clean(v.status),
+          formatDate(v.checkInTime),
+          clean(v.gatepass?.gatepassNumber || v.requestNumber),
+          formatDate(v.createdAt),
+          v.photo ? 'Yes' : 'No',
+          v.idDocumentImage ? 'Yes' : 'No'
         ]
-        csvContent += row.join(',') + '\n'
+        
+        content += row.join(TAB) + '\n'
       })
       
-      // Add BOM for Excel to recognize UTF-8
+      // BOM for Excel UTF-8 recognition + save as .xls for auto-open in Excel
       const BOM = '\uFEFF'
-      const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' })
+      const blob = new Blob([BOM + content], { type: 'application/vnd.ms-excel;charset=utf-8;' })
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `visitors_report_${dateRange.from}_to_${dateRange.to}.csv`
+      a.download = `visitors_report_${dateRange.from}_to_${dateRange.to}.xls`
       a.click()
       window.URL.revokeObjectURL(url)
     } catch (error) {
@@ -492,7 +521,7 @@ const VMSReports = () => {
               className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
             >
               <Download size={18} />
-              Export CSV
+              Export Excel
             </button>
             <button
               onClick={handleExportPDF}
@@ -681,7 +710,7 @@ const VMSReports = () => {
               <Download size={20} className="text-teal-600" />
             </div>
             <div className="text-left">
-              <p className="font-medium text-gray-800">Export CSV</p>
+              <p className="font-medium text-gray-800">Export Excel</p>
               <p className="text-sm text-gray-500">Download visitor data</p>
             </div>
           </button>
