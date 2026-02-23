@@ -135,8 +135,8 @@ const Layout = ({ systemType = 'workpermit' }) => {
 
   const roleBadge = getRoleBadge(user?.role)
 
-  // Check if user can switch systems (non-Requestor)
-  const canSwitchSystem = user?.role !== 'REQUESTOR'
+  // All users can switch systems (including Requestor)
+  const canSwitchSystem = true
 
   return (
     <div className="min-h-screen bg-gray-50">
