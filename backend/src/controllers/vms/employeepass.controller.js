@@ -11,21 +11,10 @@ const generateEmployeePassNumber = async () => {
   const month = months[now.getMonth()];
   const year = now.getFullYear();
   
-  // Get count of passes this month for sequence number
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
-  
-  const count = await vmsPrisma.vMSEmployeePass.count({
-    where: {
-      createdAt: {
-        gte: startOfMonth,
-        lte: endOfMonth
-      }
-    }
-  });
-  
-  const sequence = String(count + 1).padStart(4, '0');
-  return `RGDGTLEP ${month} ${year} - ${sequence}`;
+  // Use timestamp-based sequence to guarantee uniqueness
+  // Format: last 6 digits of timestamp (changes every millisecond)
+  const timestamp = Date.now().toString().slice(-6);
+  return `RGDGTLEP ${month} ${year} - ${timestamp}`;
 };
 
 // Generate QR code
@@ -366,8 +355,16 @@ exports.createEmployeePass = async (req, res) => {
       });
     }
     if (error.code === 'P2002') {
+      // Check which field caused the duplicate
+      const target = error.meta?.target || [];
+      if (target.includes('passNumber')) {
+        return res.status(400).json({ 
+          message: 'Pass number collision, please try again',
+          error: error.message 
+        });
+      }
       return res.status(400).json({ 
-        message: 'A pass with this phone number already exists',
+        message: 'Duplicate entry detected',
         error: error.message 
       });
     }
