@@ -148,13 +148,6 @@ const VMSGatepasses = () => {
   const handlePhotoChange = (e) => {
     const file = e.target.files[0]
     if (file) {
-      // Check file size - max 1MB
-      const maxSize = 1 * 1024 * 1024 // 1MB in bytes
-      if (file.size > maxSize) {
-        setMessage({ type: 'error', text: 'Image size must be less than 1MB. Please choose a smaller image.' })
-        e.target.value = '' // Reset file input
-        return
-      }
       const reader = new FileReader()
       reader.onloadend = () => {
         setNewPass(prev => ({ ...prev, photo: reader.result }))
@@ -659,7 +652,6 @@ Pass Link: ${passUrl}
                     />
                   </label>
                 </div>
-                <p className="text-xs text-gray-500 mt-2">Max image size: 1MB</p>
               </div>
 
               {/* Company Selection - For Admin/Reception or Company Users without assigned company */}

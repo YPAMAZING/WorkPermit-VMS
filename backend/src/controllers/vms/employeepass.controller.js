@@ -302,21 +302,8 @@ exports.createEmployeePass = async (req, res) => {
       });
     }
 
-    // Check for existing active pass with same phone
-    const existing = await vmsPrisma.vMSEmployeePass.findFirst({
-      where: {
-        phone: phone.replace(/\D/g, ''),
-        status: 'ACTIVE',
-        validUntil: { gte: new Date() }
-      }
-    });
-
-    if (existing) {
-      return res.status(400).json({
-        message: 'An active employee pass already exists for this phone number',
-        existingPassId: existing.id
-      });
-    }
+    // Allow duplicate passes - user can create multiple passes for same phone number
+    // No duplicate check needed
 
     // Generate pass number
     const passNumber = await generateEmployeePassNumber();
