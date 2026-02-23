@@ -150,12 +150,113 @@ const VMSReports = () => {
     window.URL.revokeObjectURL(url)
   }
 
-  // Export all visitors to Excel format with embedded images (HTML table format)
-  const handleExportAllVisitors = async () => {
+  // Export all visitors to proper CSV format
+  const handleExportCSV = async () => {
     try {
       const response = await visitorsApi.getAll({ 
         page: 1, 
         limit: 5000,
+        startDate: dateRange.from,
+        endDate: dateRange.to
+      })
+      const visitors = response.data.visitors || []
+      
+      if (visitors.length === 0) {
+        alert('No visitors found in the selected date range')
+        return
+      }
+      
+      const formatDate = (date) => {
+        if (!date) return ''
+        return new Date(date).toLocaleString('en-IN', { 
+          day: '2-digit', 
+          month: 'short', 
+          year: 'numeric',
+          hour: '2-digit', 
+          minute: '2-digit', 
+          hour12: true 
+        })
+      }
+      
+      // Escape CSV field - handle commas, quotes, and newlines
+      const escapeCSV = (field) => {
+        if (field === null || field === undefined) return ''
+        const str = String(field)
+        // If field contains comma, quote, or newline, wrap in quotes and escape internal quotes
+        if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+          return `"${str.replace(/"/g, '""')}"`
+        }
+        return str
+      }
+      
+      // CSV Headers
+      const headers = [
+        'S.No',
+        'Name',
+        'Phone',
+        'Email',
+        'Company From',
+        'Company To Visit',
+        'Person To Meet',
+        'Purpose',
+        'Vehicle Number',
+        'ID Proof Type',
+        'ID Proof Number',
+        'No. of Visitors',
+        'Status',
+        'Check-in Time',
+        'Pass Number',
+        'Created At',
+        'Photo URL',
+        'ID Document URL'
+      ]
+      
+      // CSV Rows
+      const rows = visitors.map((v, index) => [
+        index + 1,
+        escapeCSV(v.visitorName || ''),
+        escapeCSV(v.phone || ''),
+        escapeCSV(v.email || ''),
+        escapeCSV(v.companyFrom || ''),
+        escapeCSV(v.companyToVisit || ''),
+        escapeCSV(v.personToMeet || ''),
+        escapeCSV(v.purpose || ''),
+        escapeCSV(v.vehicleNumber || ''),
+        escapeCSV(v.idProofType || ''),
+        escapeCSV(v.idProofNumber || ''),
+        v.numberOfVisitors || 1,
+        escapeCSV(v.status || ''),
+        escapeCSV(formatDate(v.checkInTime)),
+        escapeCSV(v.gatepass?.gatepassNumber || v.requestNumber || ''),
+        escapeCSV(formatDate(v.createdAt)),
+        escapeCSV(v.photo || ''),
+        escapeCSV(v.idDocumentImage || '')
+      ])
+      
+      // Build CSV content with BOM for Excel
+      const BOM = '\uFEFF'
+      const csvContent = BOM + headers.join(',') + '\n' + rows.map(row => row.join(',')).join('\n')
+      
+      // Download as CSV
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `visitors_report_${dateRange.from}_to_${dateRange.to}.csv`
+      a.click()
+      window.URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error('Failed to export visitors:', error)
+      alert('Failed to export visitors. Please try again.')
+    }
+  }
+
+  // Export visitors with images (HTML format that displays photos)
+  const handleExportWithImages = async () => {
+    try {
+      const response = await visitorsApi.getAll({ 
+        page: 1, 
+        limit: 500,
         startDate: dateRange.from,
         endDate: dateRange.to
       })
@@ -178,272 +279,122 @@ const VMSReports = () => {
         })
       }
       
-      // Create HTML table that Excel can open with images
+      // Create HTML with embedded images
       const htmlContent = `
-        <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">
-        <head>
-          <meta charset="UTF-8">
-          <style>
-            table { border-collapse: collapse; width: 100%; }
-            th { background-color: #0d9488; color: white; font-weight: bold; padding: 8px; border: 1px solid #ddd; text-align: left; }
-            td { padding: 6px; border: 1px solid #ddd; vertical-align: middle; }
-            tr:nth-child(even) { background-color: #f9f9f9; }
-            .photo-img { width: 60px; height: 60px; object-fit: cover; border-radius: 50%; }
-            .doc-img { width: 100px; height: 70px; object-fit: contain; border: 1px solid #ccc; }
-            .no-image { color: #999; font-style: italic; font-size: 11px; }
-          </style>
-        </head>
-        <body>
-          <h2 style="color: #0d9488;">Visitors Report</h2>
-          <p>Date Range: ${dateRange.from} to ${dateRange.to} | Total Visitors: ${visitors.length}</p>
-          <table>
-            <thead>
-              <tr>
-                <th>S.No</th>
-                <th>Photo</th>
-                <th>Name</th>
-                <th>Phone</th>
-                <th>Email</th>
-                <th>Company From</th>
-                <th>Company To Visit</th>
-                <th>Person To Meet</th>
-                <th>Purpose</th>
-                <th>Vehicle Number</th>
-                <th>ID Proof Type</th>
-                <th>ID Proof Number</th>
-                <th>Visitors</th>
-                <th>Status</th>
-                <th>Check-in Time</th>
-                <th>Pass Number</th>
-                <th>Created At</th>
-                <th>ID Document</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${visitors.map((v, index) => `
-                <tr>
-                  <td>${index + 1}</td>
-                  <td>${v.photo ? `<img src="${v.photo}" class="photo-img" />` : '<span class="no-image">No</span>'}</td>
-                  <td>${v.visitorName || '-'}</td>
-                  <td>${v.phone || '-'}</td>
-                  <td>${v.email || '-'}</td>
-                  <td>${v.companyFrom || '-'}</td>
-                  <td>${v.companyToVisit || '-'}</td>
-                  <td>${v.personToMeet || '-'}</td>
-                  <td>${v.purpose || '-'}</td>
-                  <td>${v.vehicleNumber || '-'}</td>
-                  <td>${v.idProofType || '-'}</td>
-                  <td>${v.idProofNumber || '-'}</td>
-                  <td>${v.numberOfVisitors || 1}</td>
-                  <td>${v.status || '-'}</td>
-                  <td>${formatDate(v.checkInTime)}</td>
-                  <td>${v.gatepass?.gatepassNumber || v.requestNumber || '-'}</td>
-                  <td>${formatDate(v.createdAt)}</td>
-                  <td>${v.idDocumentImage ? `<img src="${v.idDocumentImage}" class="doc-img" />` : '<span class="no-image">No</span>'}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-          <p style="margin-top: 20px; color: #666; font-size: 11px;">Generated on ${new Date().toLocaleString('en-IN')} | Reliable Group VMS</p>
-        </body>
-        </html>
-      `
-      
-      // Save as .xls (Excel will open HTML tables with images)
-      const blob = new Blob([htmlContent], { type: 'application/vnd.ms-excel;charset=utf-8;' })
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `visitors_report_${dateRange.from}_to_${dateRange.to}.xls`
-      a.click()
-      window.URL.revokeObjectURL(url)
-    } catch (error) {
-      console.error('Failed to export visitors:', error)
-      alert('Failed to export visitors. Please try again.')
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Visitors Report - ${dateRange.from} to ${dateRange.to}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f5f5f5; padding: 20px; }
+    .container { max-width: 1400px; margin: 0 auto; background: white; border-radius: 12px; padding: 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+    .header { text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 3px solid #0d9488; }
+    .header h1 { color: #0d9488; font-size: 28px; margin-bottom: 10px; }
+    .header p { color: #666; font-size: 14px; }
+    .stats { display: flex; justify-content: center; gap: 30px; margin-bottom: 30px; }
+    .stat-box { background: #f0fdfa; padding: 15px 25px; border-radius: 8px; text-align: center; }
+    .stat-box .number { font-size: 24px; font-weight: bold; color: #0d9488; }
+    .stat-box .label { font-size: 12px; color: #666; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th { background: #0d9488; color: white; padding: 12px 8px; font-size: 12px; text-align: left; white-space: nowrap; }
+    td { padding: 10px 8px; border-bottom: 1px solid #e5e5e5; font-size: 12px; vertical-align: middle; }
+    tr:hover { background: #f9fafb; }
+    .photo-cell { width: 70px; }
+    .photo-img { width: 50px; height: 50px; object-fit: cover; border-radius: 50%; border: 2px solid #0d9488; }
+    .doc-cell { width: 120px; }
+    .doc-img { width: 100px; height: 70px; object-fit: contain; border: 1px solid #ddd; border-radius: 4px; background: #f9f9f9; }
+    .no-img { color: #ccc; font-size: 11px; font-style: italic; }
+    .status { padding: 4px 8px; border-radius: 12px; font-size: 10px; font-weight: 600; text-transform: uppercase; }
+    .status-approved, .status-checked_in { background: #dcfce7; color: #166534; }
+    .status-pending { background: #fef9c3; color: #854d0e; }
+    .status-rejected, .status-cancelled { background: #fee2e2; color: #991b1b; }
+    .status-checked_out, .status-completed { background: #dbeafe; color: #1e40af; }
+    .footer { text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; color: #999; font-size: 11px; }
+    @media print { 
+      body { background: white; padding: 0; }
+      .container { box-shadow: none; }
+      tr { page-break-inside: avoid; }
     }
-  }
-
-  // Export visitors to PDF with photos and ID documents
-  const handleExportPDF = async () => {
-    try {
-      // Fetch all visitors within date range
-      const response = await visitorsApi.getAll({ 
-        page: 1, 
-        limit: 100, // Limit for PDF to avoid huge files
-        startDate: dateRange.from,
-        endDate: dateRange.to
-      })
-      const visitors = response.data.visitors || []
-      
-      if (visitors.length === 0) {
-        alert('No visitors found in the selected date range')
-        return
-      }
-
-      // Create printable HTML content
-      const printContent = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>Visitors Report - ${dateRange.from} to ${dateRange.to}</title>
-          <style>
-            * { margin: 0; padding: 0; box-sizing: border-box; }
-            body { font-family: Arial, sans-serif; padding: 20px; }
-            .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #0d9488; padding-bottom: 15px; }
-            .header h1 { color: #0d9488; font-size: 24px; }
-            .header p { color: #666; margin-top: 5px; }
-            .visitor-card { 
-              border: 1px solid #ddd; 
-              border-radius: 8px; 
-              padding: 15px; 
-              margin-bottom: 20px; 
-              page-break-inside: avoid;
-              background: #fafafa;
-            }
-            .visitor-header { 
-              display: flex; 
-              align-items: center; 
-              gap: 15px; 
-              margin-bottom: 15px;
-              padding-bottom: 10px;
-              border-bottom: 1px solid #eee;
-            }
-            .visitor-photo { 
-              width: 80px; 
-              height: 80px; 
-              border-radius: 50%; 
-              object-fit: cover;
-              border: 2px solid #0d9488;
-            }
-            .visitor-photo-placeholder {
-              width: 80px; 
-              height: 80px; 
-              border-radius: 50%;
-              background: #e5e7eb;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              color: #9ca3af;
-              font-size: 24px;
-              border: 2px solid #d1d5db;
-            }
-            .visitor-name { font-size: 18px; font-weight: bold; color: #1f2937; }
-            .visitor-status { 
-              display: inline-block;
-              padding: 4px 10px; 
-              border-radius: 12px; 
-              font-size: 11px; 
-              font-weight: 600;
-              margin-top: 5px;
-            }
-            .status-active, .status-checked_in, .status-approved { background: #d1fae5; color: #065f46; }
-            .status-used, .status-checked_out { background: #dbeafe; color: #1e40af; }
-            .status-pending, .status-pending_approval { background: #fef3c7; color: #92400e; }
-            .status-expired, .status-rejected, .status-cancelled { background: #fee2e2; color: #991b1b; }
-            .details-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
-            .detail-item { padding: 8px; background: white; border-radius: 4px; }
-            .detail-label { font-size: 10px; color: #6b7280; text-transform: uppercase; }
-            .detail-value { font-size: 13px; color: #1f2937; font-weight: 500; margin-top: 2px; }
-            .id-section { margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee; }
-            .id-section h4 { font-size: 12px; color: #6b7280; margin-bottom: 10px; }
-            .id-image { max-width: 200px; max-height: 120px; border-radius: 4px; border: 1px solid #ddd; }
-            .footer { text-align: center; margin-top: 30px; padding-top: 15px; border-top: 1px solid #ddd; color: #666; font-size: 11px; }
-            @media print {
-              body { padding: 10px; }
-              .visitor-card { break-inside: avoid; }
-            }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <h1>Visitors Report</h1>
-            <p>Date Range: ${dateRange.from} to ${dateRange.to} | Total Visitors: ${visitors.length}</p>
-          </div>
-          
-          ${visitors.map((v, i) => `
-            <div class="visitor-card">
-              <div class="visitor-header">
-                ${v.photo 
-                  ? `<img src="${v.photo}" class="visitor-photo" alt="Photo" />`
-                  : `<div class="visitor-photo-placeholder">👤</div>`
-                }
-                <div>
-                  <div class="visitor-name">${i + 1}. ${v.visitorName || 'N/A'}</div>
-                  <span class="visitor-status status-${(v.status || '').toLowerCase()}">${v.status || 'N/A'}</span>
-                </div>
-              </div>
-              
-              <div class="details-grid">
-                <div class="detail-item">
-                  <div class="detail-label">Phone</div>
-                  <div class="detail-value">${v.phone || '-'}</div>
-                </div>
-                <div class="detail-item">
-                  <div class="detail-label">Email</div>
-                  <div class="detail-value">${v.email || '-'}</div>
-                </div>
-                <div class="detail-item">
-                  <div class="detail-label">Company From</div>
-                  <div class="detail-value">${v.companyFrom || '-'}</div>
-                </div>
-                <div class="detail-item">
-                  <div class="detail-label">Company To Visit</div>
-                  <div class="detail-value">${v.companyToVisit || '-'}</div>
-                </div>
-                <div class="detail-item">
-                  <div class="detail-label">Person To Meet</div>
-                  <div class="detail-value">${v.personToMeet || '-'}</div>
-                </div>
-                <div class="detail-item">
-                  <div class="detail-label">Purpose</div>
-                  <div class="detail-value">${v.purpose || '-'}</div>
-                </div>
-                <div class="detail-item">
-                  <div class="detail-label">Vehicle Number</div>
-                  <div class="detail-value">${v.vehicleNumber || '-'}</div>
-                </div>
-                <div class="detail-item">
-                  <div class="detail-label">Check-in Time</div>
-                  <div class="detail-value">${v.checkInTime ? new Date(v.checkInTime).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' }) : '-'}</div>
-                </div>
-                <div class="detail-item">
-                  <div class="detail-label">ID Proof</div>
-                  <div class="detail-value">${v.idProofType || '-'}: ${v.idProofNumber || '-'}</div>
-                </div>
-                <div class="detail-item">
-                  <div class="detail-label">Pass Number</div>
-                  <div class="detail-value">${v.gatepass?.gatepassNumber || v.requestNumber || '-'}</div>
-                </div>
-              </div>
-              
-              ${v.idDocumentImage ? `
-                <div class="id-section">
-                  <h4>ID Document</h4>
-                  <img src="${v.idDocumentImage}" class="id-image" alt="ID Document" />
-                </div>
-              ` : ''}
-            </div>
-          `).join('')}
-          
-          <div class="footer">
-            Generated on ${new Date().toLocaleString('en-IN')} | Reliable Group VMS
-          </div>
-        </body>
-        </html>
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>📋 Visitors Report</h1>
+      <p>Date Range: ${dateRange.from} to ${dateRange.to}</p>
+    </div>
+    <div class="stats">
+      <div class="stat-box">
+        <div class="number">${visitors.length}</div>
+        <div class="label">Total Visitors</div>
+      </div>
+      <div class="stat-box">
+        <div class="number">${visitors.filter(v => v.status === 'CHECKED_IN' || v.status === 'APPROVED').length}</div>
+        <div class="label">Active / Checked In</div>
+      </div>
+      <div class="stat-box">
+        <div class="number">${visitors.filter(v => v.photo).length}</div>
+        <div class="label">With Photo</div>
+      </div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th class="photo-cell">Photo</th>
+          <th>Name</th>
+          <th>Phone</th>
+          <th>Company From</th>
+          <th>Company To Visit</th>
+          <th>Person To Meet</th>
+          <th>Purpose</th>
+          <th>Vehicle</th>
+          <th>ID Proof</th>
+          <th>Status</th>
+          <th>Check-in</th>
+          <th>Pass No.</th>
+          <th class="doc-cell">ID Document</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${visitors.map((v, index) => `
+          <tr>
+            <td>${index + 1}</td>
+            <td class="photo-cell">${v.photo ? `<img src="${v.photo}" class="photo-img" alt="Photo" onerror="this.style.display='none'" />` : '<span class="no-img">No photo</span>'}</td>
+            <td><strong>${v.visitorName || '-'}</strong></td>
+            <td>${v.phone || '-'}</td>
+            <td>${v.companyFrom || '-'}</td>
+            <td>${v.companyToVisit || '-'}</td>
+            <td>${v.personToMeet || '-'}</td>
+            <td>${v.purpose || '-'}</td>
+            <td>${v.vehicleNumber || '-'}</td>
+            <td>${v.idProofType || '-'}${v.idProofNumber ? ': ' + v.idProofNumber : ''}</td>
+            <td><span class="status status-${(v.status || '').toLowerCase()}">${v.status || '-'}</span></td>
+            <td>${formatDate(v.checkInTime)}</td>
+            <td>${v.gatepass?.gatepassNumber || v.requestNumber || '-'}</td>
+            <td class="doc-cell">${v.idDocumentImage ? `<img src="${v.idDocumentImage}" class="doc-img" alt="ID Doc" onerror="this.style.display='none'" />` : '<span class="no-img">No document</span>'}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+    <div class="footer">
+      <p>Generated on ${new Date().toLocaleString('en-IN')} | Reliable Group VMS</p>
+      <p style="margin-top: 5px;">💡 Tip: Use Ctrl+P to print this report or save as PDF</p>
+    </div>
+  </div>
+</body>
+</html>
       `
-
-      // Open print dialog (user can save as PDF)
-      const printWindow = window.open('', '_blank')
-      printWindow.document.write(printContent)
-      printWindow.document.close()
-      printWindow.focus()
-      setTimeout(() => {
-        printWindow.print()
-      }, 500)
       
+      // Open in new window for viewing/printing
+      const newWindow = window.open('', '_blank')
+      newWindow.document.write(htmlContent)
+      newWindow.document.close()
     } catch (error) {
-      console.error('Failed to export PDF:', error)
-      alert('Failed to generate PDF. Please try again.')
+      console.error('Failed to export visitors with images:', error)
+      alert('Failed to export visitors. Please try again.')
     }
   }
 
@@ -532,18 +483,18 @@ const VMSReports = () => {
           />
           <div className="ml-auto flex gap-2">
             <button
-              onClick={handleExportAllVisitors}
+              onClick={handleExportCSV}
               className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
             >
               <Download size={18} />
-              Export Excel
+              Export CSV
             </button>
             <button
-              onClick={handleExportPDF}
+              onClick={handleExportWithImages}
               className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
             >
               <FileText size={18} />
-              Export PDF
+              View with Images
             </button>
           </div>
         </div>
@@ -718,27 +669,27 @@ const VMSReports = () => {
         <h2 className="text-lg font-semibold text-gray-800 mb-4">Quick Report Actions</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <button
-            onClick={handleExportAllVisitors}
+            onClick={handleExportCSV}
             className="flex items-center gap-3 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
           >
             <div className="p-2 bg-teal-100 rounded-lg">
               <Download size={20} className="text-teal-600" />
             </div>
             <div className="text-left">
-              <p className="font-medium text-gray-800">Export Excel</p>
-              <p className="text-sm text-gray-500">Download visitor data</p>
+              <p className="font-medium text-gray-800">Export CSV</p>
+              <p className="text-sm text-gray-500">Proper formatted data</p>
             </div>
           </button>
           <button
-            onClick={handleExportPDF}
+            onClick={handleExportWithImages}
             className="flex items-center gap-3 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
           >
             <div className="p-2 bg-purple-100 rounded-lg">
               <FileText size={20} className="text-purple-600" />
             </div>
             <div className="text-left">
-              <p className="font-medium text-gray-800">Export PDF</p>
-              <p className="text-sm text-gray-500">With photos & ID docs</p>
+              <p className="font-medium text-gray-800">View with Images</p>
+              <p className="text-sm text-gray-500">Photos & ID documents</p>
             </div>
           </button>
           <button
@@ -786,11 +737,11 @@ const VMSReports = () => {
               </div>
               <div className="flex items-center gap-3">
                 <button
-                  onClick={handleExportAllVisitors}
+                  onClick={handleExportCSV}
                   className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
                 >
                   <Download size={18} />
-                  Export All
+                  Export CSV
                 </button>
                 <button
                   onClick={() => {
