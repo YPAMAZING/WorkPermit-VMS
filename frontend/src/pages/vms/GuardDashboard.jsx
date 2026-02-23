@@ -241,6 +241,14 @@ const GuardDashboard = () => {
           </div>
         </div>
         
+        {/* Remarks (highlighted if present) */}
+        {request.remarks && (
+          <div className="mt-2 p-2 bg-amber-50 border border-amber-300 rounded-lg">
+            <p className="text-xs text-amber-700 font-semibold">REMARKS</p>
+            <p className="text-sm text-amber-900 truncate">{request.remarks}</p>
+          </div>
+        )}
+        
         {/* Quick Actions */}
         {showActions && (
           <div className="mt-2 lg:mt-3 pt-2 lg:pt-3 border-t border-gray-100 flex gap-2">
@@ -608,6 +616,14 @@ const GuardDashboard = () => {
                   </div>
                 )}
                 
+                {/* Remarks (highlighted) */}
+                {selectedRequest.remarks && (
+                  <div className="p-3 bg-amber-50 border-2 border-amber-300 rounded-lg">
+                    <p className="text-xs text-amber-700 font-semibold mb-1">REMARKS</p>
+                    <p className="font-medium text-amber-900">{selectedRequest.remarks}</p>
+                  </div>
+                )}
+                
                 {/* Check-in Time */}
                 <div className="p-3 bg-gray-50 rounded-lg">
                   <p className="text-xs text-gray-400 mb-1">Check-in Time</p>
@@ -814,6 +830,12 @@ const GuardDashboard = () => {
                   <p className="text-xs text-green-600">Person to Meet</p>
                   <p className="font-medium text-gray-800">{selectedRequest.personToMeet || '-'}</p>
                 </div>
+                {selectedRequest.remarks && (
+                  <div className="p-3 bg-amber-50 border-2 border-amber-300 rounded-lg col-span-2">
+                    <p className="text-xs text-amber-700 font-semibold">REMARKS</p>
+                    <p className="font-medium text-amber-900">{selectedRequest.remarks}</p>
+                  </div>
+                )}
                 <div className="p-3 bg-gray-50 rounded-lg col-span-2">
                   <p className="text-xs text-gray-400">Check-in Time</p>
                   <p className="font-medium text-sm text-gray-800">

@@ -89,12 +89,13 @@ const VMSVisitorPasses = () => {
 
   const handleShareWhatsApp = (pass) => {
     const passUrl = `${window.location.origin}/vms/pass/${pass.id}`
+    const vehicleNumber = pass.visitor?.vehicleNumber || pass.vehicleNumber
     const message = `
 *Visitor Pass - Reliable Group*
 
 Name: ${pass.visitor?.name || pass.visitorName || 'N/A'}
 Pass No: ${pass.gatepassNumber}
-Purpose: ${pass.visitor?.purpose || pass.purpose || 'Visit'}
+Purpose: ${pass.visitor?.purpose || pass.purpose || 'Visit'}${vehicleNumber ? `\nVehicle: ${vehicleNumber}` : ''}
 Valid Until: ${new Date(pass.validUntil).toLocaleDateString()}
 
 Show this pass at entry gate.
@@ -417,6 +418,12 @@ Pass Link: ${passUrl}
                   <span className="text-gray-500">Meeting</span>
                   <span className="text-gray-800">{showPassModal.visitor?.personToMeet || '-'}</span>
                 </div>
+                {(showPassModal.visitor?.vehicleNumber || showPassModal.vehicleNumber) && (
+                  <div className="flex justify-between py-2 border-b border-gray-100">
+                    <span className="text-gray-500">Vehicle Number</span>
+                    <span className="font-medium text-gray-800">{showPassModal.visitor?.vehicleNumber || showPassModal.vehicleNumber}</span>
+                  </div>
+                )}
                 <div className="flex justify-between py-2 border-b border-gray-100">
                   <span className="text-gray-500">Check-in</span>
                   <span className="text-gray-800">{formatDateTime(showPassModal.visitor?.checkInTime)}</span>

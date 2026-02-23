@@ -268,9 +268,9 @@ Please show this at the reception desk upon arrival.`
 
         {/* Remarks */}
         {entry.remarks && (
-          <div className="p-6 border-b border-gray-100">
-            <p className="text-xs text-gray-500 uppercase font-semibold mb-2">Remarks</p>
-            <p className="text-gray-700 whitespace-pre-wrap">{entry.remarks}</p>
+          <div className="p-6 border-b border-gray-100 bg-amber-50">
+            <p className="text-xs text-amber-700 uppercase font-bold mb-2">REMARKS</p>
+            <p className="text-amber-900 font-medium whitespace-pre-wrap">{entry.remarks}</p>
           </div>
         )}
 
