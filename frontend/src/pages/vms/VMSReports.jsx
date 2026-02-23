@@ -150,7 +150,7 @@ const VMSReports = () => {
     window.URL.revokeObjectURL(url)
   }
 
-  // Export all visitors to Excel format (Tab-separated for perfect Excel compatibility)
+  // Export all visitors to Excel format with embedded images (HTML table format)
   const handleExportAllVisitors = async () => {
     try {
       const response = await visitorsApi.getAll({ 
@@ -166,76 +166,91 @@ const VMSReports = () => {
         return
       }
       
-      // Use Tab separator for perfect Excel compatibility
-      const TAB = '\t'
+      const formatDate = (date) => {
+        if (!date) return '-'
+        return new Date(date).toLocaleString('en-IN', { 
+          day: '2-digit', 
+          month: 'short', 
+          year: 'numeric',
+          hour: '2-digit', 
+          minute: '2-digit', 
+          hour12: true 
+        })
+      }
       
-      // Headers
-      const headers = [
-        'S.No',
-        'Name', 
-        'Phone',
-        'Email',
-        'Company From',
-        'Company To Visit',
-        'Person To Meet',
-        'Purpose',
-        'Vehicle Number',
-        'ID Proof Type',
-        'ID Proof Number',
-        'No. of Visitors',
-        'Status',
-        'Check-in Time',
-        'Pass Number',
-        'Created At',
-        'Has Photo',
-        'Has ID Document'
-      ]
+      // Create HTML table that Excel can open with images
+      const htmlContent = `
+        <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">
+        <head>
+          <meta charset="UTF-8">
+          <style>
+            table { border-collapse: collapse; width: 100%; }
+            th { background-color: #0d9488; color: white; font-weight: bold; padding: 8px; border: 1px solid #ddd; text-align: left; }
+            td { padding: 6px; border: 1px solid #ddd; vertical-align: middle; }
+            tr:nth-child(even) { background-color: #f9f9f9; }
+            .photo-img { width: 60px; height: 60px; object-fit: cover; border-radius: 50%; }
+            .doc-img { width: 100px; height: 70px; object-fit: contain; border: 1px solid #ccc; }
+            .no-image { color: #999; font-style: italic; font-size: 11px; }
+          </style>
+        </head>
+        <body>
+          <h2 style="color: #0d9488;">Visitors Report</h2>
+          <p>Date Range: ${dateRange.from} to ${dateRange.to} | Total Visitors: ${visitors.length}</p>
+          <table>
+            <thead>
+              <tr>
+                <th>S.No</th>
+                <th>Photo</th>
+                <th>Name</th>
+                <th>Phone</th>
+                <th>Email</th>
+                <th>Company From</th>
+                <th>Company To Visit</th>
+                <th>Person To Meet</th>
+                <th>Purpose</th>
+                <th>Vehicle Number</th>
+                <th>ID Proof Type</th>
+                <th>ID Proof Number</th>
+                <th>Visitors</th>
+                <th>Status</th>
+                <th>Check-in Time</th>
+                <th>Pass Number</th>
+                <th>Created At</th>
+                <th>ID Document</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${visitors.map((v, index) => `
+                <tr>
+                  <td>${index + 1}</td>
+                  <td>${v.photo ? `<img src="${v.photo}" class="photo-img" />` : '<span class="no-image">No</span>'}</td>
+                  <td>${v.visitorName || '-'}</td>
+                  <td>${v.phone || '-'}</td>
+                  <td>${v.email || '-'}</td>
+                  <td>${v.companyFrom || '-'}</td>
+                  <td>${v.companyToVisit || '-'}</td>
+                  <td>${v.personToMeet || '-'}</td>
+                  <td>${v.purpose || '-'}</td>
+                  <td>${v.vehicleNumber || '-'}</td>
+                  <td>${v.idProofType || '-'}</td>
+                  <td>${v.idProofNumber || '-'}</td>
+                  <td>${v.numberOfVisitors || 1}</td>
+                  <td>${v.status || '-'}</td>
+                  <td>${formatDate(v.checkInTime)}</td>
+                  <td>${v.gatepass?.gatepassNumber || v.requestNumber || '-'}</td>
+                  <td>${formatDate(v.createdAt)}</td>
+                  <td>${v.idDocumentImage ? `<img src="${v.idDocumentImage}" class="doc-img" />` : '<span class="no-image">No</span>'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+          <p style="margin-top: 20px; color: #666; font-size: 11px;">Generated on ${new Date().toLocaleString('en-IN')} | Reliable Group VMS</p>
+        </body>
+        </html>
+      `
       
-      let content = headers.join(TAB) + '\n'
-      
-      visitors.forEach((v, index) => {
-        const formatDate = (date) => {
-          if (!date) return '-'
-          return new Date(date).toLocaleString('en-IN', { 
-            day: '2-digit', 
-            month: 'short', 
-            year: 'numeric',
-            hour: '2-digit', 
-            minute: '2-digit', 
-            hour12: true 
-          })
-        }
-        
-        // Clean value - remove tabs and newlines
-        const clean = (val) => String(val || '-').replace(/[\t\n\r]/g, ' ').trim()
-        
-        const row = [
-          index + 1,
-          clean(v.visitorName),
-          clean(v.phone),
-          clean(v.email),
-          clean(v.companyFrom),
-          clean(v.companyToVisit),
-          clean(v.personToMeet),
-          clean(v.purpose),
-          clean(v.vehicleNumber),
-          clean(v.idProofType),
-          clean(v.idProofNumber),
-          v.numberOfVisitors || 1,
-          clean(v.status),
-          formatDate(v.checkInTime),
-          clean(v.gatepass?.gatepassNumber || v.requestNumber),
-          formatDate(v.createdAt),
-          v.photo ? 'Yes' : 'No',
-          v.idDocumentImage ? 'Yes' : 'No'
-        ]
-        
-        content += row.join(TAB) + '\n'
-      })
-      
-      // BOM for Excel UTF-8 recognition + save as .xls for auto-open in Excel
-      const BOM = '\uFEFF'
-      const blob = new Blob([BOM + content], { type: 'application/vnd.ms-excel;charset=utf-8;' })
+      // Save as .xls (Excel will open HTML tables with images)
+      const blob = new Blob([htmlContent], { type: 'application/vnd.ms-excel;charset=utf-8;' })
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
