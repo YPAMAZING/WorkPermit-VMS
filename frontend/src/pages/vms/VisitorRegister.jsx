@@ -259,8 +259,11 @@ const VisitorRegister = () => {
   const handleUploadIdDocument = async (e) => {
     const file = e.target.files[0]
     if (file) {
-      if (file.size > 10 * 1024 * 1024) {
-        toast.error('Document size should be less than 10MB')
+      // Validate file type - only JPEG and PNG allowed
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png']
+      if (!allowedTypes.includes(file.type)) {
+        toast.error('Only JPEG and PNG images are allowed')
+        e.target.value = ''
         return
       }
       const reader = new FileReader()
@@ -885,7 +888,7 @@ const VisitorRegister = () => {
                     type="file"
                     ref={idDocInputRef}
                     onChange={handleUploadIdDocument}
-                    accept="image/*"
+                    accept="image/jpeg,image/png"
                     capture="environment"
                     className="hidden"
                   />
@@ -893,9 +896,10 @@ const VisitorRegister = () => {
                     type="file"
                     id="idDocUploadInput"
                     onChange={handleUploadIdDocument}
-                    accept="image/*"
+                    accept="image/jpeg,image/png"
                     className="hidden"
                   />
+                  <p className="text-xs text-gray-500 text-center mb-2">JPEG or PNG only</p>
                   
                   <div className={`w-full border-2 border-dashed rounded-xl p-5 transition-all duration-200 ${
                     errors.idDocument 

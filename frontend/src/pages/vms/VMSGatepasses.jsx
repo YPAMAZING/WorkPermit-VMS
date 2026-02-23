@@ -148,6 +148,13 @@ const VMSGatepasses = () => {
   const handlePhotoChange = (e) => {
     const file = e.target.files[0]
     if (file) {
+      // Validate file type - only JPEG and PNG allowed
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png']
+      if (!allowedTypes.includes(file.type)) {
+        setMessage({ type: 'error', text: 'Only JPEG and PNG images are allowed' })
+        e.target.value = ''
+        return
+      }
       const reader = new FileReader()
       reader.onloadend = () => {
         setNewPass(prev => ({ ...prev, photo: reader.result }))
@@ -646,12 +653,13 @@ Pass Link: ${passUrl}
                     <Plus size={16} />
                     <input
                       type="file"
-                      accept="image/*"
+                      accept="image/jpeg,image/png"
                       onChange={handlePhotoChange}
                       className="hidden"
                     />
                   </label>
                 </div>
+                <p className="text-xs text-gray-500 mt-2">JPEG or PNG only</p>
               </div>
 
               {/* Company Selection - For Admin/Reception or Company Users without assigned company */}

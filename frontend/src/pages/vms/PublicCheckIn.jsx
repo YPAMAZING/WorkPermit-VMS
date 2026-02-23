@@ -105,14 +105,11 @@ const PublicCheckIn = () => {
     const file = e.target.files[0]
     if (!file) return
     
-    // Validate file
-    if (!file.type.startsWith('image/')) {
-      setErrors(prev => ({ ...prev, [type]: 'Please select an image file' }))
-      return
-    }
-    
-    if (file.size > 5 * 1024 * 1024) {
-      setErrors(prev => ({ ...prev, [type]: 'Image size should be less than 5MB' }))
+    // Validate file type - only JPEG and PNG allowed
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png']
+    if (!allowedTypes.includes(file.type)) {
+      setErrors(prev => ({ ...prev, [type]: 'Only JPEG and PNG images are allowed' }))
+      e.target.value = ''
       return
     }
     
@@ -695,11 +692,12 @@ const PublicCheckIn = () => {
                   <input
                     ref={photoInputRef}
                     type="file"
-                    accept="image/*"
+                    accept="image/jpeg,image/png"
                     capture="user"
                     onChange={(e) => handleFileUpload(e, 'photo')}
                     className="hidden"
                   />
+                  <p className="text-xs text-gray-500 text-center mt-1">JPEG or PNG only</p>
                 </div>
               )}
               {errors.photo && (
@@ -777,11 +775,12 @@ const PublicCheckIn = () => {
                   <input
                     ref={idInputRef}
                     type="file"
-                    accept="image/*"
+                    accept="image/jpeg,image/png"
                     capture="environment"
                     onChange={(e) => handleFileUpload(e, 'idProofImage')}
                     className="hidden"
                   />
+                  <p className="text-xs text-gray-500 text-center mt-1">JPEG or PNG only</p>
                 </div>
               )}
               {errors.idProofImage && (
