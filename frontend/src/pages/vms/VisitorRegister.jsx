@@ -88,6 +88,7 @@ const VisitorRegister = () => {
   // ID Document camera modal state
   const [showIdDocCamera, setShowIdDocCamera] = useState(false)
   const [idDocCameraActive, setIdDocCameraActive] = useState(false)
+  const [idDocCameraFacing, setIdDocCameraFacing] = useState('environment') // 'environment' = back, 'user' = front
   
   // Company list from API
   const [companies, setCompanies] = useState([])
@@ -279,21 +280,33 @@ const VisitorRegister = () => {
   }
 
   // ID Document Camera Functions
-  const startIdDocCamera = async () => {
+  const startIdDocCamera = async (facing = idDocCameraFacing) => {
     setShowIdDocCamera(true)
+    setIdDocCameraActive(false)
     try {
+      // Stop any existing stream first
+      if (idDocVideoRef.current && idDocVideoRef.current.srcObject) {
+        idDocVideoRef.current.srcObject.getTracks().forEach(track => track.stop())
+      }
       const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: 'environment', width: 1280, height: 720 } 
+        video: { facingMode: facing, width: 1280, height: 720 } 
       })
       if (idDocVideoRef.current) {
         idDocVideoRef.current.srcObject = stream
         setIdDocCameraActive(true)
+        setIdDocCameraFacing(facing)
       }
     } catch (err) {
       console.error('Camera error:', err)
       toast.error('Unable to access camera. Please allow camera permission or use Upload option.')
       setShowIdDocCamera(false)
     }
+  }
+
+  // Toggle between front and back camera
+  const toggleIdDocCamera = () => {
+    const newFacing = idDocCameraFacing === 'environment' ? 'user' : 'environment'
+    startIdDocCamera(newFacing)
   }
 
   const stopIdDocCamera = () => {
@@ -309,9 +322,13 @@ const VisitorRegister = () => {
       const context = idDocCanvasRef.current.getContext('2d')
       idDocCanvasRef.current.width = idDocVideoRef.current.videoWidth
       idDocCanvasRef.current.height = idDocVideoRef.current.videoHeight
-      // Flip the image horizontally to correct mirror effect
-      context.translate(idDocCanvasRef.current.width, 0)
-      context.scale(-1, 1)
+      
+      // Only flip horizontally for front camera (user facing) to correct mirror effect
+      if (idDocCameraFacing === 'user') {
+        context.translate(idDocCanvasRef.current.width, 0)
+        context.scale(-1, 1)
+      }
+      
       context.drawImage(idDocVideoRef.current, 0, 0)
       const photoData = idDocCanvasRef.current.toDataURL('image/jpeg', 0.7)
       
@@ -510,12 +527,29 @@ const VisitorRegister = () => {
               <h3 className="font-bold text-lg">Capture ID Document</h3>
               <p className="text-sm text-gray-300">Position your ID card within the frame</p>
             </div>
-            <button
-              onClick={stopIdDocCamera}
-              className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-white hover:bg-white/30"
-            >
-              <X className="w-6 h-6" />
-            </button>
+            <div className="flex items-center gap-2">
+              {/* Camera Flip Button */}
+              <button
+                onClick={toggleIdDocCamera}
+                className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-white hover:bg-white/30"
+                title={idDocCameraFacing === 'environment' ? 'Switch to Front Camera' : 'Switch to Back Camera'}
+              >
+                <RefreshCw className="w-5 h-5" />
+              </button>
+              <button
+                onClick={stopIdDocCamera}
+                className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-white hover:bg-white/30"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+          </div>
+          
+          {/* Camera indicator */}
+          <div className="px-4 py-2 bg-black/30 text-center">
+            <span className="text-teal-400 text-sm font-medium">
+              {idDocCameraFacing === 'environment' ? '📷 Back Camera' : '🤳 Front Camera'}
+            </span>
           </div>
           
           {/* Camera View */}
@@ -527,7 +561,7 @@ const VisitorRegister = () => {
                 playsInline
                 muted
                 className="w-full h-full object-cover"
-                style={{ transform: 'scaleX(-1)' }}
+                style={{ transform: idDocCameraFacing === 'user' ? 'scaleX(-1)' : 'none' }}
               />
               {!idDocCameraActive && (
                 <div className="absolute inset-0 flex items-center justify-center">
@@ -543,6 +577,11 @@ const VisitorRegister = () => {
               </div>
             </div>
             <canvas ref={idDocCanvasRef} className="hidden" />
+          </div>
+          
+          {/* Info text */}
+          <div className="px-4 text-center">
+            <p className="text-gray-400 text-sm">Aadhaar Card, PAN Card, Driving License, Voter ID, Passport</p>
           </div>
           
           {/* Capture Button */}
