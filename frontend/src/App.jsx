@@ -245,12 +245,8 @@ const SystemSelectorRoute = ({ children }) => {
     )
   }
 
-  // Requestors go directly to Work Permit (if logged in)
-  if (user && user.role === 'REQUESTOR') {
-    return <Navigate to="/workpermit/dashboard" replace />
-  }
-
-  // Allow access to system selector for everyone (logged in or not)
+  // Allow all users to access system selector (including Requestors)
+  // They can switch between Work Permit and VMS
   return children
 }
 
