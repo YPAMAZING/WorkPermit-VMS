@@ -491,7 +491,7 @@ model VMSEmployeePass {
   employeeName    String   @db.VarChar(255)
   phone           String   @db.VarChar(20)
   email           String?  @db.VarChar(255)
-  photo           String?  @db.Text  // Base64 or URL
+  photo           String?  @db.LongText  // Base64 or URL - using LongText for larger images
   
   // Employment Details
   department      String   @db.VarChar(100)

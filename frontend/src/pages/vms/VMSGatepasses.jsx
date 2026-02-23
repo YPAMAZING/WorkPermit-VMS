@@ -152,7 +152,53 @@ const VMSGatepasses = () => {
     REVOKED: { bg: 'bg-gray-100', text: 'text-gray-700', icon: XCircle },
   }
 
-  const handlePhotoChange = (e) => {
+  // Compress image to reduce size
+  const compressImage = (file, maxSizeKB = 150) => {
+    return new Promise((resolve) => {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const img = new Image()
+        img.onload = () => {
+          const canvas = document.createElement('canvas')
+          let width = img.width
+          let height = img.height
+          
+          // Resize if too large (max 400px for profile photos)
+          const maxDimension = 400
+          if (width > maxDimension || height > maxDimension) {
+            if (width > height) {
+              height = (height / width) * maxDimension
+              width = maxDimension
+            } else {
+              width = (width / height) * maxDimension
+              height = maxDimension
+            }
+          }
+          
+          canvas.width = width
+          canvas.height = height
+          const ctx = canvas.getContext('2d')
+          ctx.drawImage(img, 0, 0, width, height)
+          
+          // Compress with decreasing quality until under maxSizeKB
+          let quality = 0.8
+          let result = canvas.toDataURL('image/jpeg', quality)
+          
+          while (result.length > maxSizeKB * 1370 && quality > 0.1) {
+            quality -= 0.1
+            result = canvas.toDataURL('image/jpeg', quality)
+          }
+          
+          console.log(`Image compressed: ${Math.round(result.length / 1024)}KB, quality: ${quality.toFixed(1)}`)
+          resolve(result)
+        }
+        img.src = e.target.result
+      }
+      reader.readAsDataURL(file)
+    })
+  }
+
+  const handlePhotoChange = async (e) => {
     const file = e.target.files[0]
     if (file) {
       // Validate file type - only JPEG and PNG allowed
@@ -162,11 +208,15 @@ const VMSGatepasses = () => {
         e.target.value = ''
         return
       }
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setNewPass(prev => ({ ...prev, photo: reader.result }))
+      
+      try {
+        // Compress the image before storing
+        const compressedPhoto = await compressImage(file, 150)
+        setNewPass(prev => ({ ...prev, photo: compressedPhoto }))
+      } catch (error) {
+        console.error('Image compression error:', error)
+        setMessage({ type: 'error', text: 'Failed to process image. Please try a smaller image.' })
       }
-      reader.readAsDataURL(file)
     }
   }
 
