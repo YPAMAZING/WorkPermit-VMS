@@ -150,15 +150,25 @@ const VMSReports = () => {
     window.URL.revokeObjectURL(url)
   }
 
-  // Export all visitors to CSV
+  // Export all visitors to CSV with full details
   const handleExportAllVisitors = async () => {
     try {
-      // Fetch all visitors (up to 1000)
-      const response = await visitorsApi.getAll({ page: 1, limit: 1000 })
+      // Fetch all visitors within date range (up to 5000)
+      const response = await visitorsApi.getAll({ 
+        page: 1, 
+        limit: 5000,
+        startDate: dateRange.from,
+        endDate: dateRange.to
+      })
       const visitors = response.data.visitors || []
       
+      if (visitors.length === 0) {
+        alert('No visitors found in the selected date range')
+        return
+      }
+      
       const csvData = [
-        ['Name', 'Phone', 'Email', 'Company From', 'Company To Visit', 'Person To Meet', 'Purpose', 'Status', 'Check-in Time', 'Check-out Time', 'Created At']
+        ['Name', 'Phone', 'Email', 'Company From', 'Company To Visit', 'Person To Meet', 'Purpose', 'Vehicle Number', 'ID Proof Type', 'ID Proof Number', 'Number of Visitors', 'Status', 'Check-in Time', 'Gatepass Number', 'Created At']
       ]
       
       visitors.forEach(v => {
@@ -170,23 +180,28 @@ const VMSReports = () => {
           v.companyToVisit || '',
           v.personToMeet || '',
           v.purpose || '',
+          v.vehicleNumber || '',
+          v.idProofType || '',
+          v.idProofNumber || '',
+          v.numberOfVisitors || 1,
           v.status || '',
-          v.checkInTime ? new Date(v.checkInTime).toLocaleString() : '',
-          v.checkOutTime ? new Date(v.checkOutTime).toLocaleString() : '',
-          v.createdAt ? new Date(v.createdAt).toLocaleString() : '',
+          v.checkInTime ? new Date(v.checkInTime).toLocaleString('en-IN') : '',
+          v.gatepass?.gatepassNumber || v.requestNumber || '',
+          v.createdAt ? new Date(v.createdAt).toLocaleString('en-IN') : '',
         ])
       })
       
-      const csvString = csvData.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n')
-      const blob = new Blob([csvString], { type: 'text/csv' })
+      const csvString = csvData.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n')
+      const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' })
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `all_visitors_${new Date().toISOString().split('T')[0]}.csv`
+      a.download = `visitors_report_${dateRange.from}_to_${dateRange.to}.csv`
       a.click()
       window.URL.revokeObjectURL(url)
     } catch (error) {
       console.error('Failed to export visitors:', error)
+      alert('Failed to export visitors. Please try again.')
     }
   }
 
@@ -275,15 +290,8 @@ const VMSReports = () => {
           />
           <div className="ml-auto flex gap-2">
             <button
-              onClick={() => handleExport('visitors')}
+              onClick={handleExportAllVisitors}
               className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
-            >
-              <Download size={18} />
-              Export Visitors
-            </button>
-            <button
-              onClick={() => handleExport('gatepasses')}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
               <Download size={18} />
               Export Visitors
@@ -461,27 +469,27 @@ const VMSReports = () => {
         <h2 className="text-lg font-semibold text-gray-800 mb-4">Quick Report Actions</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <button
-            onClick={() => handleExport('visitors')}
+            onClick={handleExportAllVisitors}
             className="flex items-center gap-3 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
           >
             <div className="p-2 bg-teal-100 rounded-lg">
               <Users size={20} className="text-teal-600" />
             </div>
             <div className="text-left">
-              <p className="font-medium text-gray-800">Visitor Report</p>
-              <p className="text-sm text-gray-500">Export all visitor data</p>
+              <p className="font-medium text-gray-800">Export Visitor Report</p>
+              <p className="text-sm text-gray-500">Download all visitor details as CSV</p>
             </div>
           </button>
           <button
-            onClick={() => handleExport('gatepasses')}
+            onClick={handleShowAllVisitors}
             className="flex items-center gap-3 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
           >
             <div className="p-2 bg-blue-100 rounded-lg">
               <FileText size={20} className="text-blue-600" />
             </div>
             <div className="text-left">
-              <p className="font-medium text-gray-800">Gatepass Report</p>
-              <p className="text-sm text-gray-500">Export gatepass history</p>
+              <p className="font-medium text-gray-800">View All Visitors</p>
+              <p className="text-sm text-gray-500">Browse visitor list</p>
             </div>
           </button>
           <button
