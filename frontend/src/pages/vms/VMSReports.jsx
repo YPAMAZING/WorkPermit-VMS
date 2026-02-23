@@ -189,7 +189,7 @@ const VMSReports = () => {
         return str
       }
       
-      // CSV Headers
+      // CSV Headers - clean data only, no base64 images
       const headers = [
         'S.No',
         'Name',
@@ -207,11 +207,11 @@ const VMSReports = () => {
         'Check-in Time',
         'Pass Number',
         'Created At',
-        'Photo URL',
-        'ID Document URL'
+        'Has Photo',
+        'Has ID Document'
       ]
       
-      // CSV Rows
+      // CSV Rows - replace base64 with Yes/No indicators
       const rows = visitors.map((v, index) => [
         index + 1,
         escapeCSV(v.visitorName || ''),
@@ -229,8 +229,8 @@ const VMSReports = () => {
         escapeCSV(formatDate(v.checkInTime)),
         escapeCSV(v.gatepass?.gatepassNumber || v.requestNumber || ''),
         escapeCSV(formatDate(v.createdAt)),
-        escapeCSV(v.photo || ''),
-        escapeCSV(v.idDocumentImage || '')
+        v.photo ? 'Yes' : 'No',
+        v.idDocumentImage ? 'Yes' : 'No'
       ])
       
       // Build CSV content with BOM for Excel
@@ -398,6 +398,203 @@ const VMSReports = () => {
     }
   }
 
+  // Export visitors to PDF (opens print dialog for saving as PDF)
+  const handleExportPDF = async () => {
+    try {
+      const response = await visitorsApi.getAll({ 
+        page: 1, 
+        limit: 200,
+        startDate: dateRange.from,
+        endDate: dateRange.to
+      })
+      const visitors = response.data.visitors || []
+      
+      if (visitors.length === 0) {
+        alert('No visitors found in the selected date range')
+        return
+      }
+
+      const formatDate = (date) => {
+        if (!date) return '-'
+        return new Date(date).toLocaleString('en-IN', { 
+          day: '2-digit', 
+          month: 'short', 
+          year: 'numeric',
+          hour: '2-digit', 
+          minute: '2-digit', 
+          hour12: true 
+        })
+      }
+
+      // Create printable PDF content with visitor cards
+      const printContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Visitors Report - ${dateRange.from} to ${dateRange.to}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; padding: 20px; background: white; }
+    .header { text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 3px solid #0d9488; }
+    .header h1 { color: #0d9488; font-size: 24px; margin-bottom: 8px; }
+    .header p { color: #666; font-size: 14px; }
+    .visitor-card { 
+      border: 1px solid #e5e7eb; 
+      border-radius: 12px; 
+      padding: 20px; 
+      margin-bottom: 20px; 
+      page-break-inside: avoid;
+      background: #fafafa;
+    }
+    .visitor-header { 
+      display: flex; 
+      align-items: center; 
+      gap: 15px; 
+      margin-bottom: 15px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .visitor-photo { 
+      width: 70px; 
+      height: 70px; 
+      border-radius: 50%; 
+      object-fit: cover;
+      border: 3px solid #0d9488;
+    }
+    .visitor-photo-placeholder {
+      width: 70px; 
+      height: 70px; 
+      border-radius: 50%;
+      background: #e5e7eb;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #9ca3af;
+      font-size: 28px;
+      border: 3px solid #d1d5db;
+    }
+    .visitor-name { font-size: 18px; font-weight: bold; color: #1f2937; }
+    .visitor-status { 
+      display: inline-block;
+      padding: 4px 12px; 
+      border-radius: 12px; 
+      font-size: 11px; 
+      font-weight: 600;
+      margin-top: 5px;
+      text-transform: uppercase;
+    }
+    .status-approved, .status-checked_in { background: #dcfce7; color: #166534; }
+    .status-checked_out, .status-completed { background: #dbeafe; color: #1e40af; }
+    .status-pending { background: #fef9c3; color: #854d0e; }
+    .status-rejected, .status-cancelled { background: #fee2e2; color: #991b1b; }
+    .details-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    .detail-item { padding: 10px; background: white; border-radius: 6px; border: 1px solid #f3f4f6; }
+    .detail-label { font-size: 10px; color: #6b7280; text-transform: uppercase; font-weight: 600; }
+    .detail-value { font-size: 13px; color: #1f2937; font-weight: 500; margin-top: 3px; }
+    .id-section { margin-top: 15px; padding-top: 15px; border-top: 1px solid #e5e7eb; }
+    .id-section h4 { font-size: 12px; color: #6b7280; margin-bottom: 10px; font-weight: 600; }
+    .id-image { max-width: 200px; max-height: 130px; border-radius: 6px; border: 1px solid #d1d5db; }
+    .footer { text-align: center; margin-top: 30px; padding-top: 20px; border-top: 2px solid #e5e7eb; color: #6b7280; font-size: 12px; }
+    @media print {
+      body { padding: 10px; }
+      .visitor-card { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>📋 Visitors Report</h1>
+    <p>Date Range: ${dateRange.from} to ${dateRange.to} | Total Visitors: ${visitors.length}</p>
+  </div>
+  
+  ${visitors.map((v, i) => `
+    <div class="visitor-card">
+      <div class="visitor-header">
+        ${v.photo 
+          ? \`<img src="\${v.photo}" class="visitor-photo" alt="Photo" onerror="this.outerHTML='<div class=visitor-photo-placeholder>👤</div>'" />\`
+          : '<div class="visitor-photo-placeholder">👤</div>'
+        }
+        <div>
+          <div class="visitor-name">${i + 1}. ${v.visitorName || 'N/A'}</div>
+          <span class="visitor-status status-${(v.status || '').toLowerCase()}">${v.status || 'N/A'}</span>
+        </div>
+      </div>
+      
+      <div class="details-grid">
+        <div class="detail-item">
+          <div class="detail-label">Phone</div>
+          <div class="detail-value">${v.phone || '-'}</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Email</div>
+          <div class="detail-value">${v.email || '-'}</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Company From</div>
+          <div class="detail-value">${v.companyFrom || '-'}</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Company To Visit</div>
+          <div class="detail-value">${v.companyToVisit || '-'}</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Person To Meet</div>
+          <div class="detail-value">${v.personToMeet || '-'}</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Purpose</div>
+          <div class="detail-value">${v.purpose || '-'}</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Vehicle Number</div>
+          <div class="detail-value">${v.vehicleNumber || '-'}</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Check-in Time</div>
+          <div class="detail-value">${formatDate(v.checkInTime)}</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">ID Proof</div>
+          <div class="detail-value">${v.idProofType || '-'}${v.idProofNumber ? ': ' + v.idProofNumber : ''}</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Pass Number</div>
+          <div class="detail-value">${v.gatepass?.gatepassNumber || v.requestNumber || '-'}</div>
+        </div>
+      </div>
+      
+      ${v.idDocumentImage ? \`
+        <div class="id-section">
+          <h4>📄 ID Document</h4>
+          <img src="\${v.idDocumentImage}" class="id-image" alt="ID Document" onerror="this.style.display='none'" />
+        </div>
+      \` : ''}
+    </div>
+  `).join('')}
+  
+  <div class="footer">
+    <p>Generated on ${new Date().toLocaleString('en-IN')} | Reliable Group VMS</p>
+  </div>
+</body>
+</html>
+      `
+
+      // Open print dialog (user can save as PDF)
+      const printWindow = window.open('', '_blank')
+      printWindow.document.write(printContent)
+      printWindow.document.close()
+      printWindow.focus()
+      setTimeout(() => {
+        printWindow.print()
+      }, 500)
+      
+    } catch (error) {
+      console.error('Failed to export PDF:', error)
+      alert('Failed to generate PDF. Please try again.')
+    }
+  }
+
   // Clickable StatCard component
   const StatCard = ({ title, value, icon: Icon, color, subtitle, onClick }) => (
     <div 
@@ -490,10 +687,17 @@ const VMSReports = () => {
               Export CSV
             </button>
             <button
+              onClick={handleExportPDF}
+              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              <FileText size={18} />
+              Export PDF
+            </button>
+            <button
               onClick={handleExportWithImages}
               className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
             >
-              <FileText size={18} />
+              <Eye size={18} />
               View with Images
             </button>
           </div>
@@ -667,7 +871,7 @@ const VMSReports = () => {
       {/* Quick Actions */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
         <h2 className="text-lg font-semibold text-gray-800 mb-4">Quick Report Actions</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           <button
             onClick={handleExportCSV}
             className="flex items-center gap-3 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
@@ -677,7 +881,19 @@ const VMSReports = () => {
             </div>
             <div className="text-left">
               <p className="font-medium text-gray-800">Export CSV</p>
-              <p className="text-sm text-gray-500">Proper formatted data</p>
+              <p className="text-sm text-gray-500">Clean data export</p>
+            </div>
+          </button>
+          <button
+            onClick={handleExportPDF}
+            className="flex items-center gap-3 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <div className="p-2 bg-red-100 rounded-lg">
+              <FileText size={20} className="text-red-600" />
+            </div>
+            <div className="text-left">
+              <p className="font-medium text-gray-800">Export PDF</p>
+              <p className="text-sm text-gray-500">With photos & docs</p>
             </div>
           </button>
           <button
@@ -685,11 +901,11 @@ const VMSReports = () => {
             className="flex items-center gap-3 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
           >
             <div className="p-2 bg-purple-100 rounded-lg">
-              <FileText size={20} className="text-purple-600" />
+              <Eye size={20} className="text-purple-600" />
             </div>
             <div className="text-left">
               <p className="font-medium text-gray-800">View with Images</p>
-              <p className="text-sm text-gray-500">Photos & ID documents</p>
+              <p className="text-sm text-gray-500">Table with photos</p>
             </div>
           </button>
           <button
