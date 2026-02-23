@@ -560,15 +560,14 @@ ${passUrl ? `Pass Link: ${passUrl}` : ''}
                   </div>
                 </div>
 
-                {viewVisitor.vehicleNumber && (
-                  <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
-                    <Car size={18} className="text-gray-400" />
-                    <div>
-                      <p className="text-xs text-gray-500">Vehicle Number</p>
-                      <p className="font-medium text-gray-800">{viewVisitor.vehicleNumber}</p>
-                    </div>
+                {/* Vehicle Number - Always displayed */}
+                <div className="flex items-center gap-2 p-3 bg-purple-50 rounded-lg">
+                  <Car size={18} className="text-purple-500" />
+                  <div>
+                    <p className="text-xs text-purple-600 font-medium">Vehicle Number</p>
+                    <p className="font-medium text-gray-800">{viewVisitor.vehicleNumber || '-'}</p>
                   </div>
-                )}
+                </div>
 
                 {viewVisitor.idProofType && (
                   <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">

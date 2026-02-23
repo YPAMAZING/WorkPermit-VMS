@@ -418,12 +418,11 @@ Pass Link: ${passUrl}
                   <span className="text-gray-500">Meeting</span>
                   <span className="text-gray-800">{showPassModal.visitor?.personToMeet || '-'}</span>
                 </div>
-                {(showPassModal.visitor?.vehicleNumber || showPassModal.vehicleNumber) && (
-                  <div className="flex justify-between py-2 border-b border-gray-100">
-                    <span className="text-gray-500">Vehicle Number</span>
-                    <span className="font-medium text-gray-800">{showPassModal.visitor?.vehicleNumber || showPassModal.vehicleNumber}</span>
-                  </div>
-                )}
+                {/* Vehicle Number - Always displayed */}
+                <div className="flex justify-between py-2 border-b border-gray-100 bg-purple-50 -mx-3 px-3">
+                  <span className="text-purple-600 font-medium">Vehicle Number</span>
+                  <span className="font-medium text-gray-800">{showPassModal.visitor?.vehicleNumber || showPassModal.vehicleNumber || '-'}</span>
+                </div>
                 <div className="flex justify-between py-2 border-b border-gray-100">
                   <span className="text-gray-500">Check-in</span>
                   <span className="text-gray-800">{formatDateTime(showPassModal.visitor?.checkInTime)}</span>

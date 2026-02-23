@@ -239,6 +239,11 @@ const GuardDashboard = () => {
             <p className="text-gray-400 text-xs">Meeting</p>
             <p className="text-gray-700 font-medium truncate">{request.personToMeet || '-'}</p>
           </div>
+          {/* Vehicle Number - Always show */}
+          <div className="col-span-2">
+            <p className="text-purple-600 text-xs font-medium">Vehicle Number</p>
+            <p className="text-gray-700 font-medium">{request.vehicleNumber || request.gatepass?.vehicleNumber || '-'}</p>
+          </div>
         </div>
         
         {/* Remarks (highlighted if present) */}
@@ -608,13 +613,11 @@ const GuardDashboard = () => {
                   <p className="font-medium text-gray-800">{selectedRequest.personToMeet || '-'}</p>
                 </div>
                 
-                {/* Vehicle Number (if any) */}
-                {selectedRequest.vehicleNumber && (
-                  <div className="p-3 bg-gray-50 rounded-lg">
-                    <p className="text-xs text-gray-400 mb-1">Vehicle Number</p>
-                    <p className="font-medium text-gray-800">{selectedRequest.vehicleNumber}</p>
-                  </div>
-                )}
+                {/* Vehicle Number */}
+                <div className="p-3 bg-purple-50 rounded-lg">
+                  <p className="text-xs text-purple-600 mb-1">Vehicle Number</p>
+                  <p className="font-medium text-gray-800">{selectedRequest.vehicleNumber || selectedRequest.gatepass?.vehicleNumber || '-'}</p>
+                </div>
                 
                 {/* Remarks (highlighted) */}
                 {selectedRequest.remarks && (
@@ -829,6 +832,11 @@ const GuardDashboard = () => {
                 <div className="p-3 bg-green-50 rounded-lg col-span-2">
                   <p className="text-xs text-green-600">Person to Meet</p>
                   <p className="font-medium text-gray-800">{selectedRequest.personToMeet || '-'}</p>
+                </div>
+                {/* Vehicle Number - Always displayed */}
+                <div className="p-3 bg-purple-50 rounded-lg col-span-2">
+                  <p className="text-xs text-purple-600 font-semibold">Vehicle Number</p>
+                  <p className="font-medium text-gray-800">{selectedRequest.vehicleNumber || selectedRequest.gatepass?.vehicleNumber || '-'}</p>
                 </div>
                 {selectedRequest.remarks && (
                   <div className="p-3 bg-amber-50 border-2 border-amber-300 rounded-lg col-span-2">
