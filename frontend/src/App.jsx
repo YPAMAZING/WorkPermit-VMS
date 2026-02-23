@@ -113,6 +113,7 @@ const VMSGatepasses = lazy(() => import('./pages/vms/VMSGatepasses'))
 const PreApprovedList = lazy(() => import('./pages/vms/PreApprovedList'))
 const NewPreApproval = lazy(() => import('./pages/vms/NewPreApproval'))
 const PreApprovalDetail = lazy(() => import('./pages/vms/PreApprovalDetail'))
+const VisitorDetail = lazy(() => import('./pages/vms/VisitorDetail'))
 const BlacklistList = lazy(() => import('./pages/vms/BlacklistList'))
 const AddToBlacklist = lazy(() => import('./pages/vms/AddToBlacklist'))
 const VMSReports = lazy(() => import('./pages/vms/VMSReports'))
@@ -397,10 +398,11 @@ function App() {
             <Route index element={<VMSDefaultRedirect />} />
             <Route path="dashboard" element={<VMSDashboard />} />
             <Route path="visitors" element={<VMSVisitors />} />
+            <Route path="visitors/:id" element={<VisitorDetail />} />
             
             {/* Gatepasses/Employee Pass */}
             <Route path="gatepasses" element={<VMSGatepasses />} />
-            <Route path="gatepasses/:id" element={<ComingSoon title="Pass Details" />} />
+            <Route path="gatepasses/:id" element={<VisitorDetail />} />
             <Route path="gatepasses/scan" element={<GuardDashboard />} />
             
             {/* Visitor Passes - Redirect to Visitors page (consolidated) */}
