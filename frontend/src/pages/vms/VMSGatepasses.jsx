@@ -103,19 +103,26 @@ const VMSGatepasses = () => {
   }
 
   const fetchCompanies = async () => {
-    // Fetch companies for admin/reception OR company users who need to select a company
-    if (!canSeeAllCompanies && !companyUserNeedsSelection) return
+    // Always fetch companies for admin/reception (they can select any company)
+    // Company users will use their assigned company automatically
     try {
+      console.log('Fetching companies... canSeeAllCompanies:', canSeeAllCompanies, 'isAdmin:', isAdmin, 'isReceptionist:', isReceptionist)
       const response = await companySettingsApi.getDropdown()
-      setCompanies(response.data || [])
+      // API returns { success: true, companies: [...] }
+      const companyList = response.data?.companies || response.data || []
+      console.log('Companies fetched:', companyList.length)
+      setCompanies(companyList)
     } catch (error) {
       console.error('Failed to fetch companies:', error)
     }
   }
 
   useEffect(() => {
-    fetchCompanies()
-  }, [])
+    // Fetch companies when user auth state is ready
+    if (canSeeAllCompanies || companyUserNeedsSelection) {
+      fetchCompanies()
+    }
+  }, [canSeeAllCompanies, companyUserNeedsSelection])
 
   useEffect(() => {
     fetchPasses()
