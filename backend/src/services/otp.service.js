@@ -298,7 +298,7 @@ const sendOTP = async (email, phone) => {
   const results = {
     email: false,
     phone: false,
-    otp: otp, // For development only - remove in production
+    // OTP is NEVER sent in response for security - only via email/SMS
   };
   
   try {
@@ -370,7 +370,7 @@ const sendPasswordChangeOTP = async (email, phone) => {
   const results = {
     email: false,
     phone: false,
-    otp: otp, // For development only - remove in production
+    // OTP is NEVER sent in response for security - only via email/SMS
   };
   
   try {

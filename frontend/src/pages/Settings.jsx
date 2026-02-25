@@ -36,7 +36,7 @@ const Settings = () => {
   const [resendTimer, setResendTimer] = useState(0)
   const [otp, setOtp] = useState(['', '', '', '', '', ''])
   const [maskedInfo, setMaskedInfo] = useState({ email: '', phone: '' })
-  const [devOtp, setDevOtp] = useState('')
+  // DEV MODE removed for production - OTP is only sent via email
   const otpInputRefs = useRef([])
   
   const [profileData, setProfileData] = useState({
@@ -146,11 +146,7 @@ const Settings = () => {
       setResendTimer(60) // 60 seconds cooldown
       toast.success('OTP sent to your email and phone')
       
-      // Show OTP in development mode
-      if (response.data.otp) {
-        setDevOtp(response.data.otp)
-        toast.success(`DEV MODE - OTP: ${response.data.otp}`, { duration: 10000 })
-      }
+      // OTP is sent via email only - not displayed on screen for security
     } catch (error) {
       toast.error(error.response?.data?.message || 'Error sending OTP')
     } finally {
@@ -224,7 +220,7 @@ const Settings = () => {
       setPasswordStep('request')
       setPasswordData({ newPassword: '', confirmPassword: '' })
       setOtp(['', '', '', '', '', ''])
-      setDevOtp('')
+      // Reset complete
     } catch (error) {
       toast.error(error.response?.data?.message || 'Error changing password')
     } finally {
@@ -236,7 +232,6 @@ const Settings = () => {
     setPasswordStep('request')
     setPasswordData({ newPassword: '', confirmPassword: '' })
     setOtp(['', '', '', '', '', ''])
-    setDevOtp('')
   }
 
   const cancelEdit = () => {
@@ -529,14 +524,7 @@ const Settings = () => {
                 </div>
               </div>
               
-              {/* Dev OTP display */}
-              {devOtp && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                  <p className="text-sm text-yellow-800">
-                    <strong>DEV MODE:</strong> Your OTP is <span className="font-mono text-lg">{devOtp}</span>
-                  </p>
-                </div>
-              )}
+              {/* OTP is sent via email only - no on-screen display for security */}
               
               {/* OTP Input */}
               <div>
