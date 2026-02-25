@@ -89,7 +89,7 @@ model PermitRequest {
   precautions      String?   @db.Text
   equipment        String?   @db.Text
   measures         String?   @db.Text
-  workers          String?   @db.Text
+  workers          String?   @db.LongText  // Using LongText for worker data with ID proof images
   vendorDetails    String?   @db.Text
   contractorName   String?   @db.VarChar(255)
   contractorPhone  String?   @db.VarChar(20)
