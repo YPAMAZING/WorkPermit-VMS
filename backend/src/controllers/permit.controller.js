@@ -322,7 +322,14 @@ const createPermit = async (req, res) => {
     });
   } catch (error) {
     console.error('Create permit error:', error);
-    res.status(500).json({ message: 'Error creating permit' });
+    console.error('Error details:', error.message);
+    console.error('Error code:', error.code);
+    if (error.meta) console.error('Error meta:', error.meta);
+    res.status(500).json({ 
+      message: 'Error creating permit', 
+      error: error.message,
+      code: error.code 
+    });
   }
 };
 
