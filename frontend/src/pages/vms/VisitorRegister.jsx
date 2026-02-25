@@ -408,7 +408,7 @@ const VisitorRegister = () => {
           } else if (data.status === 'REJECTED') {
             toast.error(data.message || 'Your previous request was rejected.')
           } else {
-            toast.info(data.message || 'You have an existing request.')
+            toast(data.message || 'You have an existing request.', { icon: 'ℹ️' })
             setVisitorId(data.visitorId)
             setIsPolling(true) // Start polling if still pending
           }
