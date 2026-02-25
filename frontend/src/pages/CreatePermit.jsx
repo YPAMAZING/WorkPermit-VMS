@@ -278,23 +278,77 @@ const CreatePermit = () => {
     setNewWorker({ ...newWorker, [name]: value })
   }
 
-  const handleWorkerImageUpload = (e) => {
+  // Compress image to reduce size (for ID proof documents)
+  const compressImage = (file, maxSizeKB = 200, maxDimension = 800) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const img = new Image()
+        img.onload = () => {
+          const canvas = document.createElement('canvas')
+          let width = img.width
+          let height = img.height
+          
+          // Resize if too large
+          if (width > maxDimension || height > maxDimension) {
+            if (width > height) {
+              height = (height / width) * maxDimension
+              width = maxDimension
+            } else {
+              width = (width / height) * maxDimension
+              height = maxDimension
+            }
+          }
+          
+          canvas.width = width
+          canvas.height = height
+          const ctx = canvas.getContext('2d')
+          ctx.drawImage(img, 0, 0, width, height)
+          
+          // Compress with decreasing quality until under maxSizeKB
+          let quality = 0.8
+          let result = canvas.toDataURL('image/jpeg', quality)
+          
+          while (result.length > maxSizeKB * 1370 && quality > 0.1) {
+            quality -= 0.1
+            result = canvas.toDataURL('image/jpeg', quality)
+          }
+          
+          console.log(`Image compressed: ${Math.round(result.length / 1024)}KB, quality: ${quality.toFixed(1)}`)
+          resolve(result)
+        }
+        img.onerror = reject
+        img.src = e.target.result
+      }
+      reader.onerror = reject
+      reader.readAsDataURL(file)
+    })
+  }
+
+  const handleWorkerImageUpload = async (e) => {
     const file = e.target.files[0]
     if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error('Image size should be less than 5MB')
+      // Validate file type
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png']
+      if (!allowedTypes.includes(file.type)) {
+        toast.error('Only JPEG and PNG images are allowed')
+        e.target.value = ''
         return
       }
       
-      const reader = new FileReader()
-      reader.onloadend = () => {
+      try {
+        // Compress the image (max 200KB, max 800px dimension)
+        const compressedImage = await compressImage(file, 200, 800)
         setNewWorker({
           ...newWorker,
           idProofImage: file,
-          idProofPreview: reader.result,
+          idProofPreview: compressedImage,
         })
+        toast.success('ID proof image uploaded and compressed')
+      } catch (error) {
+        console.error('Image compression error:', error)
+        toast.error('Failed to process image. Please try again.')
       }
-      reader.readAsDataURL(file)
     }
   }
 
