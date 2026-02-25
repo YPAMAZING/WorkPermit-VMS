@@ -210,7 +210,7 @@ const VMSLayout = () => {
             {sidebarOpen && (
               <div className="min-w-0">
                 <h1 className="font-bold text-sm leading-tight">
-                  Reliable Group Digital System
+                  Reliable Group
                 </h1>
                 <p className="text-xs text-teal-200 truncate">Management Systems</p>
               </div>

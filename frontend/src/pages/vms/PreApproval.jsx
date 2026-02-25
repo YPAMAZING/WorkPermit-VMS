@@ -222,7 +222,7 @@ const PreApproval = () => {
 📍 Please show this message at reception
 🔗 Or visit: ${preApproval.qrCode}
 
-_Reliable Group Digital System - Visitor Management System_`
+_Reliable Group - Visitor Management System_`
 
     return encodeURIComponent(message)
   }
@@ -567,7 +567,7 @@ _Reliable Group Digital System - Visitor Management System_`
                   <div className="flex items-center gap-3">
                     <img src="/logo.png" alt="Logo" className="w-10 h-10" />
                     <div>
-                      <h3 className="font-bold text-gray-800">Reliable Group Digital System</h3>
+                      <h3 className="font-bold text-gray-800">Reliable Group</h3>
                       <p className="text-xs text-gray-500">Pre-Approved Visitor Pass</p>
                     </div>
                   </div>

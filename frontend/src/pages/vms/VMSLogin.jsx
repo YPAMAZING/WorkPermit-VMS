@@ -47,7 +47,7 @@ const VMSLogin = () => {
             className="w-10 h-10 object-contain bg-white rounded-lg p-1"
           />
           <div>
-            <h1 className="text-white font-bold text-xl">Reliable Group Digital System</h1>
+            <h1 className="text-white font-bold text-xl">Reliable Group</h1>
             <p className="text-teal-200 text-xs">Visitor Management System</p>
           </div>
         </div>
@@ -177,7 +177,7 @@ const VMSLogin = () => {
       {/* Footer */}
       <footer className="p-6 text-center">
         <p className="text-teal-200/60 text-sm">
-          © {new Date().getFullYear()} YP SECURITY SERVICES PVT LTD. All rights reserved.
+          © {new Date().getFullYear()} Reliable Group. All rights reserved.
         </p>
       </footer>
     </div>

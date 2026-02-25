@@ -91,7 +91,7 @@ const VMSVisitorPasses = () => {
     const passUrl = `${window.location.origin}/vms/pass/${pass.id}`
     const vehicleNumber = pass.visitor?.vehicleNumber || pass.vehicleNumber
     const message = `
-*Visitor Pass - Reliable Group Digital System*
+*Visitor Pass - Reliable Group*
 
 Name: ${pass.visitor?.name || pass.visitorName || 'N/A'}
 Pass No: ${pass.gatepassNumber}
@@ -378,7 +378,7 @@ Pass Link: ${passUrl}
             {/* Pass Header */}
             <div className="bg-gradient-to-r from-teal-600 to-teal-700 p-6 text-white text-center">
               <img src="/logo.png" alt="Logo" className="w-16 h-16 mx-auto bg-white rounded-lg p-2 mb-3" />
-              <h2 className="text-xl font-bold">Reliable Group Digital System</h2>
+              <h2 className="text-xl font-bold">Reliable Group</h2>
               <p className="text-teal-100 text-sm">Visitor Gate Pass</p>
             </div>
 
