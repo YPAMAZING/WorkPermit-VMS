@@ -153,7 +153,7 @@ const sendWelcomeEmail = async (userData) => {
   console.log(`   Login Email:    ${email}`);
   console.log(`   Login Password: ${password || '[Not Available]'}`);
   console.log(`   `);
-  console.log(`   🌐 Login URL: http://mepreliable.cloud`);
+  console.log(`   🌐 Login URL: ${process.env.FRONTEND_URL || 'https://reliablespaces.cloud'}`);
   console.log(`   `);
   if (requiresApproval) {
     console.log(`   ⚠️  Note: Your account requires admin approval before you can login.`);
@@ -218,7 +218,7 @@ const sendWelcomeEmail = async (userData) => {
             </div>
             
             <div style="text-align: center; margin: 25px 0;">
-              <a href="http://mepreliable.cloud" style="background-color: #1e3a6e; color: #ffffff; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block;">Login Now</a>
+              <a href="${process.env.FRONTEND_URL || 'https://reliablespaces.cloud'}" style="background-color: #1e3a6e; color: #ffffff; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block;">Login Now</a>
             </div>
             
             <div style="background-color: #f3f4f6; border-radius: 8px; padding: 20px; margin: 20px 0;">
@@ -491,7 +491,7 @@ const notifyAdminsNewRegistration = async (userData, adminEmails) => {
           </div>
           
           <div style="text-align: center; margin: 25px 0;">
-            <a href="http://mepreliable.cloud/users?tab=pending" style="background-color: #1e3a6e; color: #ffffff; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block;">Review & Approve</a>
+            <a href="${process.env.FRONTEND_URL || 'https://reliablespaces.cloud'}/users?tab=pending" style="background-color: #1e3a6e; color: #ffffff; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block;">Review & Approve</a>
           </div>
           
           <p style="color: #6b7280; font-size: 14px; text-align: center;">
@@ -612,7 +612,7 @@ const notifyFiremenNewPermit = async (permitData, firemanEmails) => {
           </div>
           
           <div style="text-align: center; margin: 25px 0;">
-            <a href="http://mepreliable.cloud/approvals" style="background-color: #f59e0b; color: #ffffff; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block;">Review & Approve Permit</a>
+            <a href="${process.env.FRONTEND_URL || 'https://reliablespaces.cloud'}/approvals" style="background-color: #f59e0b; color: #ffffff; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block;">Review & Approve Permit</a>
           </div>
           
           <p style="color: #6b7280; font-size: 14px; text-align: center;">
