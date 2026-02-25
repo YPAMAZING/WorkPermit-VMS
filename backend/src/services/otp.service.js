@@ -80,13 +80,14 @@ const sendEmailOTP = async (email, otp) => {
     try {
       const transport = getTransporter();
       await transport.sendMail({
-        from: `"${process.env.FROM_NAME || 'Reliable Group MEP'}" <${process.env.FROM_EMAIL || process.env.SMTP_USER}>`,
+        from: `"${process.env.FROM_NAME || 'Reliable Group Digital System'}" <${process.env.FROM_EMAIL || process.env.SMTP_USER}>`,
         to: email,
-        subject: 'Your OTP - Reliable Group MEP',
+        subject: 'Your OTP - Reliable Group Digital System',
         html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff;">
             <div style="text-align: center; margin-bottom: 30px;">
-              <h1 style="color: #1e3a6e; margin: 0;">Reliable Group MEP</h1>
+              <img src="https://reliablespaces.cloud/logo.png" alt="Reliable Group" style="max-width: 120px; height: auto; margin-bottom: 15px;" />
+              <h1 style="color: #1e3a6e; margin: 0;">Reliable Group Digital System</h1>
               <p style="color: #6b7280; margin: 5px 0;">Work Permit Management System</p>
             </div>
             
@@ -102,7 +103,7 @@ const sendEmailOTP = async (email, otp) => {
             <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;" />
             
             <p style="color: #9ca3af; font-size: 12px; text-align: center;">
-              © ${new Date().getFullYear()} YP Security Services Pvt Ltd. All rights reserved.
+              © ${new Date().getFullYear()} YP SECURITY SERVICES PVT LTD. All rights reserved.
             </p>
           </div>
         `,
@@ -137,7 +138,7 @@ const sendWelcomeEmail = async (userData) => {
   console.log(`${'='.repeat(70)}`);
   console.log(`   Dear ${firstName} ${lastName},`);
   console.log(`   `);
-  console.log(`   Your account has been created on Reliable Group MEP - Work Permit System.`);
+  console.log(`   Your account has been created on Reliable Group Digital System - Work Permit System.`);
   console.log(`   `);
   console.log(`   📋 Account Details:`);
   console.log(`   ─────────────────────────────────────────`);
@@ -168,8 +169,8 @@ const sendWelcomeEmail = async (userData) => {
       const transport = getTransporter();
       
       const subject = requiresApproval 
-        ? 'Account Registration Pending Approval - Reliable Group MEP'
-        : 'Welcome to Reliable Group MEP - Your Account is Ready!';
+        ? 'Account Registration Pending Approval - Reliable Group Digital System'
+        : 'Welcome to Reliable Group Digital System - Your Account is Ready!';
       
       const approvalMessage = requiresApproval 
         ? `<div style="background-color: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 16px; margin: 20px 0;">
@@ -182,20 +183,21 @@ const sendWelcomeEmail = async (userData) => {
            </div>`;
 
       await transport.sendMail({
-        from: `"${process.env.FROM_NAME || 'Reliable Group MEP'}" <${process.env.FROM_EMAIL || process.env.SMTP_USER}>`,
+        from: `"${process.env.FROM_NAME || 'Reliable Group Digital System'}" <${process.env.FROM_EMAIL || process.env.SMTP_USER}>`,
         to: email,
         subject: subject,
         html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff;">
             <div style="text-align: center; margin-bottom: 30px;">
-              <h1 style="color: #1e3a6e; margin: 0;">Reliable Group MEP</h1>
+              <img src="https://reliablespaces.cloud/logo.png" alt="Reliable Group" style="max-width: 120px; height: auto; margin-bottom: 15px;" />
+              <h1 style="color: #1e3a6e; margin: 0;">Reliable Group Digital System</h1>
               <p style="color: #6b7280; margin: 5px 0;">Work Permit Management System</p>
             </div>
             
             <h2 style="color: #1f2937;">Hello ${firstName} ${lastName},</h2>
             
             <p style="color: #4b5563; line-height: 1.6;">
-              Your account has been successfully created on the Reliable Group MEP - Work Permit Management System.
+              Your account has been successfully created on the Reliable Group Digital System - Work Permit Management System.
             </p>
             
             ${approvalMessage}
@@ -244,7 +246,7 @@ const sendWelcomeEmail = async (userData) => {
             <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;" />
             
             <p style="color: #9ca3af; font-size: 12px; text-align: center;">
-              © ${new Date().getFullYear()} YP Security Services Pvt Ltd. All rights reserved.<br />
+              © ${new Date().getFullYear()} YP SECURITY SERVICES PVT LTD. All rights reserved.<br />
               This is an automated message. Please do not reply to this email.
             </p>
           </div>
@@ -275,7 +277,7 @@ const sendSMSOTP = async (phone, otp) => {
   const client = twilio(process.env.TWILIO_SID, process.env.TWILIO_AUTH_TOKEN);
   
   await client.messages.create({
-    body: `Your OTP for Reliable Group MEP is: ${otp}. Valid for 5 minutes.`,
+    body: `Your OTP for Reliable Group Digital System is: ${otp}. Valid for 5 minutes.`,
     from: process.env.TWILIO_PHONE,
     to: phone,
   });
@@ -442,13 +444,14 @@ const notifyAdminsNewRegistration = async (userData, adminEmails) => {
   try {
     const transport = getTransporter();
     await transport.sendMail({
-      from: `"${process.env.FROM_NAME || 'Reliable Group MEP'}" <${process.env.FROM_EMAIL || process.env.SMTP_USER}>`,
+      from: `"${process.env.FROM_NAME || 'Reliable Group Digital System'}" <${process.env.FROM_EMAIL || process.env.SMTP_USER}>`,
       to: adminEmails.join(', '),
       subject: '🔔 New Account Registration Request - Action Required',
       html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff;">
           <div style="text-align: center; margin-bottom: 30px;">
-            <h1 style="color: #1e3a6e; margin: 0;">Reliable Group MEP</h1>
+            <img src="https://reliablespaces.cloud/logo.png" alt="Reliable Group" style="max-width: 120px; height: auto; margin-bottom: 15px;" />
+            <h1 style="color: #1e3a6e; margin: 0;">Reliable Group Digital System</h1>
             <p style="color: #6b7280; margin: 5px 0;">Work Permit Management System</p>
           </div>
           
@@ -498,7 +501,7 @@ const notifyAdminsNewRegistration = async (userData, adminEmails) => {
           <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;" />
           
           <p style="color: #9ca3af; font-size: 12px; text-align: center;">
-            © ${new Date().getFullYear()} YP Security Services Pvt Ltd. All rights reserved.<br />
+            © ${new Date().getFullYear()} YP SECURITY SERVICES PVT LTD. All rights reserved.<br />
             This is an automated notification from the Work Permit Management System.
           </p>
         </div>
@@ -558,13 +561,14 @@ const notifyFiremenNewPermit = async (permitData, firemanEmails) => {
   try {
     const transport = getTransporter();
     await transport.sendMail({
-      from: `"${process.env.FROM_NAME || 'Reliable Group MEP'}" <${process.env.FROM_EMAIL || process.env.SMTP_USER}>`,
+      from: `"${process.env.FROM_NAME || 'Reliable Group Digital System'}" <${process.env.FROM_EMAIL || process.env.SMTP_USER}>`,
       to: firemanEmails.join(', '),
       subject: `🔥 New Permit Request - ${workTypeLabels[workType] || workType} - Approval Required`,
       html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff;">
           <div style="text-align: center; margin-bottom: 30px;">
-            <h1 style="color: #1e3a6e; margin: 0;">Reliable Group MEP</h1>
+            <img src="https://reliablespaces.cloud/logo.png" alt="Reliable Group" style="max-width: 120px; height: auto; margin-bottom: 15px;" />
+            <h1 style="color: #1e3a6e; margin: 0;">Reliable Group Digital System</h1>
             <p style="color: #6b7280; margin: 5px 0;">Work Permit Management System</p>
           </div>
           
@@ -618,7 +622,7 @@ const notifyFiremenNewPermit = async (permitData, firemanEmails) => {
           <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;" />
           
           <p style="color: #9ca3af; font-size: 12px; text-align: center;">
-            © ${new Date().getFullYear()} YP Security Services Pvt Ltd. All rights reserved.<br />
+            © ${new Date().getFullYear()} YP SECURITY SERVICES PVT LTD. All rights reserved.<br />
             This is an automated notification from the Work Permit Management System.
           </p>
         </div>

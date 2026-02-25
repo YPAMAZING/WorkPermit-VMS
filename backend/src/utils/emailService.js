@@ -29,11 +29,12 @@ const getBaseTemplate = (content, title = 'Notification') => {
     <tr>
       <td style="padding: 40px 0;">
         <table role="presentation" style="width: 100%; max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-          <!-- Header -->
+          <!-- Header with Logo -->
           <tr>
             <td style="background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%); padding: 30px 40px; text-align: center;">
+              <img src="https://reliablespaces.cloud/logo.png" alt="Reliable Group" style="max-width: 100px; height: auto; margin-bottom: 15px;" />
               <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 600;">
-                ${process.env.COMPANY_NAME || 'RG DG Tech Park'}
+                ${process.env.COMPANY_NAME || 'Reliable Group Digital System'}
               </h1>
             </td>
           </tr>
@@ -47,10 +48,10 @@ const getBaseTemplate = (content, title = 'Notification') => {
           <tr>
             <td style="background-color: #f8f9fa; padding: 20px 40px; text-align: center; border-top: 1px solid #e9ecef;">
               <p style="margin: 0; font-size: 12px; color: #6c757d;">
-                This is an automated message from ${process.env.COMPANY_NAME || 'RG DG Tech Park'} Management System.
+                This is an automated message from ${process.env.COMPANY_NAME || 'Reliable Group Digital System'} Management System.
               </p>
               <p style="margin: 10px 0 0 0; font-size: 12px; color: #6c757d;">
-                © ${new Date().getFullYear()} All rights reserved.
+                © ${new Date().getFullYear()} YP SECURITY SERVICES PVT LTD. All rights reserved.
               </p>
             </td>
           </tr>
@@ -636,7 +637,7 @@ const sendEmail = async ({ to, subject, html, text }) => {
     const transporter = createTransporter();
     
     const mailOptions = {
-      from: `"${process.env.EMAIL_FROM_NAME || 'RG DG Tech Park'}" <${process.env.SMTP_USER}>`,
+      from: `"${process.env.EMAIL_FROM_NAME || 'Reliable Group Digital System'}" <${process.env.SMTP_USER}>`,
       to: Array.isArray(to) ? to.join(', ') : to,
       subject,
       html,
