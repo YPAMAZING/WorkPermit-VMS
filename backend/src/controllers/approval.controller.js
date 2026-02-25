@@ -1,6 +1,7 @@
 const { PrismaClient } = require('@prisma/client');
 const { createAuditLog } = require('../services/audit.service');
 const { transformPermitResponse } = require('../utils/arrayHelpers');
+const { sendPermitApprovedEmail, sendPermitRejectedEmail } = require('../utils/emailService');
 
 const prisma = new PrismaClient();
 
@@ -209,6 +210,46 @@ const updateApprovalDecision = async (req, res) => {
       ipAddress: req.ip,
       userAgent: req.headers['user-agent'],
     });
+    
+    // Send email notification to requestor
+    if (completeApproval.permit?.user?.email) {
+      const permit = completeApproval.permit;
+      const requestorEmail = permit.user.email;
+      const requestorName = `${permit.user.firstName} ${permit.user.lastName}`;
+      
+      try {
+        if (decision === 'APPROVED') {
+          await sendPermitApprovedEmail({
+            email: requestorEmail,
+            permitNumber: permit.permitNumber,
+            title: permit.title,
+            requestorName,
+            location: permit.location,
+            workType: permit.workType,
+            startDate: permit.startDate,
+            endDate: permit.endDate,
+            approverName: `${user.firstName} ${user.lastName}`,
+            approverRole: user.role || 'Safety Officer',
+          });
+          console.log('Permit approval email sent to:', requestorEmail);
+        } else {
+          await sendPermitRejectedEmail({
+            email: requestorEmail,
+            permitNumber: permit.permitNumber,
+            title: permit.title,
+            requestorName,
+            location: permit.location,
+            workType: permit.workType,
+            rejectedBy: `${user.firstName} ${user.lastName}`,
+            rejectionReason: comment,
+            comment,
+          });
+          console.log('Permit rejection email sent to:', requestorEmail);
+        }
+      } catch (emailError) {
+        console.error('Failed to send permit email:', emailError);
+      }
+    }
 
     res.json({
       message: `Permit ${decision.toLowerCase()} successfully`,

@@ -4,6 +4,7 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const { generateGuestPassNumber } = require('../../utils/passNumberGenerator');
+const { sendPreApprovalCreatedEmail } = require('../../utils/emailService');
 
 // Helper to generate pass number for display (not stored in DB)
 const generateDisplayPassNumber = async () => {
@@ -337,6 +338,26 @@ exports.createPreApprovedVisitor = async (req, res) => {
         createdAt: entry.createdAt,
       }
     });
+    
+    // Send pre-approval email to visitor (after response to not delay)
+    if (entry.email) {
+      try {
+        await sendPreApprovalCreatedEmail({
+          email: entry.email,
+          visitorName: entry.visitorName,
+          companyName: companyData?.displayName || companyData?.name,
+          personToMeet: entry.personToMeet,
+          purpose: entry.purpose,
+          passNumber: passNumber,
+          validFrom: entry.validFrom,
+          validUntil: entry.validUntil,
+          remarks: entry.remarks,
+        });
+        console.log('Pre-approval email sent to:', entry.email);
+      } catch (emailError) {
+        console.error('Failed to send pre-approval email:', emailError);
+      }
+    }
   } catch (error) {
     console.error('Create pre-approved visitor error:', error);
     res.status(500).json({ message: 'Failed to create pre-approval', error: error.message });

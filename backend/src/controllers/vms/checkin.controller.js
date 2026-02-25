@@ -2,6 +2,7 @@ const vmsPrisma = require('../../config/vms-prisma');
 const QRCode = require('qrcode');
 const { v4: uuidv4 } = require('uuid');
 const { generateVisitorPassNumber, generateRequestNumber } = require('../../utils/passNumberGenerator');
+const { sendVisitorApprovedEmail, sendNewVisitorNotification } = require('../../utils/emailService');
 
 // Helper to check if user is admin
 const isUserAdmin = (user) => {
@@ -357,6 +358,46 @@ exports.submitCheckInRequest = async (req, res) => {
         where: { id: visitor.id },
         data: { status: 'APPROVED' }
       });
+      
+      // Send approval email to visitor if auto-approved
+      if (visitor.email) {
+        try {
+          await sendVisitorApprovedEmail({
+            email: visitor.email,
+            visitorName: visitor.visitorName,
+            companyToVisit: company.displayName || company.name,
+            personToMeet: visitor.personToMeet,
+            purpose: visitor.purpose,
+            passNumber: gatepassNumber,
+            validFrom: gatepass.validFrom,
+            validUntil: gatepass.validUntil,
+          });
+          console.log('Auto-approval email sent to visitor:', visitor.email);
+        } catch (emailError) {
+          console.error('Failed to send auto-approval email:', emailError);
+        }
+      }
+    }
+    
+    // If status is PENDING (requires approval), notify the company
+    if (status === 'PENDING' && company.contactEmail) {
+      try {
+        await sendNewVisitorNotification({
+          companyEmail: company.contactEmail,
+          visitorName: fullName,
+          phone,
+          email,
+          companyFrom: companyFrom || visitorCompany,
+          companyToVisit: company.displayName || company.name,
+          personToMeet: personToMeet || 'Reception',
+          purpose,
+          numberOfVisitors: numberOfVisitors || 1,
+          dashboardUrl: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/vms/dashboard`,
+        });
+        console.log('New visitor notification sent to company:', company.contactEmail);
+      } catch (emailError) {
+        console.error('Failed to send new visitor notification:', emailError);
+      }
     }
     
     res.status(201).json({
@@ -875,6 +916,25 @@ exports.approveRequest = async (req, res) => {
     });
     
     console.log('✅ Gatepass created:', gatepassNumber);
+    
+    // Send approval email to visitor
+    if (visitor.email) {
+      try {
+        await sendVisitorApprovedEmail({
+          email: visitor.email,
+          visitorName: visitor.visitorName,
+          companyToVisit: visitor.companyToVisit,
+          personToMeet: visitor.personToMeet,
+          purpose: visitor.purpose,
+          passNumber: gatepassNumber,
+          validFrom: gatepass.validFrom,
+          validUntil: gatepass.validUntil,
+        });
+        console.log('✅ Approval email sent to:', visitor.email);
+      } catch (emailError) {
+        console.error('Failed to send approval email:', emailError);
+      }
+    }
     
     res.json({
       success: true,

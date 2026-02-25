@@ -3,6 +3,7 @@
 
 const vmsPrisma = require('../../config/vms-prisma');
 const QRCode = require('qrcode');
+const { sendEmployeePassCreatedEmail } = require('../../utils/emailService');
 
 // Generate pass number in format: RGDGTLEP MMM YYYY - XXXX
 const generateEmployeePassNumber = async () => {
@@ -344,6 +345,25 @@ exports.createEmployeePass = async (req, res) => {
         companyName: company?.displayName || company?.name || null
       }
     });
+    
+    // Send employee pass email (after response to not delay)
+    if (pass.email) {
+      try {
+        await sendEmployeePassCreatedEmail({
+          email: pass.email,
+          employeeName: pass.employeeName,
+          department: pass.department,
+          designation: pass.designation,
+          passNumber: pass.passNumber,
+          validFrom: pass.validFrom,
+          validUntil: pass.validUntil,
+          companyName: company?.displayName || company?.name || 'RG DG Tech Park',
+        });
+        console.log('Employee pass email sent to:', pass.email);
+      } catch (emailError) {
+        console.error('Failed to send employee pass email:', emailError);
+      }
+    }
   } catch (error) {
     console.error('Create employee pass error:', error);
     

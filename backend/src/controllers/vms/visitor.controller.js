@@ -2,6 +2,7 @@
 // Shows visitor data from VMSVisitor table
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
+const { sendVisitorApprovedEmail } = require('../../utils/emailService');
 
 // Get all visitors - queries VMSVisitor table directly
 exports.getVisitors = async (req, res) => {
@@ -276,7 +277,29 @@ exports.approveVisitor = async (req, res) => {
     const visitor = await prisma.vMSVisitor.update({
       where: { id },
       data: { status: 'APPROVED', approvedAt: new Date() },
+      include: { gatepass: true },
     });
+    
+    // Send approval email to visitor if they have an email
+    if (visitor.email) {
+      try {
+        await sendVisitorApprovedEmail({
+          email: visitor.email,
+          visitorName: visitor.visitorName,
+          companyToVisit: visitor.companyToVisit,
+          personToMeet: visitor.personToMeet,
+          purpose: visitor.purpose,
+          passNumber: visitor.gatepass?.gatepassNumber || visitor.id.slice(0, 8).toUpperCase(),
+          validFrom: visitor.gatepass?.validFrom || new Date(),
+          validUntil: visitor.gatepass?.validUntil || new Date(Date.now() + 24 * 60 * 60 * 1000),
+        });
+        console.log('Approval email sent to:', visitor.email);
+      } catch (emailError) {
+        console.error('Failed to send approval email:', emailError);
+        // Don't fail the request if email fails
+      }
+    }
+    
     res.json({ success: true, visitor });
   } catch (error) {
     if (error.code === 'P2025') return res.status(404).json({ message: 'Visitor not found' });
