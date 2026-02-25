@@ -310,11 +310,12 @@ exports.toggleApprovalRequirement = async (req, res) => {
 };
 
 // Delete company
+// Note: This will remove the company but keep all visitors and passes (setting companyId to null)
 exports.deleteCompany = async (req, res) => {
   try {
     const { id } = req.params;
     
-    // Check if company has visitors or gatepasses
+    // Check if company exists
     const company = await vmsPrisma.vMSCompany.findUnique({
       where: { id },
       include: {
@@ -322,6 +323,7 @@ exports.deleteCompany = async (req, res) => {
           select: {
             visitors: true,
             gatepasses: true,
+            users: true,
           },
         },
       },
@@ -331,21 +333,75 @@ exports.deleteCompany = async (req, res) => {
       return res.status(404).json({ message: 'Company not found' });
     }
     
-    if (company._count.visitors > 0 || company._count.gatepasses > 0) {
-      return res.status(400).json({ 
-        message: 'Cannot delete company with visitors or gatepasses. Deactivate instead.',
-        visitorCount: company._count.visitors,
-        gatepassCount: company._count.gatepasses,
+    // Get count of pre-approvals for this company
+    const preApprovalCount = await vmsPrisma.vMSPreApproval.count({
+      where: { companyId: id },
+    });
+    
+    // Remove company reference from visitors (set companyId to null)
+    // This keeps the visitor records intact without the company association
+    if (company._count.visitors > 0) {
+      await vmsPrisma.vMSVisitor.updateMany({
+        where: { companyId: id },
+        data: { companyId: null },
       });
+      console.log(`Removed company reference from ${company._count.visitors} visitors`);
     }
     
+    // Remove company reference from gatepasses
+    if (company._count.gatepasses > 0) {
+      await vmsPrisma.vMSGatepass.updateMany({
+        where: { companyId: id },
+        data: { companyId: null },
+      });
+      console.log(`Removed company reference from ${company._count.gatepasses} gatepasses`);
+    }
+    
+    // Remove company reference from users
+    if (company._count.users > 0) {
+      await vmsPrisma.vMSUser.updateMany({
+        where: { companyId: id },
+        data: { companyId: null },
+      });
+      console.log(`Removed company reference from ${company._count.users} users`);
+    }
+    
+    // Delete pre-approvals for this company (they are company-specific and cannot exist without company)
+    if (preApprovalCount > 0) {
+      await vmsPrisma.vMSPreApproval.deleteMany({
+        where: { companyId: id },
+      });
+      console.log(`Deleted ${preApprovalCount} pre-approvals for this company`);
+    }
+    
+    // Delete employee passes for this company (they are company-specific)
+    const employeePassCount = await vmsPrisma.vMSEmployeePass.count({
+      where: { companyId: id },
+    });
+    if (employeePassCount > 0) {
+      await vmsPrisma.vMSEmployeePass.deleteMany({
+        where: { companyId: id },
+      });
+      console.log(`Deleted ${employeePassCount} employee passes for this company`);
+    }
+    
+    // VMSCompanyUser will be automatically deleted due to onDelete: Cascade
+    
+    // Now delete the company
     await vmsPrisma.vMSCompany.delete({
       where: { id },
     });
     
     res.json({
       success: true,
-      message: 'Company deleted successfully',
+      message: 'Company deleted successfully. Visitors and visitor passes have been preserved.',
+      details: {
+        visitorsPreserved: company._count.visitors,
+        gatepassesPreserved: company._count.gatepasses,
+        usersUnlinked: company._count.users,
+        preApprovalsDeleted: preApprovalCount,
+        employeePassesDeleted: employeePassCount,
+      }
     });
   } catch (error) {
     console.error('Error deleting company:', error);
