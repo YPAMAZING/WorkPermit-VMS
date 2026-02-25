@@ -126,7 +126,7 @@ const VMSVisitors = () => {
   const handleShareWhatsApp = (visitor) => {
     const passUrl = visitor.gatepass?.id ? `${window.location.origin}/vms/pass/${visitor.gatepass.id}` : ''
     const message = `
-*Visitor Pass - Reliable Group*
+*Visitor Pass - Reliable Group Digital System*
 
 Name: ${visitor.visitorName || 'N/A'}
 ${visitor.gatepass?.gatepassNumber ? `Pass No: ${visitor.gatepass.gatepassNumber}` : `Request No: ${visitor.requestNumber || 'N/A'}`}

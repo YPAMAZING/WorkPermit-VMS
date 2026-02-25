@@ -96,7 +96,7 @@ const Login = () => {
           {/* Title */}
           <div className="text-center">
             <h2 className="text-3xl xl:text-4xl font-bold text-white leading-tight">
-              Reliable Group
+              Reliable Group Digital System
             </h2>
           </div>
 
@@ -121,7 +121,7 @@ const Login = () => {
                 className="h-16 w-auto"
               />
             </div>
-            <h2 className="text-lg font-bold text-gray-900">Reliable Group</h2>
+            <h2 className="text-lg font-bold text-gray-900">Reliable Group Digital System</h2>
           </div>
 
           {/* Login card */}

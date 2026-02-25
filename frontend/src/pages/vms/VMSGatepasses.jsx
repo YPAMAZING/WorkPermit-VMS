@@ -272,7 +272,7 @@ const VMSGatepasses = () => {
   const handleShareWhatsApp = (pass) => {
     const passUrl = `${window.location.origin}/vms/employee-pass/${pass.id}`
     const message = `
-*Employee Pass - Reliable Group*
+*Employee Pass - Reliable Group Digital System*
 
 Name: ${pass.employeeName}
 Pass No: ${pass.passNumber}
@@ -879,7 +879,7 @@ Pass Link: ${passUrl}
             {/* Pass Header */}
             <div className="bg-gradient-to-r from-teal-600 to-teal-700 p-4 text-white text-center flex-shrink-0">
               <img src="/logo.png" alt="Logo" className="w-12 h-12 mx-auto bg-white rounded-lg p-1.5 mb-2" />
-              <h2 className="text-lg font-bold">Reliable Group</h2>
+              <h2 className="text-lg font-bold">Reliable Group Digital System</h2>
               <p className="text-teal-100 text-xs">Employee Entry Pass</p>
             </div>
 

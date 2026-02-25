@@ -380,7 +380,7 @@ const VMSReports = () => {
       </tbody>
     </table>
     <div class="footer">
-      <p>Generated on ${new Date().toLocaleString('en-IN')} | Reliable Group VMS</p>
+      <p>Generated on ${new Date().toLocaleString('en-IN')} | Reliable Group Digital System VMS</p>
       <p style="margin-top: 5px;">💡 Tip: Use Ctrl+P to print this report or save as PDF</p>
     </div>
   </div>
@@ -569,7 +569,7 @@ const VMSReports = () => {
   `).join('')}
   
   <div class="footer">
-    <p>Generated on ${new Date().toLocaleString('en-IN')} | Reliable Group VMS</p>
+    <p>Generated on ${new Date().toLocaleString('en-IN')} | Reliable Group Digital System VMS</p>
   </div>
 </body>
 </html>

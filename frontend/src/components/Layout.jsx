@@ -166,14 +166,14 @@ const Layout = ({ systemType = 'workpermit' }) => {
             <div className="bg-white rounded-lg p-1.5 flex-shrink-0">
               <img 
                 src="/logo.png" 
-                alt="Reliable Group" 
+                alt="Reliable Group Digital System" 
                 className="h-10 w-auto"
               />
             </div>
             {sidebarOpen && (
               <div className="min-w-0">
                 <h1 className="text-sm font-bold text-white leading-tight">
-                  {user?.companyName || 'Reliable Group'}
+                  {user?.companyName || 'Reliable Group Digital System'}
                 </h1>
                 <p className="text-xs text-slate-400">Management Systems</p>
               </div>
