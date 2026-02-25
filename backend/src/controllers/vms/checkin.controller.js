@@ -380,21 +380,80 @@ exports.submitCheckInRequest = async (req, res) => {
     }
     
     // If status is PENDING (requires approval), notify the company
-    if (status === 'PENDING' && company.contactEmail) {
+    if (status === 'PENDING') {
       try {
-        await sendNewVisitorNotification({
-          companyEmail: company.contactEmail,
-          visitorName: fullName,
-          phone,
-          email,
-          companyFrom: companyFrom || visitorCompany,
-          companyToVisit: company.displayName || company.name,
-          personToMeet: personToMeet || 'Reception',
-          purpose,
-          numberOfVisitors: numberOfVisitors || 1,
-          dashboardUrl: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/vms/dashboard`,
-        });
-        console.log('New visitor notification sent to company:', company.contactEmail);
+        // Collect all notification emails
+        const notificationEmails = [];
+        
+        // Add contactEmail if exists
+        if (company.contactEmail) {
+          notificationEmails.push(company.contactEmail);
+        }
+        
+        // Add notificationEmails array if exists
+        if (company.notificationEmails) {
+          try {
+            const additionalEmails = JSON.parse(company.notificationEmails);
+            if (Array.isArray(additionalEmails)) {
+              notificationEmails.push(...additionalEmails);
+            }
+          } catch (e) {
+            console.log('Failed to parse notificationEmails:', e.message);
+          }
+        }
+        
+        // Get company users who can approve (if no notification emails configured)
+        if (notificationEmails.length === 0) {
+          const companyUsers = await vmsPrisma.vMSCompanyUser.findMany({
+            where: { 
+              companyId: company.id,
+              isActive: true,
+              canApprove: true
+            },
+            select: { userId: true }
+          });
+          
+          // Get user emails from main User table
+          if (companyUsers.length > 0) {
+            const { PrismaClient } = require('@prisma/client');
+            const mainPrisma = new PrismaClient();
+            const users = await mainPrisma.user.findMany({
+              where: { 
+                id: { in: companyUsers.map(cu => cu.userId) },
+                isApproved: true
+              },
+              select: { email: true }
+            });
+            notificationEmails.push(...users.map(u => u.email));
+            await mainPrisma.$disconnect();
+          }
+        }
+        
+        // Remove duplicates
+        const uniqueEmails = [...new Set(notificationEmails)];
+        
+        console.log('📧 Notification emails for new visitor:', uniqueEmails);
+        
+        if (uniqueEmails.length > 0) {
+          // Send to each email
+          for (const companyEmail of uniqueEmails) {
+            await sendNewVisitorNotification({
+              companyEmail,
+              visitorName: fullName,
+              phone,
+              email,
+              companyFrom: companyFrom || visitorCompany,
+              companyToVisit: company.displayName || company.name,
+              personToMeet: personToMeet || 'Reception',
+              purpose,
+              numberOfVisitors: numberOfVisitors || 1,
+              dashboardUrl: `${process.env.FRONTEND_URL || 'https://reliablespaces.cloud'}/vms/admin/guard`,
+            });
+            console.log('New visitor notification sent to:', companyEmail);
+          }
+        } else {
+          console.log('⚠️ No notification emails configured for company:', company.displayName || company.name);
+        }
       } catch (emailError) {
         console.error('Failed to send new visitor notification:', emailError);
       }
