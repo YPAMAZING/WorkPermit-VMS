@@ -220,48 +220,63 @@ exports.submitCheckInRequest = async (req, res) => {
     });
     
     if (existingRequest) {
-      // Generate QR code if approved/checked-in
-      let qrCode = null;
-      if (existingRequest.gatepass && ['APPROVED', 'CHECKED_IN'].includes(existingRequest.status)) {
-        const qrData = JSON.stringify({ 
-          gatepassNumber: existingRequest.gatepass.gatepassNumber, 
-          visitorId: existingRequest.id 
+      // If APPROVED or CHECKED_IN, return the existing pass (don't overwrite active passes)
+      if (['APPROVED', 'CHECKED_IN'].includes(existingRequest.status)) {
+        let qrCode = null;
+        if (existingRequest.gatepass) {
+          const qrData = JSON.stringify({ 
+            gatepassNumber: existingRequest.gatepass.gatepassNumber, 
+            visitorId: existingRequest.id 
+          });
+          qrCode = await QRCode.toDataURL(qrData);
+        }
+        
+        const statusMessages = {
+          'APPROVED': 'Your visit has already been approved! Please show this pass to security.',
+          'CHECKED_IN': 'You are already checked in. Show this pass if needed.',
+        };
+        
+        return res.status(200).json({ 
+          success: true,
+          existingRequest: true,
+          message: statusMessages[existingRequest.status],
+          status: existingRequest.status,
+          visitorId: existingRequest.id,
+          requestNumber: existingRequest.gatepass?.gatepassNumber || `RGDGTLRQ-${existingRequest.id.substring(0, 8).toUpperCase()}`,
+          visitorName: existingRequest.visitorName,
+          phone: existingRequest.phone,
+          companyToVisit: existingRequest.companyToVisit,
+          personToMeet: existingRequest.personToMeet,
+          purpose: existingRequest.purpose,
+          photo: existingRequest.photo,
+          gatepass: existingRequest.gatepass ? {
+            ...existingRequest.gatepass,
+            qrCode
+          } : null,
+          gatepassNumber: existingRequest.gatepass?.gatepassNumber,
+          validUntil: existingRequest.gatepass?.validUntil,
+          checkInTime: existingRequest.gatepass?.validFrom || existingRequest.checkInTime,
+          submittedAt: existingRequest.createdAt,
+          approvedAt: existingRequest.approvedAt
         });
-        qrCode = await QRCode.toDataURL(qrData);
       }
       
-      // Return appropriate response based on status
-      const statusMessages = {
-        'PENDING': 'You already have a pending check-in request. Please wait for approval.',
-        'APPROVED': 'Your visit has already been approved! Please show this pass to security.',
-        'CHECKED_IN': 'You are already checked in. Show this pass if needed.',
-        'REJECTED': 'Your previous request was rejected. Please contact the company or try again later.'
-      };
+      // If PENDING or REJECTED, delete the old request and create a new one
+      console.log(`🔄 Overwriting existing ${existingRequest.status} request:`, existingRequest.id);
       
-      return res.status(200).json({ 
-        success: true,
-        existingRequest: true,
-        message: statusMessages[existingRequest.status],
-        status: existingRequest.status,
-        visitorId: existingRequest.id,
-        requestNumber: existingRequest.gatepass?.gatepassNumber || `RGDGTLRQ-${existingRequest.id.substring(0, 8).toUpperCase()}`,
-        visitorName: existingRequest.visitorName,
-        phone: existingRequest.phone,
-        companyToVisit: existingRequest.companyToVisit,
-        personToMeet: existingRequest.personToMeet,
-        purpose: existingRequest.purpose,
-        photo: existingRequest.photo,
-        gatepass: existingRequest.gatepass ? {
-          ...existingRequest.gatepass,
-          qrCode
-        } : null,
-        gatepassNumber: existingRequest.gatepass?.gatepassNumber,
-        validUntil: existingRequest.gatepass?.validUntil,
-        checkInTime: existingRequest.gatepass?.validFrom || existingRequest.checkInTime,
-        rejectionReason: existingRequest.rejectionReason,
-        submittedAt: existingRequest.createdAt,
-        approvedAt: existingRequest.approvedAt
+      // Delete associated gatepass first (if any)
+      if (existingRequest.gatepass) {
+        await vmsPrisma.vMSGatepass.delete({
+          where: { id: existingRequest.gatepass.id }
+        });
+      }
+      
+      // Delete the old visitor request
+      await vmsPrisma.vMSVisitor.delete({
+        where: { id: existingRequest.id }
       });
+      
+      console.log('✅ Old request deleted, creating new one...');
     }
     
     // Determine initial status based on company settings
