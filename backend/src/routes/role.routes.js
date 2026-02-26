@@ -8,6 +8,7 @@ const {
   deleteRole,
   getAllPermissions,
   assignRoleToUser,
+  syncPermissions,
 } = require('../controllers/role.controller');
 const { authenticate, checkPermission } = require('../middleware/auth.middleware');
 const { validate } = require('../middleware/validate.middleware');
@@ -79,5 +80,8 @@ router.post(
   validate,
   assignRoleToUser
 );
+
+// Sync permissions - update system roles with new permissions (Admin only)
+router.post('/sync-permissions', checkPermission('roles.edit'), syncPermissions);
 
 module.exports = router;

@@ -13,11 +13,21 @@ const defaultPermissions = [
   // Permits
   { key: 'permits.view', name: 'View All Permits', module: 'permits', action: 'view' },
   { key: 'permits.view_own', name: 'View Own Permits', module: 'permits', action: 'view' },
+  { key: 'permits.view_all', name: 'View All Permits (Admin)', module: 'permits', action: 'view' },
   { key: 'permits.create', name: 'Create Permits', module: 'permits', action: 'create' },
   { key: 'permits.edit', name: 'Edit Permits', module: 'permits', action: 'edit' },
   { key: 'permits.delete', name: 'Delete Permits', module: 'permits', action: 'delete' },
   { key: 'permits.export', name: 'Export Permits', module: 'permits', action: 'export' },
   { key: 'permits.approve', name: 'Approve Permits', module: 'permits', action: 'approve' },
+  { key: 'permits.extend', name: 'Extend Permits', module: 'permits', action: 'extend' },
+  { key: 'permits.revoke', name: 'Revoke Permits', module: 'permits', action: 'revoke' },
+  { key: 'permits.reapprove', name: 'Re-approve Permits', module: 'permits', action: 'reapprove' },
+  { key: 'permits.close', name: 'Close Permits', module: 'permits', action: 'close' },
+  
+  // Approvals
+  { key: 'approvals.view', name: 'View Approvals', module: 'approvals', action: 'view' },
+  { key: 'approvals.approve', name: 'Approve/Reject', module: 'approvals', action: 'approve' },
+  { key: 'approvals.reapprove', name: 'Re-approve Permits', module: 'approvals', action: 'reapprove' },
   
   // Workers
   { key: 'workers.view', name: 'View Workers', module: 'workers', action: 'view' },
@@ -70,7 +80,9 @@ const defaultRoles = [
     isSystem: true,
     permissions: [
       'dashboard.view', 'dashboard.stats',
-      'permits.view', 'permits.export', 'permits.approve',
+      'permits.view', 'permits.view_all', 'permits.export', 'permits.approve',
+      'permits.extend', 'permits.revoke', 'permits.reapprove', 'permits.close',
+      'approvals.view', 'approvals.approve', 'approvals.reapprove',
       'workers.view',
       'settings.view',
     ],
@@ -117,16 +129,18 @@ const initializeRolesAndPermissions = async () => {
             action: perm.action,
           },
         });
+        console.log(`✅ Created permission: ${perm.key}`);
       }
     }
 
-    // Create default roles if they don't exist
+    // Create or UPDATE default roles
     for (const role of defaultRoles) {
       const existing = await prisma.role.findUnique({
         where: { name: role.name },
       });
 
       if (!existing) {
+        // Create new role
         await prisma.role.create({
           data: {
             name: role.name,
@@ -138,6 +152,25 @@ const initializeRolesAndPermissions = async () => {
           },
         });
         console.log(`✅ Created role: ${role.name}`);
+      } else if (role.isSystem) {
+        // Update system roles with new permissions (merge, don't overwrite custom additions)
+        const currentPermissions = JSON.parse(existing.permissions || '[]');
+        const defaultPerms = role.permissions;
+        
+        // Add any new default permissions that are missing
+        const mergedPermissions = [...new Set([...currentPermissions, ...defaultPerms])];
+        
+        // Only update if there are new permissions
+        if (mergedPermissions.length > currentPermissions.length) {
+          await prisma.role.update({
+            where: { name: role.name },
+            data: { 
+              permissions: JSON.stringify(mergedPermissions),
+            },
+          });
+          const newPerms = mergedPermissions.filter(p => !currentPermissions.includes(p));
+          console.log(`✅ Updated ${role.name} role with new permissions:`, newPerms);
+        }
       }
     }
 
@@ -492,6 +525,73 @@ const assignRoleToUser = async (req, res) => {
   }
 };
 
+// Sync permissions - update system roles with new permissions
+const syncPermissions = async (req, res) => {
+  try {
+    console.log('🔄 Syncing permissions...');
+    
+    // Create any missing permissions
+    let createdPermissions = [];
+    for (const perm of defaultPermissions) {
+      const existing = await prisma.permission.findUnique({
+        where: { key: perm.key },
+      });
+      
+      if (!existing) {
+        await prisma.permission.create({
+          data: {
+            key: perm.key,
+            name: perm.name,
+            module: perm.module,
+            action: perm.action,
+          },
+        });
+        createdPermissions.push(perm.key);
+      }
+    }
+
+    // Update system roles with new permissions
+    let updatedRoles = [];
+    for (const role of defaultRoles) {
+      if (!role.isSystem) continue;
+      
+      const existing = await prisma.role.findUnique({
+        where: { name: role.name },
+      });
+
+      if (existing) {
+        const currentPermissions = JSON.parse(existing.permissions || '[]');
+        const defaultPerms = role.permissions;
+        const mergedPermissions = [...new Set([...currentPermissions, ...defaultPerms])];
+        
+        if (mergedPermissions.length > currentPermissions.length) {
+          await prisma.role.update({
+            where: { name: role.name },
+            data: { permissions: JSON.stringify(mergedPermissions) },
+          });
+          
+          const newPerms = mergedPermissions.filter(p => !currentPermissions.includes(p));
+          updatedRoles.push({
+            name: role.name,
+            addedPermissions: newPerms,
+            totalPermissions: mergedPermissions.length,
+          });
+        }
+      }
+    }
+
+    res.json({
+      message: 'Permissions synced successfully',
+      createdPermissions,
+      updatedRoles,
+      totalPermissions: defaultPermissions.length,
+    });
+  } catch (error) {
+    console.error('Sync permissions error:', error);
+    res.status(500).json({ message: 'Error syncing permissions' });
+  }
+};
+
 module.exports = {
   initializeRolesAndPermissions,
   getAllRoles,
@@ -501,5 +601,6 @@ module.exports = {
   deleteRole,
   getAllPermissions,
   assignRoleToUser,
+  syncPermissions,
   defaultPermissions,
 };
