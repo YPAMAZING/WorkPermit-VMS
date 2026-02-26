@@ -268,19 +268,7 @@ const isFireman = (req, res, next) => {
     return res.status(401).json({ message: 'Authentication required' });
   }
 
-  // Admin has all permissions
-  if (req.user.role === 'ADMIN') {
-    log.access(true, 'isFireman - ADMIN role', { user: req.user.email });
-    return next();
-  }
-
-  // Fireman has approval access (support both old SAFETY_OFFICER and new FIREMAN names)
-  if (req.user.role === 'FIREMAN' || req.user.role === 'SAFETY_OFFICER') {
-    log.access(true, 'isFireman - FIREMAN role', { user: req.user.email });
-    return next();
-  }
-
-  // Check if custom role has approval permission
+  // Check if user has approval permissions (purely permission-based)
   if (req.user.permissions && (
     req.user.permissions.includes('approvals.view') ||
     req.user.permissions.includes('approvals.approve')
@@ -302,7 +290,7 @@ const isFireman = (req, res, next) => {
   });
   return res.status(403).json({ 
     message: 'Access denied. Insufficient permissions.',
-    required: ['FIREMAN', 'ADMIN', 'or approvals.view permission'],
+    required: ['approvals.view or approvals.approve permission'],
     current: req.user.role,
   });
 };
@@ -324,16 +312,7 @@ const canApprove = (req, res, next) => {
     return res.status(401).json({ message: 'Authentication required' });
   }
 
-  // Admin and Fireman can approve (support both old SAFETY_OFFICER and new FIREMAN names)
-  if (req.user.role === 'ADMIN' || req.user.role === 'FIREMAN' || req.user.role === 'SAFETY_OFFICER') {
-    log.access(true, 'canApprove - System role', { 
-      user: req.user.email, 
-      role: req.user.role 
-    });
-    return next();
-  }
-
-  // Check if custom role has approve permission
+  // Check if user has approve permission (purely permission-based)
   if (req.user.permissions && req.user.permissions.includes('approvals.approve')) {
     log.access(true, 'canApprove - Has approvals.approve permission', { 
       user: req.user.email,
@@ -367,16 +346,7 @@ const canReapprove = (req, res, next) => {
     return res.status(401).json({ message: 'Authentication required' });
   }
 
-  // Admin and Fireman can re-approve
-  if (req.user.role === 'ADMIN' || req.user.role === 'FIREMAN' || req.user.role === 'SAFETY_OFFICER') {
-    log.access(true, 'canReapprove - System role', { 
-      user: req.user.email, 
-      role: req.user.role 
-    });
-    return next();
-  }
-
-  // Check if custom role has re-approve permission
+  // Check if user has re-approve permission (purely permission-based)
   if (req.user.permissions && (
     req.user.permissions.includes('approvals.reapprove') ||
     req.user.permissions.includes('permits.reapprove')
