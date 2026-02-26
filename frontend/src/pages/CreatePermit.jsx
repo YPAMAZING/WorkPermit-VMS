@@ -360,7 +360,7 @@ const CreatePermit = () => {
       return
     }
     
-    // Validate file type - check both MIME type and extension
+    // Validate file type - only JPEG and PNG
     const allowedTypes = ['image/jpeg', 'image/png']
     const allowedExtensions = ['.jpg', '.jpeg', '.png']
     const fileName = file.name.toLowerCase()
@@ -372,94 +372,19 @@ const CreatePermit = () => {
       return
     }
     
-    // Check file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Image size should be less than 5MB')
-      e.target.value = ''
-      return
-    }
-    
-    // Simple approach: Read file directly as base64
+    // No size limit - just read file directly as base64
     const reader = new FileReader()
     
-    reader.onloadstart = () => {
-      toast.loading('Uploading image...', { id: 'worker-image' })
-    }
-    
     reader.onload = (event) => {
-      const base64 = event.target.result
-      
-      // Create image to compress if needed
-      const img = new Image()
-      img.onload = () => {
-        try {
-          const canvas = document.createElement('canvas')
-          const maxDim = 800
-          let width = img.width
-          let height = img.height
-          
-          // Resize if needed
-          if (width > maxDim || height > maxDim) {
-            if (width > height) {
-              height = Math.round((height / width) * maxDim)
-              width = maxDim
-            } else {
-              width = Math.round((width / height) * maxDim)
-              height = maxDim
-            }
-          }
-          
-          canvas.width = width
-          canvas.height = height
-          const ctx = canvas.getContext('2d')
-          ctx.drawImage(img, 0, 0, width, height)
-          
-          // Compress
-          let quality = 0.7
-          let result = canvas.toDataURL('image/jpeg', quality)
-          
-          // Further compress if still too large
-          while (result.length > 200 * 1024 && quality > 0.2) {
-            quality -= 0.1
-            result = canvas.toDataURL('image/jpeg', quality)
-          }
-          
-          setNewWorker(prev => ({
-            ...prev,
-            idProofImage: file,
-            idProofPreview: result,
-          }))
-          
-          toast.dismiss('worker-image')
-          toast.success('Image uploaded successfully!')
-        } catch (err) {
-          // Use original if compression fails
-          setNewWorker(prev => ({
-            ...prev,
-            idProofImage: file,
-            idProofPreview: base64,
-          }))
-          toast.dismiss('worker-image')
-          toast.success('Image uploaded!')
-        }
-      }
-      
-      img.onerror = () => {
-        // Use original base64 if image creation fails
-        setNewWorker(prev => ({
-          ...prev,
-          idProofImage: file,
-          idProofPreview: base64,
-        }))
-        toast.dismiss('worker-image')
-        toast.success('Image uploaded!')
-      }
-      
-      img.src = base64
+      setNewWorker(prev => ({
+        ...prev,
+        idProofImage: file,
+        idProofPreview: event.target.result,
+      }))
+      toast.success('Image uploaded successfully!')
     }
     
     reader.onerror = () => {
-      toast.dismiss('worker-image')
       toast.error('Failed to read image file')
     }
     
@@ -1157,7 +1082,7 @@ const CreatePermit = () => {
                     </div>
                   )}
                 </div>
-                <p className="text-xs text-red-500 mt-2">* ID proof document is mandatory (Only JPEG & PNG allowed, max 5MB)</p>
+                <p className="text-xs text-red-500 mt-2">* ID proof document is mandatory (Only JPEG & PNG allowed)</p>
               </div>
               
               <button
