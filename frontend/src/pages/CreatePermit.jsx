@@ -1082,7 +1082,7 @@ const CreatePermit = () => {
                     </div>
                   )}
                 </div>
-                <p className="text-xs text-red-500 mt-2">* ID proof document is mandatory (Only JPEG & PNG allowed)</p>
+                <p className="text-xs text-gray-500 mt-2">* ID proof document is mandatory (JPEG & PNG only, images will be compressed automatically)</p>
               </div>
               
               <button

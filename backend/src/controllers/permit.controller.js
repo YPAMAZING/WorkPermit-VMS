@@ -2,6 +2,7 @@ const { PrismaClient } = require('@prisma/client');
 const { createAuditLog } = require('../services/audit.service');
 const { transformPermitResponse, transformPermitForStorage } = require('../utils/arrayHelpers');
 const { notifyFiremenNewPermit } = require('../services/otp.service');
+const { compressWorkerImages } = require('../utils/imageCompressor');
 
 const prisma = new PrismaClient();
 
@@ -212,6 +213,14 @@ const createPermit = async (req, res) => {
 
     const user = req.user;
 
+    // Compress worker ID proof images before storing
+    let compressedWorkers = workers || [];
+    if (compressedWorkers.length > 0) {
+      console.log(`Compressing images for ${compressedWorkers.length} workers...`);
+      compressedWorkers = await compressWorkerImages(compressedWorkers);
+      console.log('Worker images compressed successfully');
+    }
+
     // Transform arrays to JSON strings for storage
     const permitData = transformPermitForStorage({
       title,
@@ -224,7 +233,7 @@ const createPermit = async (req, res) => {
       hazards: hazards || [],
       precautions: precautions || [],
       equipment: equipment || [],
-      workers: workers || [],
+      workers: compressedWorkers,
       vendorDetails: vendorDetails || null,
       contractorName: contractorName || vendorDetails?.vendorName || null,
       contractorPhone: contractorPhone || vendorDetails?.vendorPhone || null,
@@ -376,6 +385,14 @@ const updatePermit = async (req, res) => {
       });
     }
 
+    // Compress worker ID proof images before storing
+    let compressedWorkers = workers;
+    if (workers && workers.length > 0) {
+      console.log(`Compressing images for ${workers.length} workers (update)...`);
+      compressedWorkers = await compressWorkerImages(workers);
+      console.log('Worker images compressed successfully');
+    }
+
     // Build update data
     const updateData = transformPermitForStorage({
       title,
@@ -388,7 +405,7 @@ const updatePermit = async (req, res) => {
       hazards,
       precautions,
       equipment,
-      workers,
+      workers: compressedWorkers,
       vendorDetails,
       contractorName: contractorName || vendorDetails?.vendorName,
       contractorPhone: contractorPhone || vendorDetails?.vendorPhone,
@@ -559,9 +576,17 @@ const registerWorkers = async (req, res) => {
       return res.status(404).json({ message: 'Permit not found' });
     }
 
+    // Compress worker images before storing
+    let compressedWorkers = workers || [];
+    if (compressedWorkers.length > 0) {
+      console.log(`Compressing images for ${compressedWorkers.length} workers (QR registration)...`);
+      compressedWorkers = await compressWorkerImages(compressedWorkers);
+      console.log('Worker images compressed successfully');
+    }
+
     // Update permit with contractor and worker info
     const existingWorkers = JSON.parse(permit.workers || '[]');
-    const updatedWorkers = [...existingWorkers, ...workers];
+    const updatedWorkers = [...existingWorkers, ...compressedWorkers];
 
     await prisma.permitRequest.update({
       where: { id },
@@ -574,7 +599,7 @@ const registerWorkers = async (req, res) => {
     });
 
     // Also save workers to Worker table
-    for (const worker of workers) {
+    for (const worker of compressedWorkers) {
       if (worker.name) {
         await prisma.worker.create({
           data: {
@@ -593,12 +618,12 @@ const registerWorkers = async (req, res) => {
       action: 'WORKERS_REGISTERED',
       entity: 'PermitRequest',
       entityId: id,
-      newValue: JSON.stringify({ contractor, workerCount: workers.length }),
+      newValue: JSON.stringify({ contractor, workerCount: compressedWorkers.length }),
     });
 
     res.json({ 
       message: 'Workers registered successfully',
-      workerCount: workers.length 
+      workerCount: compressedWorkers.length 
     });
   } catch (error) {
     console.error('Register workers error:', error);
@@ -942,8 +967,16 @@ const addWorkers = async (req, res) => {
       return res.status(404).json({ message: 'Permit not found' });
     }
 
+    // Compress worker images before storing
+    let compressedWorkers = newWorkers || [];
+    if (compressedWorkers.length > 0) {
+      console.log(`Compressing images for ${compressedWorkers.length} workers (addWorkers)...`);
+      compressedWorkers = await compressWorkerImages(compressedWorkers);
+      console.log('Worker images compressed successfully');
+    }
+
     const existingWorkers = JSON.parse(permit.workers || '[]');
-    const updatedWorkers = [...existingWorkers, ...newWorkers.map(w => ({
+    const updatedWorkers = [...existingWorkers, ...compressedWorkers.map(w => ({
       ...w,
       addedAt: new Date().toISOString(),
       addedBy: user.id,
@@ -959,7 +992,7 @@ const addWorkers = async (req, res) => {
       action: 'WORKERS_ADDED',
       entity: 'PermitRequest',
       entityId: id,
-      newValue: { addedCount: newWorkers.length, totalCount: updatedWorkers.length },
+      newValue: { addedCount: compressedWorkers.length, totalCount: updatedWorkers.length },
       ipAddress: req.ip,
       userAgent: req.headers['user-agent'],
     });
