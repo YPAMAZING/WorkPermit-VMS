@@ -353,69 +353,117 @@ const CreatePermit = () => {
     })
   }
 
-  const handleWorkerImageUpload = async (e) => {
+  const handleWorkerImageUpload = (e) => {
     const file = e.target.files[0]
-    console.log('File selected:', file)
     
     if (!file) {
-      console.log('No file selected')
       return
     }
     
     // Validate file type - check both MIME type and extension
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp']
-    const allowedExtensions = ['.jpg', '.jpeg', '.png', '.webp']
+    const allowedTypes = ['image/jpeg', 'image/png']
+    const allowedExtensions = ['.jpg', '.jpeg', '.png']
     const fileName = file.name.toLowerCase()
     const hasValidExtension = allowedExtensions.some(ext => fileName.endsWith(ext))
     
-    console.log('File type:', file.type, 'File name:', fileName, 'Has valid extension:', hasValidExtension)
-    
     if (!allowedTypes.includes(file.type) && !hasValidExtension) {
-      toast.error('Only JPEG, PNG, and WebP images are allowed')
+      toast.error('Only JPEG and PNG images are allowed')
       e.target.value = ''
       return
     }
     
-    try {
-      // Show loading toast
-      toast.loading('Processing image...', { id: 'image-upload' })
+    // Check file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image size should be less than 5MB')
+      e.target.value = ''
+      return
+    }
+    
+    // Simple approach: Read file directly as base64
+    const reader = new FileReader()
+    
+    reader.onloadstart = () => {
+      toast.loading('Uploading image...', { id: 'worker-image' })
+    }
+    
+    reader.onload = (event) => {
+      const base64 = event.target.result
       
-      // Compress the image (max 200KB, max 800px dimension)
-      const compressedImage = await compressImage(file, 200, 800)
-      console.log('Image compressed successfully, preview length:', compressedImage?.length)
-      
-      setNewWorker(prev => ({
-        ...prev,
-        idProofImage: file,
-        idProofPreview: compressedImage,
-      }))
-      
-      toast.dismiss('image-upload')
-      toast.success('ID proof image uploaded successfully')
-    } catch (error) {
-      console.error('Image compression error:', error)
-      toast.dismiss('image-upload')
-      
-      // Fallback: Try to use original file as base64
-      try {
-        const reader = new FileReader()
-        reader.onload = (event) => {
+      // Create image to compress if needed
+      const img = new Image()
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas')
+          const maxDim = 800
+          let width = img.width
+          let height = img.height
+          
+          // Resize if needed
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height / width) * maxDim)
+              width = maxDim
+            } else {
+              width = Math.round((width / height) * maxDim)
+              height = maxDim
+            }
+          }
+          
+          canvas.width = width
+          canvas.height = height
+          const ctx = canvas.getContext('2d')
+          ctx.drawImage(img, 0, 0, width, height)
+          
+          // Compress
+          let quality = 0.7
+          let result = canvas.toDataURL('image/jpeg', quality)
+          
+          // Further compress if still too large
+          while (result.length > 200 * 1024 && quality > 0.2) {
+            quality -= 0.1
+            result = canvas.toDataURL('image/jpeg', quality)
+          }
+          
           setNewWorker(prev => ({
             ...prev,
             idProofImage: file,
-            idProofPreview: event.target.result,
+            idProofPreview: result,
           }))
-          toast.success('ID proof image uploaded')
+          
+          toast.dismiss('worker-image')
+          toast.success('Image uploaded successfully!')
+        } catch (err) {
+          // Use original if compression fails
+          setNewWorker(prev => ({
+            ...prev,
+            idProofImage: file,
+            idProofPreview: base64,
+          }))
+          toast.dismiss('worker-image')
+          toast.success('Image uploaded!')
         }
-        reader.onerror = () => {
-          toast.error('Failed to upload image. Please try again.')
-        }
-        reader.readAsDataURL(file)
-      } catch (fallbackError) {
-        console.error('Fallback also failed:', fallbackError)
-        toast.error('Failed to process image. Please try a different image.')
       }
+      
+      img.onerror = () => {
+        // Use original base64 if image creation fails
+        setNewWorker(prev => ({
+          ...prev,
+          idProofImage: file,
+          idProofPreview: base64,
+        }))
+        toast.dismiss('worker-image')
+        toast.success('Image uploaded!')
+      }
+      
+      img.src = base64
     }
+    
+    reader.onerror = () => {
+      toast.dismiss('worker-image')
+      toast.error('Failed to read image file')
+    }
+    
+    reader.readAsDataURL(file)
   }
 
   const addWorker = () => {
@@ -1087,7 +1135,7 @@ const CreatePermit = () => {
                     </span>
                     <input
                       type="file"
-                      accept="image/*"
+                      accept="image/jpeg,image/png,.jpg,.jpeg,.png"
                       onChange={handleWorkerImageUpload}
                       className="hidden"
                     />
@@ -1109,7 +1157,7 @@ const CreatePermit = () => {
                     </div>
                   )}
                 </div>
-                <p className="text-xs text-red-500 mt-2">* ID proof document upload is mandatory for each worker</p>
+                <p className="text-xs text-red-500 mt-2">* ID proof document is mandatory (Only JPEG & PNG allowed, max 5MB)</p>
               </div>
               
               <button
