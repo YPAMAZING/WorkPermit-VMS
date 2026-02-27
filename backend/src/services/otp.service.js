@@ -70,6 +70,104 @@ const verifyOTP = (identifier, otp) => {
   return { valid: true };
 };
 
+// Outlook-compatible email template helper
+const getEmailTemplate = (content) => {
+  return `
+    <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+    <html xmlns="http://www.w3.org/1999/xhtml">
+    <head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+      <title>Reliable Group Digital System</title>
+      <!--[if mso]>
+      <style type="text/css">
+        body, table, td {font-family: Arial, sans-serif !important;}
+        table {border-collapse: collapse;}
+      </style>
+      <![endif]-->
+    </head>
+    <body style="margin: 0; padding: 0; background-color: #f3f4f6;">
+      <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f3f4f6;">
+        <tr>
+          <td align="center" style="padding: 20px 0;">
+            <table border="0" cellpadding="0" cellspacing="0" width="600" style="background-color: #ffffff; border-radius: 8px;">
+              ${content}
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
+};
+
+// Email header with logo and badges
+const getEmailHeader = () => {
+  return `
+    <tr>
+      <td align="center" style="padding: 30px 20px 20px 20px;">
+        <table border="0" cellpadding="0" cellspacing="0">
+          <tr>
+            <td align="center">
+              <img src="https://reliablespaces.cloud/logo.png" alt="Reliable Group" width="120" style="display: block; max-width: 120px; height: auto; margin-bottom: 15px;" />
+            </td>
+          </tr>
+          <tr>
+            <td align="center">
+              <h1 style="color: #1e3a6e; margin: 0; font-family: Arial, sans-serif; font-size: 24px;">Reliable Group Digital System</h1>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding-top: 15px;">
+              <table border="0" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="padding: 0 5px;">
+                    <table border="0" cellpadding="0" cellspacing="0" style="background-color: #1e3a6e; border-radius: 15px;">
+                      <tr>
+                        <td style="padding: 6px 12px; color: #ffffff; font-family: Arial, sans-serif; font-size: 11px;">&#128295; Work Permit</td>
+                      </tr>
+                    </table>
+                  </td>
+                  <td style="padding: 0 5px;">
+                    <table border="0" cellpadding="0" cellspacing="0" style="background-color: #059669; border-radius: 15px;">
+                      <tr>
+                        <td style="padding: 6px 12px; color: #ffffff; font-family: Arial, sans-serif; font-size: 11px;">&#128101; Visitor Management</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  `;
+};
+
+// Email footer
+const getEmailFooter = () => {
+  return `
+    <tr>
+      <td style="padding: 0 30px;">
+        <table border="0" cellpadding="0" cellspacing="0" width="100%">
+          <tr>
+            <td style="border-top: 1px solid #e5e7eb; padding-top: 20px;"></td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+    <tr>
+      <td align="center" style="padding: 20px 30px 30px 30px;">
+        <p style="color: #9ca3af; font-size: 12px; font-family: Arial, sans-serif; margin: 0;">
+          &copy; ${new Date().getFullYear()} YP SECURITY SERVICES PVT LTD. All rights reserved.<br />
+          This is an automated message. Please do not reply to this email.
+        </p>
+      </td>
+    </tr>
+  `;
+};
+
 // Send OTP via Email
 const sendEmailOTP = async (email, otp) => {
   // Always log to console for debugging
@@ -79,37 +177,39 @@ const sendEmailOTP = async (email, otp) => {
   if (isEmailConfigured()) {
     try {
       const transport = getTransporter();
+      
+      const content = `
+        ${getEmailHeader()}
+        <tr>
+          <td style="padding: 0 30px;">
+            <p style="color: #4b5563; font-family: Arial, sans-serif; font-size: 16px; margin: 0;">Your One-Time Password (OTP) is:</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding: 20px 30px;">
+            <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #1e3a6e; border-radius: 8px;">
+              <tr>
+                <td align="center" style="padding: 25px;">
+                  <span style="color: #ffffff; font-size: 36px; font-family: Arial, sans-serif; letter-spacing: 8px; font-weight: bold;">${otp}</span>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding: 0 30px 20px 30px;">
+            <p style="color: #4b5563; font-family: Arial, sans-serif; font-size: 14px; margin: 0 0 10px 0;">This OTP is valid for <strong>5 minutes</strong>.</p>
+            <p style="color: #4b5563; font-family: Arial, sans-serif; font-size: 14px; margin: 0;">If you didn't request this OTP, please ignore this email.</p>
+          </td>
+        </tr>
+        ${getEmailFooter()}
+      `;
+      
       await transport.sendMail({
         from: `"${process.env.FROM_NAME || 'Reliable Group Digital System'}" <${process.env.FROM_EMAIL || process.env.SMTP_USER}>`,
         to: email,
         subject: 'Your OTP - Reliable Group Digital System',
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff;">
-            <div style="text-align: center; margin-bottom: 30px;">
-              <img src="https://reliablespaces.cloud/logo.png" alt="Reliable Group" style="max-width: 120px; height: auto; margin-bottom: 15px;" />
-              <h1 style="color: #1e3a6e; margin: 0;">Reliable Group Digital System</h1>
-              <div style="display: inline-block; margin-top: 10px;">
-                <span style="background: linear-gradient(135deg, #1e3a6e 0%, #3b82f6 100%); color: #ffffff; padding: 4px 10px; border-radius: 15px; font-size: 11px; margin: 0 3px;">🔧 Work Permit</span>
-                <span style="background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: #ffffff; padding: 4px 10px; border-radius: 15px; font-size: 11px; margin: 0 3px;">👥 Visitor Management</span>
-              </div>
-            </div>
-            
-            <p style="color: #4b5563;">Your One-Time Password (OTP) is:</p>
-            
-            <div style="background-color: #1e3a6e; border-radius: 8px; padding: 20px; text-align: center; margin: 20px 0;">
-              <h1 style="color: #ffffff; font-size: 36px; letter-spacing: 8px; margin: 0;">${otp}</h1>
-            </div>
-            
-            <p style="color: #4b5563;">This OTP is valid for <strong>5 minutes</strong>.</p>
-            <p style="color: #4b5563;">If you didn't request this OTP, please ignore this email.</p>
-            
-            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;" />
-            
-            <p style="color: #9ca3af; font-size: 12px; text-align: center;">
-              © ${new Date().getFullYear()} YP SECURITY SERVICES PVT LTD. All rights reserved.
-            </p>
-          </div>
-        `,
+        html: getEmailTemplate(content),
       });
       console.log(`✅ OTP email sent successfully to ${email}`);
       return true;
@@ -175,96 +275,150 @@ const sendWelcomeEmail = async (userData) => {
         ? 'Account Registration Pending Approval - Reliable Group Digital System'
         : 'Welcome to Reliable Group Digital System - Your Account is Ready!';
       
-      const approvalMessage = requiresApproval 
-        ? `<div style="background-color: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 16px; margin: 20px 0;">
-            <p style="color: #92400e; margin: 0;"><strong>⏳ Pending Approval</strong></p>
-            <p style="color: #92400e; margin: 8px 0 0 0;">Your account requires administrator approval. You will be notified once approved.</p>
-           </div>`
-        : `<div style="background-color: #d1fae5; border: 1px solid #10b981; border-radius: 8px; padding: 16px; margin: 20px 0;">
-            <p style="color: #065f46; margin: 0;"><strong>✅ Account Active</strong></p>
-            <p style="color: #065f46; margin: 8px 0 0 0;">Your account is active and ready to use. You can login now!</p>
-           </div>`;
+      // Approval status box - Outlook compatible
+      const approvalBox = requiresApproval 
+        ? `
+          <tr>
+            <td style="padding: 0 30px 20px 30px;">
+              <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px;">
+                <tr>
+                  <td style="padding: 16px;">
+                    <p style="color: #92400e; font-family: Arial, sans-serif; font-size: 14px; font-weight: bold; margin: 0;">&#9203; Pending Approval</p>
+                    <p style="color: #92400e; font-family: Arial, sans-serif; font-size: 14px; margin: 8px 0 0 0;">Your account requires administrator approval. You will be notified once approved.</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        `
+        : `
+          <tr>
+            <td style="padding: 0 30px 20px 30px;">
+              <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #d1fae5; border: 1px solid #10b981; border-radius: 8px;">
+                <tr>
+                  <td style="padding: 16px;">
+                    <p style="color: #065f46; font-family: Arial, sans-serif; font-size: 14px; font-weight: bold; margin: 0;">&#9989; Account Active</p>
+                    <p style="color: #065f46; font-family: Arial, sans-serif; font-size: 14px; margin: 8px 0 0 0;">Your account is active and ready to use. You can login now!</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        `;
+      
+      const content = `
+        ${getEmailHeader()}
+        <tr>
+          <td style="padding: 0 30px 10px 30px;">
+            <h2 style="color: #1f2937; font-family: Arial, sans-serif; font-size: 20px; margin: 0;">Hello ${firstName} ${lastName},</h2>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding: 0 30px 20px 30px;">
+            <p style="color: #4b5563; font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6; margin: 0;">
+              Your account has been successfully created on the <strong>Reliable Group Digital System</strong>.
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding: 0 30px 20px 30px;">
+            <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f0f9ff; border-left: 4px solid #1e3a6e; border-radius: 4px;">
+              <tr>
+                <td style="padding: 16px;">
+                  <p style="color: #1e3a6e; font-family: Arial, sans-serif; font-size: 14px; font-weight: bold; margin: 0 0 10px 0;">&#127919; Your account provides access to:</p>
+                  <table border="0" cellpadding="0" cellspacing="0">
+                    <tr>
+                      <td style="padding: 5px 0; color: #4b5563; font-family: Arial, sans-serif; font-size: 14px;">&#8226; <strong>Work Permit Management System</strong> - Create and manage work permits, safety approvals, and worker registrations</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 5px 0; color: #4b5563; font-family: Arial, sans-serif; font-size: 14px;">&#8226; <strong>Visitor Management System</strong> - Handle visitor check-ins, gate passes, and pre-approvals</td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        ${approvalBox}
+        <tr>
+          <td style="padding: 0 30px 20px 30px;">
+            <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #1e3a6e; border-radius: 8px;">
+              <tr>
+                <td style="padding: 20px;">
+                  <h3 style="color: #ffffff; font-family: Arial, sans-serif; font-size: 16px; margin: 0 0 15px 0;">&#128274; Your Login Credentials:</h3>
+                  <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                    <tr>
+                      <td width="100" style="padding: 8px 0; color: #93c5fd; font-family: Arial, sans-serif; font-size: 14px; vertical-align: top;">Email:</td>
+                      <td style="padding: 8px 0; color: #ffffff; font-family: Courier New, monospace; font-size: 14px; font-weight: bold;">${email}</td>
+                    </tr>
+                    <tr>
+                      <td width="100" style="padding: 8px 0; color: #93c5fd; font-family: Arial, sans-serif; font-size: 14px; vertical-align: top;">Password:</td>
+                      <td style="padding: 8px 0; color: #ffffff; font-family: Courier New, monospace; font-size: 14px; font-weight: bold;">${password || '********'}</td>
+                    </tr>
+                  </table>
+                  <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-top: 15px;">
+                    <tr>
+                      <td style="padding: 8px 12px; background-color: #fbbf24; border-radius: 4px;">
+                        <p style="color: #78350f; font-family: Arial, sans-serif; font-size: 12px; margin: 0;">&#9888;&#65039; Please change your password after first login for security.</p>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td align="center" style="padding: 0 30px 20px 30px;">
+            <table border="0" cellpadding="0" cellspacing="0">
+              <tr>
+                <td align="center" style="background-color: #1e3a6e; border-radius: 6px;">
+                  <a href="${process.env.FRONTEND_URL || 'https://reliablespaces.cloud'}" target="_blank" style="display: inline-block; padding: 14px 35px; color: #ffffff; font-family: Arial, sans-serif; font-size: 16px; font-weight: bold; text-decoration: none;">Login Now</a>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding: 0 30px 20px 30px;">
+            <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f3f4f6; border-radius: 8px;">
+              <tr>
+                <td style="padding: 20px;">
+                  <h3 style="color: #1f2937; font-family: Arial, sans-serif; font-size: 16px; margin: 0 0 15px 0;">&#128203; Account Details:</h3>
+                  <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                    <tr>
+                      <td width="120" style="padding: 8px 0; color: #6b7280; font-family: Arial, sans-serif; font-size: 14px; vertical-align: top;">Name:</td>
+                      <td style="padding: 8px 0; color: #1f2937; font-family: Arial, sans-serif; font-size: 14px; font-weight: 500;">${firstName} ${lastName}</td>
+                    </tr>
+                    <tr>
+                      <td width="120" style="padding: 8px 0; color: #6b7280; font-family: Arial, sans-serif; font-size: 14px; vertical-align: top;">Role:</td>
+                      <td style="padding: 8px 0; color: #1f2937; font-family: Arial, sans-serif; font-size: 14px; font-weight: 500;">${role}</td>
+                    </tr>
+                    <tr>
+                      <td width="120" style="padding: 8px 0; color: #6b7280; font-family: Arial, sans-serif; font-size: 14px; vertical-align: top;">Created On:</td>
+                      <td style="padding: 8px 0; color: #1f2937; font-family: Arial, sans-serif; font-size: 14px; font-weight: 500;">${currentDate}</td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding: 0 30px 20px 30px;">
+            <p style="color: #4b5563; font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6; margin: 0;">
+              If you did not create this account, please contact our support team immediately.
+            </p>
+          </td>
+        </tr>
+        ${getEmailFooter()}
+      `;
 
       await transport.sendMail({
         from: `"${process.env.FROM_NAME || 'Reliable Group Digital System'}" <${process.env.FROM_EMAIL || process.env.SMTP_USER}>`,
         to: email,
         subject: subject,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff;">
-            <div style="text-align: center; margin-bottom: 30px;">
-              <img src="https://reliablespaces.cloud/logo.png" alt="Reliable Group" style="max-width: 120px; height: auto; margin-bottom: 15px;" />
-              <h1 style="color: #1e3a6e; margin: 0;">Reliable Group Digital System</h1>
-              <div style="display: inline-block; margin-top: 10px;">
-                <span style="background: linear-gradient(135deg, #1e3a6e 0%, #3b82f6 100%); color: #ffffff; padding: 6px 12px; border-radius: 20px; font-size: 12px; margin: 0 4px;">🔧 Work Permit</span>
-                <span style="background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: #ffffff; padding: 6px 12px; border-radius: 20px; font-size: 12px; margin: 0 4px;">👥 Visitor Management</span>
-              </div>
-            </div>
-            
-            <h2 style="color: #1f2937;">Hello ${firstName} ${lastName},</h2>
-            
-            <p style="color: #4b5563; line-height: 1.6;">
-              Your account has been successfully created on the <strong>Reliable Group Digital System</strong>.
-            </p>
-            
-            <div style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-left: 4px solid #1e3a6e; border-radius: 8px; padding: 16px; margin: 20px 0;">
-              <p style="color: #1e3a6e; margin: 0; font-weight: 600;">🎯 Your account provides access to:</p>
-              <ul style="color: #4b5563; margin: 10px 0 0 0; padding-left: 20px;">
-                <li style="margin: 8px 0;"><strong>Work Permit Management System</strong> - Create and manage work permits, safety approvals, and worker registrations</li>
-                <li style="margin: 8px 0;"><strong>Visitor Management System</strong> - Handle visitor check-ins, gate passes, and pre-approvals</li>
-              </ul>
-            </div>
-            
-            ${approvalMessage}
-            
-            <div style="background-color: #1e3a6e; border-radius: 8px; padding: 20px; margin: 20px 0;">
-              <h3 style="color: #ffffff; margin-top: 0;">🔐 Your Login Credentials:</h3>
-              <table style="width: 100%; border-collapse: collapse;">
-                <tr>
-                  <td style="padding: 8px 0; color: #93c5fd; width: 100px;">Email:</td>
-                  <td style="padding: 8px 0; color: #ffffff; font-weight: 600; font-family: monospace;">${email}</td>
-                </tr>
-                <tr>
-                  <td style="padding: 8px 0; color: #93c5fd;">Password:</td>
-                  <td style="padding: 8px 0; color: #ffffff; font-weight: 600; font-family: monospace;">${password || '********'}</td>
-                </tr>
-              </table>
-              <p style="color: #fcd34d; font-size: 12px; margin: 15px 0 0 0;">⚠️ Please change your password after first login for security.</p>
-            </div>
-            
-            <div style="text-align: center; margin: 25px 0;">
-              <a href="${process.env.FRONTEND_URL || 'https://reliablespaces.cloud'}" style="background-color: #1e3a6e; color: #ffffff; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block;">Login Now</a>
-            </div>
-            
-            <div style="background-color: #f3f4f6; border-radius: 8px; padding: 20px; margin: 20px 0;">
-              <h3 style="color: #1f2937; margin-top: 0;">📋 Account Details:</h3>
-              <table style="width: 100%; border-collapse: collapse;">
-                <tr>
-                  <td style="padding: 8px 0; color: #6b7280; width: 120px;">Name:</td>
-                  <td style="padding: 8px 0; color: #1f2937; font-weight: 500;">${firstName} ${lastName}</td>
-                </tr>
-                <tr>
-                  <td style="padding: 8px 0; color: #6b7280;">Role:</td>
-                  <td style="padding: 8px 0; color: #1f2937; font-weight: 500;">${role}</td>
-                </tr>
-                <tr>
-                  <td style="padding: 8px 0; color: #6b7280;">Created On:</td>
-                  <td style="padding: 8px 0; color: #1f2937; font-weight: 500;">${currentDate}</td>
-                </tr>
-              </table>
-            </div>
-            
-            <p style="color: #4b5563; line-height: 1.6;">
-              If you did not create this account, please contact our support team immediately.
-            </p>
-            
-            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;" />
-            
-            <p style="color: #9ca3af; font-size: 12px; text-align: center;">
-              © ${new Date().getFullYear()} YP SECURITY SERVICES PVT LTD. All rights reserved.<br />
-              This is an automated message. Please do not reply to this email.
-            </p>
-          </div>
-        `,
+        html: getEmailTemplate(content),
       });
       console.log(`✅ Welcome email sent successfully to ${email}`);
       return true;
@@ -457,72 +611,84 @@ const notifyAdminsNewRegistration = async (userData, adminEmails) => {
 
   try {
     const transport = getTransporter();
+    
+    const content = `
+      ${getEmailHeader()}
+      <tr>
+        <td style="padding: 0 30px 20px 30px;">
+          <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px;">
+            <tr>
+              <td style="padding: 20px;">
+                <h2 style="color: #92400e; font-family: Arial, sans-serif; font-size: 18px; margin: 0 0 10px 0;">&#128276; New Account Registration Request</h2>
+                <p style="color: #92400e; font-family: Arial, sans-serif; font-size: 14px; margin: 0;">A new user has requested to create an account and is waiting for your approval.</p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding: 0 30px 20px 30px;">
+          <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f3f4f6; border-radius: 8px;">
+            <tr>
+              <td style="padding: 20px;">
+                <h3 style="color: #1f2937; font-family: Arial, sans-serif; font-size: 16px; margin: 0 0 15px 0;">&#128100; User Details:</h3>
+                <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                  <tr>
+                    <td width="140" style="padding: 8px 0; color: #6b7280; font-family: Arial, sans-serif; font-size: 14px; vertical-align: top;">Name:</td>
+                    <td style="padding: 8px 0; color: #1f2937; font-family: Arial, sans-serif; font-size: 14px; font-weight: bold;">${firstName} ${lastName}</td>
+                  </tr>
+                  <tr>
+                    <td width="140" style="padding: 8px 0; color: #6b7280; font-family: Arial, sans-serif; font-size: 14px; vertical-align: top;">Email:</td>
+                    <td style="padding: 8px 0; color: #1f2937; font-family: Arial, sans-serif; font-size: 14px;">${email}</td>
+                  </tr>
+                  <tr>
+                    <td width="140" style="padding: 8px 0; color: #6b7280; font-family: Arial, sans-serif; font-size: 14px; vertical-align: top;">Phone:</td>
+                    <td style="padding: 8px 0; color: #1f2937; font-family: Arial, sans-serif; font-size: 14px;">${phone || 'Not provided'}</td>
+                  </tr>
+                  <tr>
+                    <td width="140" style="padding: 8px 0; color: #6b7280; font-family: Arial, sans-serif; font-size: 14px; vertical-align: top;">Department:</td>
+                    <td style="padding: 8px 0; color: #1f2937; font-family: Arial, sans-serif; font-size: 14px;">${department || 'Not specified'}</td>
+                  </tr>
+                  <tr>
+                    <td width="140" style="padding: 8px 0; color: #6b7280; font-family: Arial, sans-serif; font-size: 14px; vertical-align: top;">Requested Role:</td>
+                    <td style="padding: 8px 0; color: #1f2937; font-family: Arial, sans-serif; font-size: 14px; font-weight: bold;">${requestedRole}</td>
+                  </tr>
+                  <tr>
+                    <td width="140" style="padding: 8px 0; color: #6b7280; font-family: Arial, sans-serif; font-size: 14px; vertical-align: top;">Requested On:</td>
+                    <td style="padding: 8px 0; color: #1f2937; font-family: Arial, sans-serif; font-size: 14px;">${currentDate}</td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td align="center" style="padding: 0 30px 20px 30px;">
+          <table border="0" cellpadding="0" cellspacing="0">
+            <tr>
+              <td align="center" style="background-color: #1e3a6e; border-radius: 6px;">
+                <a href="${process.env.FRONTEND_URL || 'https://reliablespaces.cloud'}/users?tab=pending" target="_blank" style="display: inline-block; padding: 14px 35px; color: #ffffff; font-family: Arial, sans-serif; font-size: 16px; font-weight: bold; text-decoration: none;">Review &amp; Approve</a>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding: 0 30px 20px 30px;">
+          <p style="color: #6b7280; font-family: Arial, sans-serif; font-size: 14px; text-align: center; margin: 0;">
+            Please login to the admin panel to approve or reject this registration request.
+          </p>
+        </td>
+      </tr>
+      ${getEmailFooter()}
+    `;
+    
     await transport.sendMail({
       from: `"${process.env.FROM_NAME || 'Reliable Group Digital System'}" <${process.env.FROM_EMAIL || process.env.SMTP_USER}>`,
       to: adminEmails.join(', '),
       subject: '🔔 New Account Registration Request - Action Required',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff;">
-          <div style="text-align: center; margin-bottom: 30px;">
-            <img src="https://reliablespaces.cloud/logo.png" alt="Reliable Group" style="max-width: 120px; height: auto; margin-bottom: 15px;" />
-            <h1 style="color: #1e3a6e; margin: 0;">Reliable Group Digital System</h1>
-            <div style="display: inline-block; margin-top: 10px;">
-              <span style="background: linear-gradient(135deg, #1e3a6e 0%, #3b82f6 100%); color: #ffffff; padding: 4px 10px; border-radius: 15px; font-size: 11px; margin: 0 3px;">🔧 Work Permit</span>
-              <span style="background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: #ffffff; padding: 4px 10px; border-radius: 15px; font-size: 11px; margin: 0 3px;">👥 Visitor Management</span>
-            </div>
-          </div>
-          
-          <div style="background-color: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
-            <h2 style="color: #92400e; margin: 0 0 10px 0;">🔔 New Account Registration Request</h2>
-            <p style="color: #92400e; margin: 0;">A new user has requested to create an account and is waiting for your approval.</p>
-          </div>
-          
-          <div style="background-color: #f3f4f6; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
-            <h3 style="color: #1f2937; margin-top: 0;">👤 User Details:</h3>
-            <table style="width: 100%; border-collapse: collapse;">
-              <tr>
-                <td style="padding: 8px 0; color: #6b7280; width: 140px;">Name:</td>
-                <td style="padding: 8px 0; color: #1f2937; font-weight: 600;">${firstName} ${lastName}</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px 0; color: #6b7280;">Email:</td>
-                <td style="padding: 8px 0; color: #1f2937;">${email}</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px 0; color: #6b7280;">Phone:</td>
-                <td style="padding: 8px 0; color: #1f2937;">${phone || 'Not provided'}</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px 0; color: #6b7280;">Department:</td>
-                <td style="padding: 8px 0; color: #1f2937;">${department || 'Not specified'}</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px 0; color: #6b7280;">Requested Role:</td>
-                <td style="padding: 8px 0; color: #1f2937; font-weight: 600;">${requestedRole}</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px 0; color: #6b7280;">Requested On:</td>
-                <td style="padding: 8px 0; color: #1f2937;">${currentDate}</td>
-              </tr>
-            </table>
-          </div>
-          
-          <div style="text-align: center; margin: 25px 0;">
-            <a href="${process.env.FRONTEND_URL || 'https://reliablespaces.cloud'}/users?tab=pending" style="background-color: #1e3a6e; color: #ffffff; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block;">Review & Approve</a>
-          </div>
-          
-          <p style="color: #6b7280; font-size: 14px; text-align: center;">
-            Please login to the admin panel to approve or reject this registration request.
-          </p>
-          
-          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;" />
-          
-          <p style="color: #9ca3af; font-size: 12px; text-align: center;">
-            © ${new Date().getFullYear()} YP SECURITY SERVICES PVT LTD. All rights reserved.<br />
-            This is an automated notification from the Work Permit Management System.
-          </p>
-        </div>
-      `,
+      html: getEmailTemplate(content),
     });
     console.log(`✅ Admin notification sent successfully`);
     return true;
@@ -577,76 +743,96 @@ const notifyFiremenNewPermit = async (permitData, firemanEmails) => {
 
   try {
     const transport = getTransporter();
+    
+    const content = `
+      ${getEmailHeader()}
+      <tr>
+        <td style="padding: 0 30px 20px 30px;">
+          <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px;">
+            <tr>
+              <td style="padding: 20px;">
+                <h2 style="color: #92400e; font-family: Arial, sans-serif; font-size: 18px; margin: 0 0 10px 0;">&#128293; New Permit Request</h2>
+                <p style="color: #92400e; font-family: Arial, sans-serif; font-size: 14px; margin: 0;">A new work permit has been submitted and requires your approval.</p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding: 0 30px 20px 30px;">
+          <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #1e3a6e; border-radius: 8px;">
+            <tr>
+              <td style="padding: 20px;">
+                <h3 style="color: #ffffff; font-family: Arial, sans-serif; font-size: 16px; margin: 0 0 15px 0;">&#128203; Permit Details:</h3>
+                <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                  <tr>
+                    <td width="120" style="padding: 8px 0; color: #93c5fd; font-family: Arial, sans-serif; font-size: 14px; vertical-align: top;">Title:</td>
+                    <td style="padding: 8px 0; color: #ffffff; font-family: Arial, sans-serif; font-size: 14px; font-weight: bold;">${title}</td>
+                  </tr>
+                  <tr>
+                    <td width="120" style="padding: 8px 0; color: #93c5fd; font-family: Arial, sans-serif; font-size: 14px; vertical-align: top;">Type:</td>
+                    <td style="padding: 8px 0; color: #ffffff; font-family: Arial, sans-serif; font-size: 14px;">${workTypeLabels[workType] || workType}</td>
+                  </tr>
+                  <tr>
+                    <td width="120" style="padding: 8px 0; color: #93c5fd; font-family: Arial, sans-serif; font-size: 14px; vertical-align: top;">Location:</td>
+                    <td style="padding: 8px 0; color: #ffffff; font-family: Arial, sans-serif; font-size: 14px;">${location}</td>
+                  </tr>
+                  <tr>
+                    <td width="120" style="padding: 8px 0; color: #93c5fd; font-family: Arial, sans-serif; font-size: 14px; vertical-align: top;">Start Date:</td>
+                    <td style="padding: 8px 0; color: #ffffff; font-family: Arial, sans-serif; font-size: 14px;">${new Date(startDate).toLocaleString('en-IN')}</td>
+                  </tr>
+                  <tr>
+                    <td width="120" style="padding: 8px 0; color: #93c5fd; font-family: Arial, sans-serif; font-size: 14px; vertical-align: top;">End Date:</td>
+                    <td style="padding: 8px 0; color: #ffffff; font-family: Arial, sans-serif; font-size: 14px;">${new Date(endDate).toLocaleString('en-IN')}</td>
+                  </tr>
+                  <tr>
+                    <td width="120" style="padding: 8px 0; color: #93c5fd; font-family: Arial, sans-serif; font-size: 14px; vertical-align: top;">Priority:</td>
+                    <td style="padding: 8px 0;">
+                      <table border="0" cellpadding="0" cellspacing="0">
+                        <tr>
+                          <td style="background-color: ${priorityColors[priority] || '#3b82f6'}; padding: 4px 12px; border-radius: 4px;">
+                            <span style="color: #ffffff; font-family: Arial, sans-serif; font-size: 12px; font-weight: bold;">${priority}</span>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td width="120" style="padding: 8px 0; color: #93c5fd; font-family: Arial, sans-serif; font-size: 14px; vertical-align: top;">Requested By:</td>
+                    <td style="padding: 8px 0; color: #ffffff; font-family: Arial, sans-serif; font-size: 14px;">${createdBy?.firstName || ''} ${createdBy?.lastName || ''} (${createdBy?.email || 'N/A'})</td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td align="center" style="padding: 0 30px 20px 30px;">
+          <table border="0" cellpadding="0" cellspacing="0">
+            <tr>
+              <td align="center" style="background-color: #f59e0b; border-radius: 6px;">
+                <a href="${process.env.FRONTEND_URL || 'https://reliablespaces.cloud'}/approvals" target="_blank" style="display: inline-block; padding: 14px 35px; color: #ffffff; font-family: Arial, sans-serif; font-size: 16px; font-weight: bold; text-decoration: none;">Review &amp; Approve Permit</a>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding: 0 30px 20px 30px;">
+          <p style="color: #6b7280; font-family: Arial, sans-serif; font-size: 14px; text-align: center; margin: 0;">
+            Please login to review the permit details and take appropriate action.
+          </p>
+        </td>
+      </tr>
+      ${getEmailFooter()}
+    `;
+    
     await transport.sendMail({
       from: `"${process.env.FROM_NAME || 'Reliable Group Digital System'}" <${process.env.FROM_EMAIL || process.env.SMTP_USER}>`,
       to: firemanEmails.join(', '),
       subject: `🔥 New Permit Request - ${workTypeLabels[workType] || workType} - Approval Required`,
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff;">
-          <div style="text-align: center; margin-bottom: 30px;">
-            <img src="https://reliablespaces.cloud/logo.png" alt="Reliable Group" style="max-width: 120px; height: auto; margin-bottom: 15px;" />
-            <h1 style="color: #1e3a6e; margin: 0;">Reliable Group Digital System</h1>
-            <div style="display: inline-block; margin-top: 10px;">
-              <span style="background: linear-gradient(135deg, #1e3a6e 0%, #3b82f6 100%); color: #ffffff; padding: 4px 10px; border-radius: 15px; font-size: 11px; margin: 0 3px;">🔧 Work Permit</span>
-              <span style="background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: #ffffff; padding: 4px 10px; border-radius: 15px; font-size: 11px; margin: 0 3px;">👥 Visitor Management</span>
-            </div>
-          </div>
-          
-          <div style="background-color: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
-            <h2 style="color: #92400e; margin: 0 0 10px 0;">🔥 New Permit Request</h2>
-            <p style="color: #92400e; margin: 0;">A new work permit has been submitted and requires your approval.</p>
-          </div>
-          
-          <div style="background-color: #1e3a6e; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
-            <h3 style="color: #ffffff; margin: 0 0 15px 0;">📋 Permit Details:</h3>
-            <table style="width: 100%; border-collapse: collapse;">
-              <tr>
-                <td style="padding: 8px 0; color: #93c5fd; width: 120px;">Title:</td>
-                <td style="padding: 8px 0; color: #ffffff; font-weight: 600;">${title}</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px 0; color: #93c5fd;">Type:</td>
-                <td style="padding: 8px 0; color: #ffffff;">${workTypeLabels[workType] || workType}</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px 0; color: #93c5fd;">Location:</td>
-                <td style="padding: 8px 0; color: #ffffff;">${location}</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px 0; color: #93c5fd;">Start Date:</td>
-                <td style="padding: 8px 0; color: #ffffff;">${new Date(startDate).toLocaleString('en-IN')}</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px 0; color: #93c5fd;">End Date:</td>
-                <td style="padding: 8px 0; color: #ffffff;">${new Date(endDate).toLocaleString('en-IN')}</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px 0; color: #93c5fd;">Priority:</td>
-                <td style="padding: 8px 0;"><span style="background-color: ${priorityColors[priority] || '#3b82f6'}; color: white; padding: 4px 12px; border-radius: 4px; font-weight: 600;">${priority}</span></td>
-              </tr>
-              <tr>
-                <td style="padding: 8px 0; color: #93c5fd;">Requested By:</td>
-                <td style="padding: 8px 0; color: #ffffff;">${createdBy?.firstName || ''} ${createdBy?.lastName || ''} (${createdBy?.email || 'N/A'})</td>
-              </tr>
-            </table>
-          </div>
-          
-          <div style="text-align: center; margin: 25px 0;">
-            <a href="${process.env.FRONTEND_URL || 'https://reliablespaces.cloud'}/approvals" style="background-color: #f59e0b; color: #ffffff; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block;">Review & Approve Permit</a>
-          </div>
-          
-          <p style="color: #6b7280; font-size: 14px; text-align: center;">
-            Please login to review the permit details and take appropriate action.
-          </p>
-          
-          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;" />
-          
-          <p style="color: #9ca3af; font-size: 12px; text-align: center;">
-            © ${new Date().getFullYear()} YP SECURITY SERVICES PVT LTD. All rights reserved.<br />
-            This is an automated notification from the Work Permit Management System.
-          </p>
-        </div>
-      `,
+      html: getEmailTemplate(content),
     });
     console.log(`✅ Fireman notification sent successfully`);
     return true;
