@@ -88,7 +88,10 @@ const sendEmailOTP = async (email, otp) => {
             <div style="text-align: center; margin-bottom: 30px;">
               <img src="https://reliablespaces.cloud/logo.png" alt="Reliable Group" style="max-width: 120px; height: auto; margin-bottom: 15px;" />
               <h1 style="color: #1e3a6e; margin: 0;">Reliable Group Digital System</h1>
-              <p style="color: #6b7280; margin: 5px 0;">Work Permit Management System</p>
+              <div style="display: inline-block; margin-top: 10px;">
+                <span style="background: linear-gradient(135deg, #1e3a6e 0%, #3b82f6 100%); color: #ffffff; padding: 4px 10px; border-radius: 15px; font-size: 11px; margin: 0 3px;">🔧 Work Permit</span>
+                <span style="background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: #ffffff; padding: 4px 10px; border-radius: 15px; font-size: 11px; margin: 0 3px;">👥 Visitor Management</span>
+              </div>
             </div>
             
             <p style="color: #4b5563;">Your One-Time Password (OTP) is:</p>
@@ -191,14 +194,25 @@ const sendWelcomeEmail = async (userData) => {
             <div style="text-align: center; margin-bottom: 30px;">
               <img src="https://reliablespaces.cloud/logo.png" alt="Reliable Group" style="max-width: 120px; height: auto; margin-bottom: 15px;" />
               <h1 style="color: #1e3a6e; margin: 0;">Reliable Group Digital System</h1>
-              <p style="color: #6b7280; margin: 5px 0;">Work Permit Management System</p>
+              <div style="display: inline-block; margin-top: 10px;">
+                <span style="background: linear-gradient(135deg, #1e3a6e 0%, #3b82f6 100%); color: #ffffff; padding: 6px 12px; border-radius: 20px; font-size: 12px; margin: 0 4px;">🔧 Work Permit</span>
+                <span style="background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: #ffffff; padding: 6px 12px; border-radius: 20px; font-size: 12px; margin: 0 4px;">👥 Visitor Management</span>
+              </div>
             </div>
             
             <h2 style="color: #1f2937;">Hello ${firstName} ${lastName},</h2>
             
             <p style="color: #4b5563; line-height: 1.6;">
-              Your account has been successfully created on the Reliable Group Digital System - Work Permit Management System.
+              Your account has been successfully created on the <strong>Reliable Group Digital System</strong>.
             </p>
+            
+            <div style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-left: 4px solid #1e3a6e; border-radius: 8px; padding: 16px; margin: 20px 0;">
+              <p style="color: #1e3a6e; margin: 0; font-weight: 600;">🎯 Your account provides access to:</p>
+              <ul style="color: #4b5563; margin: 10px 0 0 0; padding-left: 20px;">
+                <li style="margin: 8px 0;"><strong>Work Permit Management System</strong> - Create and manage work permits, safety approvals, and worker registrations</li>
+                <li style="margin: 8px 0;"><strong>Visitor Management System</strong> - Handle visitor check-ins, gate passes, and pre-approvals</li>
+              </ul>
+            </div>
             
             ${approvalMessage}
             
@@ -452,7 +466,10 @@ const notifyAdminsNewRegistration = async (userData, adminEmails) => {
           <div style="text-align: center; margin-bottom: 30px;">
             <img src="https://reliablespaces.cloud/logo.png" alt="Reliable Group" style="max-width: 120px; height: auto; margin-bottom: 15px;" />
             <h1 style="color: #1e3a6e; margin: 0;">Reliable Group Digital System</h1>
-            <p style="color: #6b7280; margin: 5px 0;">Work Permit Management System</p>
+            <div style="display: inline-block; margin-top: 10px;">
+              <span style="background: linear-gradient(135deg, #1e3a6e 0%, #3b82f6 100%); color: #ffffff; padding: 4px 10px; border-radius: 15px; font-size: 11px; margin: 0 3px;">🔧 Work Permit</span>
+              <span style="background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: #ffffff; padding: 4px 10px; border-radius: 15px; font-size: 11px; margin: 0 3px;">👥 Visitor Management</span>
+            </div>
           </div>
           
           <div style="background-color: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
@@ -569,7 +586,10 @@ const notifyFiremenNewPermit = async (permitData, firemanEmails) => {
           <div style="text-align: center; margin-bottom: 30px;">
             <img src="https://reliablespaces.cloud/logo.png" alt="Reliable Group" style="max-width: 120px; height: auto; margin-bottom: 15px;" />
             <h1 style="color: #1e3a6e; margin: 0;">Reliable Group Digital System</h1>
-            <p style="color: #6b7280; margin: 5px 0;">Work Permit Management System</p>
+            <div style="display: inline-block; margin-top: 10px;">
+              <span style="background: linear-gradient(135deg, #1e3a6e 0%, #3b82f6 100%); color: #ffffff; padding: 4px 10px; border-radius: 15px; font-size: 11px; margin: 0 3px;">🔧 Work Permit</span>
+              <span style="background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: #ffffff; padding: 4px 10px; border-radius: 15px; font-size: 11px; margin: 0 3px;">👥 Visitor Management</span>
+            </div>
           </div>
           
           <div style="background-color: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
