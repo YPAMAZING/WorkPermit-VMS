@@ -1,23 +1,18 @@
-// Auto Notification Permission Prompt Component
-// Automatically enables notifications for users after login
+// VMS Auto Notification Permission Prompt Component
+// Uses /api/vms/push/* endpoints (separate from Work Permit)
+// Automatically enables notifications for VMS users after login
 // If browser permission is needed, shows a prompt
 // Users can disable notifications from browser settings
 
 import { useState, useEffect } from 'react'
 import { Bell, X, Check, AlertCircle, Smartphone } from 'lucide-react'
-import {
-  isPushSupported,
-  getNotificationPermission,
-  requestNotificationPermission,
-  subscribeToPush,
-  getSubscriptionStatus,
-  getVapidPublicKey
-} from '../services/pushNotification'
+// Use VMS-specific push service
+import * as vmsPushService from '../services/vmsPushNotification'
 
-const PROMPT_DISMISSED_KEY = 'notification_prompt_dismissed'
-const AUTO_ENABLED_KEY = 'notifications_auto_enabled'
+const PROMPT_DISMISSED_KEY = 'vms_notification_prompt_dismissed'
+const AUTO_ENABLED_KEY = 'vms_notifications_auto_enabled'
 
-const NotificationPrompt = ({ token, onSubscribed }) => {
+const VMSNotificationPrompt = ({ token, onSubscribed }) => {
   const [showPrompt, setShowPrompt] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -31,7 +26,7 @@ const NotificationPrompt = ({ token, onSubscribed }) => {
 
   const autoEnableNotifications = async () => {
     // Check if push is supported
-    if (!isPushSupported()) {
+    if (!vmsPushService.isPushSupported()) {
       console.log('Push notifications not supported on this device')
       return
     }
@@ -39,7 +34,7 @@ const NotificationPrompt = ({ token, onSubscribed }) => {
     // Check if server has push configured (VAPID keys)
     let vapidKey = null
     try {
-      vapidKey = await getVapidPublicKey()
+      vapidKey = await vmsPushService.getVapidPublicKey()
     } catch (e) {
       console.log('Could not check VAPID key:', e.message)
       return
@@ -51,18 +46,18 @@ const NotificationPrompt = ({ token, onSubscribed }) => {
     }
 
     // Check if already subscribed
-    const status = await getSubscriptionStatus()
+    const status = await vmsPushService.getSubscriptionStatus()
     if (status.subscribed) {
-      console.log('Already subscribed to push notifications')
+      console.log('Already subscribed to VMS push notifications')
       return
     }
 
     // Check permission status
-    const permission = getNotificationPermission()
+    const permission = vmsPushService.getNotificationPermission()
     
     if (permission === 'granted') {
       // Permission already granted - auto subscribe silently
-      console.log('Permission already granted - auto-subscribing...')
+      console.log('Permission already granted - auto-subscribing to VMS push...')
       await silentSubscribe()
       return
     }
@@ -77,7 +72,7 @@ const NotificationPrompt = ({ token, onSubscribed }) => {
     // Check if user permanently dismissed
     const permanentlyDismissed = localStorage.getItem(PROMPT_DISMISSED_KEY)
     if (permanentlyDismissed === 'true') {
-      console.log('Prompt permanently dismissed by user')
+      console.log('VMS notification prompt permanently dismissed by user')
       return
     }
 
@@ -87,16 +82,16 @@ const NotificationPrompt = ({ token, onSubscribed }) => {
 
   const silentSubscribe = async () => {
     try {
-      const subResult = await subscribeToPush(token)
+      const subResult = await vmsPushService.subscribeToPush(token)
       if (subResult.success) {
-        console.log('✅ Auto-subscribed to push notifications')
+        console.log('✅ Auto-subscribed to VMS push notifications')
         localStorage.setItem(AUTO_ENABLED_KEY, 'true')
         if (onSubscribed) onSubscribed()
       } else {
-        console.log('Failed to auto-subscribe:', subResult.error)
+        console.log('Failed to auto-subscribe to VMS push:', subResult.error)
       }
     } catch (err) {
-      console.error('Error auto-subscribing:', err)
+      console.error('Error auto-subscribing to VMS push:', err)
     }
   }
 
@@ -106,7 +101,7 @@ const NotificationPrompt = ({ token, onSubscribed }) => {
 
     try {
       // Request permission
-      const permResult = await requestNotificationPermission()
+      const permResult = await vmsPushService.requestNotificationPermission()
       
       if (!permResult.success) {
         if (permResult.permission === 'denied') {
@@ -121,7 +116,7 @@ const NotificationPrompt = ({ token, onSubscribed }) => {
       }
 
       // Subscribe to push
-      const subResult = await subscribeToPush(token)
+      const subResult = await vmsPushService.subscribeToPush(token)
       
       if (subResult.success) {
         setSuccess(true)
@@ -137,7 +132,7 @@ const NotificationPrompt = ({ token, onSubscribed }) => {
         setError(subResult.error || 'Failed to enable notifications')
       }
     } catch (err) {
-      console.error('Error enabling notifications:', err)
+      console.error('Error enabling VMS notifications:', err)
       setError('An error occurred. Please try again.')
     } finally {
       setLoading(false)
@@ -287,4 +282,4 @@ const NotificationPrompt = ({ token, onSubscribed }) => {
   )
 }
 
-export default NotificationPrompt
+export default VMSNotificationPrompt

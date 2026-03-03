@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { Outlet, NavLink, useNavigate, useLocation, Navigate } from 'react-router-dom'
 import { useVMSAuth } from '../context/VMSAuthContext'
 import LoadingSpinner from './LoadingSpinner'
-import NotificationPrompt from './NotificationPrompt'
+// Use VMS-specific notification prompt that uses /api/vms/push/* endpoints
+import VMSNotificationPrompt from './VMSNotificationPrompt'
 import {
   LayoutDashboard,
   Users,
@@ -409,7 +410,7 @@ const VMSLayout = () => {
 
       {/* Auto Notification Prompt for VMS users */}
       {user && getToken && (
-        <NotificationPrompt 
+        <VMSNotificationPrompt 
           token={getToken()} 
           onSubscribed={() => console.log('VMS user subscribed to push notifications')} 
         />

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { Bell, BellOff, Smartphone, Monitor, Tablet, Check, X, AlertTriangle, Send } from 'lucide-react'
 import { useVMSAuth } from '../context/VMSAuthContext'
-import * as pushNotificationService from '../services/pushNotification'
+// Use VMS-specific push service that uses /api/vms/push/* endpoints
+import * as vmsPushService from '../services/vmsPushNotification'
 import toast from 'react-hot-toast'
 
 const VMSNotificationSettings = () => {
@@ -23,7 +24,7 @@ const VMSNotificationSettings = () => {
     
     try {
       // Check if push is supported
-      const supported = pushNotificationService.isPushSupported()
+      const supported = vmsPushService.isPushSupported()
       setIsSupported(supported)
       
       if (!supported) {
@@ -35,7 +36,7 @@ const VMSNotificationSettings = () => {
       let vapidKey = null
       try {
         vapidKey = await Promise.race([
-          pushNotificationService.getVapidPublicKey(),
+          vmsPushService.getVapidPublicKey(),
           new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
         ])
       } catch (e) {
@@ -50,16 +51,16 @@ const VMSNotificationSettings = () => {
       }
       
       // Get permission and subscription status
-      const perm = pushNotificationService.getNotificationPermission()
+      const perm = vmsPushService.getNotificationPermission()
       setPermission(perm)
       
-      const status = await pushNotificationService.getSubscriptionStatus()
+      const status = await vmsPushService.getSubscriptionStatus()
       setIsSubscribed(status.subscribed)
       
       // Get server subscriptions
       const token = getToken ? getToken() : null
       if (token) {
-        const result = await pushNotificationService.getMySubscriptions(token)
+        const result = await vmsPushService.getMySubscriptions(token)
         if (result.success) {
           setSubscriptions(result.subscriptions || [])
         }
@@ -76,7 +77,7 @@ const VMSNotificationSettings = () => {
     
     try {
       // Request permission first
-      const permResult = await pushNotificationService.requestNotificationPermission()
+      const permResult = await vmsPushService.requestNotificationPermission()
       setPermission(permResult.permission)
       
       if (!permResult.success) {
@@ -91,14 +92,14 @@ const VMSNotificationSettings = () => {
       
       // Subscribe to push
       const token = getToken ? getToken() : null
-      const subResult = await pushNotificationService.subscribeToPush(token)
+      const subResult = await vmsPushService.subscribeToPush(token)
       
       if (subResult.success) {
         setIsSubscribed(true)
         toast.success('🔔 Notifications enabled!')
         
         // Show a test notification
-        await pushNotificationService.showLocalNotification(
+        await vmsPushService.showLocalNotification(
           'Notifications Enabled!',
           { body: 'You will now receive VMS notifications' }
         )
@@ -121,7 +122,7 @@ const VMSNotificationSettings = () => {
     
     try {
       const token = getToken ? getToken() : null
-      const result = await pushNotificationService.unsubscribeFromPush(token)
+      const result = await vmsPushService.unsubscribeFromPush(token)
       
       if (result.success) {
         setIsSubscribed(false)
@@ -141,7 +142,7 @@ const VMSNotificationSettings = () => {
   const handleSendTestNotification = async () => {
     try {
       const token = getToken ? getToken() : null
-      const result = await pushNotificationService.sendTestNotification(
+      const result = await vmsPushService.sendTestNotification(
         token,
         '🔔 VMS Test Notification',
         'This is a test push notification from VMS'

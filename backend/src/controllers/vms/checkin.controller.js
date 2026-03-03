@@ -420,6 +420,19 @@ exports.submitCheckInRequest = async (req, res) => {
         
         // Get company users who can approve for THIS SPECIFIC COMPANY only
         console.log('🔍 Looking for users of company:', company.id, company.displayName || company.name);
+        
+        // First, get VMSUsers who are directly assigned to this company
+        const vmsUsersForCompany = await vmsPrisma.vMSUser.findMany({
+          where: { 
+            companyId: company.id,
+            isActive: true,
+            isApproved: true
+          },
+          select: { id: true, email: true }
+        });
+        console.log('👥 Found', vmsUsersForCompany.length, 'VMS users assigned to this company');
+        
+        // Also get company users from VMSCompanyUser table (Work Permit users with VMS access)
         const companyUsers = await vmsPrisma.vMSCompanyUser.findMany({
           where: { 
             companyId: company.id,  // Only users linked to the visitor's selected company
@@ -428,10 +441,22 @@ exports.submitCheckInRequest = async (req, res) => {
           },
           select: { userId: true }
         });
-        console.log('👥 Found', companyUsers.length, 'company users with approval permission');
+        console.log('👥 Found', companyUsers.length, 'VMSCompanyUser entries with approval permission');
         
-        // Get user emails and IDs from main User table for push notifications
-        const companyUserIds = [];
+        // Collect all user IDs for push notifications
+        // VMS users get 'vms_' prefix, Work Permit users use their regular IDs
+        const pushUserIds = [];
+        
+        // Add VMS users (with vms_ prefix for push subscriptions)
+        vmsUsersForCompany.forEach(user => {
+          pushUserIds.push(`vms_${user.id}`);
+          if (notificationEmails.length === 0) {
+            notificationEmails.push(user.email);
+          }
+        });
+        console.log('✅ VMS users to notify:', vmsUsersForCompany.map(u => u.email).join(', ') || 'none');
+        
+        // Add Work Permit users (if any VMSCompanyUser entries exist)
         if (companyUsers.length > 0) {
           const { PrismaClient } = require('@prisma/client');
           const mainPrisma = new PrismaClient();
@@ -443,24 +468,24 @@ exports.submitCheckInRequest = async (req, res) => {
             select: { id: true, email: true }
           });
           
+          // Work Permit users use their regular IDs for push (they subscribe via /api/push/*)
+          pushUserIds.push(...users.map(u => u.id));
           if (notificationEmails.length === 0) {
             notificationEmails.push(...users.map(u => u.email));
           }
-          companyUserIds.push(...users.map(u => u.id));
           await mainPrisma.$disconnect();
-          console.log('✅ Will notify these users:', users.map(u => u.email).join(', '));
-        } else {
-          console.log('⚠️ No company users found with approval permission for company:', company.displayName || company.name);
+          console.log('✅ Work Permit users to notify:', users.map(u => u.email).join(', ') || 'none');
         }
         
         // Remove duplicates
         const uniqueEmails = [...new Set(notificationEmails)];
+        const uniquePushUserIds = [...new Set(pushUserIds)];
         
         console.log('📧 Notification emails for new visitor:', uniqueEmails);
-        console.log('📱 Push notification user IDs:', companyUserIds);
+        console.log('📱 Push notification user IDs:', uniquePushUserIds);
         
         // Send push notifications to company users
-        if (companyUserIds.length > 0) {
+        if (uniquePushUserIds.length > 0) {
           try {
             await pushService.notifyNewVisitor(
               {
@@ -470,12 +495,14 @@ exports.submitCheckInRequest = async (req, res) => {
                 companyFrom: companyFrom || visitorCompany,
                 purpose,
               },
-              companyUserIds
+              uniquePushUserIds
             );
-            console.log('📱 Push notifications sent to', companyUserIds.length, 'company users');
+            console.log('📱 Push notifications sent to', uniquePushUserIds.length, 'users');
           } catch (pushError) {
             console.error('Failed to send push notifications:', pushError.message);
           }
+        } else {
+          console.log('⚠️ No users to notify via push for company:', company.displayName || company.name);
         }
         
         if (uniqueEmails.length > 0) {

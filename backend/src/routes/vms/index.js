@@ -16,6 +16,7 @@ const preapprovedRoutes = require('./preapproved.routes');
 const dashboardRoutes = require('./dashboard.routes');
 const openRoutes = require('./open.routes');
 const userRoutes = require('./user.routes');
+const pushRoutes = require('./push.routes');
 
 // ================================
 // PUBLIC ROUTES (No Auth Required)
@@ -60,6 +61,9 @@ router.use('/dashboard', dashboardRoutes);
 
 // User management
 router.use('/users', userRoutes);
+
+// Push notifications
+router.use('/push', pushRoutes);
 
 // ================================
 // HEALTH CHECK
