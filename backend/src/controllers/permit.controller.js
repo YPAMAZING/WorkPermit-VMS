@@ -3,6 +3,7 @@ const { createAuditLog } = require('../services/audit.service');
 const { transformPermitResponse, transformPermitForStorage } = require('../utils/arrayHelpers');
 const { notifyFiremenNewPermit } = require('../services/otp.service');
 const { compressWorkerImages } = require('../utils/imageCompressor');
+const pushService = require('../services/push.service');
 
 const prisma = new PrismaClient();
 
@@ -303,9 +304,12 @@ const createPermit = async (req, res) => {
           isActive: true,
           isApproved: true,
         },
-        select: { email: true },
+        select: { id: true, email: true },
       });
       const firemanEmails = firemen.map(f => f.email);
+      const firemanIds = firemen.map(f => f.id);
+      
+      // Send email notifications
       if (firemanEmails.length > 0) {
         await notifyFiremenNewPermit({
           title,
@@ -320,6 +324,16 @@ const createPermit = async (req, res) => {
             email: user.email,
           },
         }, firemanEmails);
+      }
+      
+      // Send push notifications to firemen
+      if (firemanIds.length > 0) {
+        await pushService.notifyNewPermit({
+          _id: permit.id,
+          title,
+          workType,
+          location,
+        }, firemanIds);
       }
     } catch (notifyError) {
       console.error('Failed to notify firemen:', notifyError);

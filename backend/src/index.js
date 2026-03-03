@@ -9,6 +9,7 @@ const dashboardRoutes = require('./routes/dashboard.routes');
 const workerRoutes = require('./routes/worker.routes');
 const roleRoutes = require('./routes/role.routes');
 const ssoRoutes = require('./routes/sso.routes');
+const pushRoutes = require('./routes/push.routes');
 const vmsRoutes = require('./routes/vms');
 const { errorHandler } = require('./middleware/error.middleware');
 const { initializeRolesAndPermissions } = require('./controllers/role.controller');
@@ -49,6 +50,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/workers', workerRoutes);
 app.use('/api/roles', roleRoutes);
 app.use('/api/sso', ssoRoutes);
+app.use('/api/push', pushRoutes);
 
 // ================================
 // VMS (Visitor Management System) ROUTES

@@ -21,6 +21,7 @@ import {
   Send,
   RefreshCw,
 } from 'lucide-react'
+import NotificationSettings from '../components/NotificationSettings'
 
 const Settings = () => {
   const { user, updateUser } = useAuth()
@@ -442,6 +443,9 @@ const Settings = () => {
           </form>
         </div>
       </div>
+
+      {/* Push Notifications */}
+      <NotificationSettings />
 
       {/* Change Password with OTP */}
       <div className="card">

@@ -2,6 +2,7 @@ const { PrismaClient } = require('@prisma/client');
 const { createAuditLog } = require('../services/audit.service');
 const { transformPermitResponse } = require('../utils/arrayHelpers');
 const { sendPermitApprovedEmail, sendPermitRejectedEmail } = require('../utils/emailService');
+const pushService = require('../services/push.service');
 
 const prisma = new PrismaClient();
 
@@ -216,6 +217,7 @@ const updateApprovalDecision = async (req, res) => {
       const permit = completeApproval.permit;
       const requestorEmail = permit.user.email;
       const requestorName = `${permit.user.firstName} ${permit.user.lastName}`;
+      const requestorId = permit.user.id;
       
       try {
         if (decision === 'APPROVED') {
@@ -232,6 +234,12 @@ const updateApprovalDecision = async (req, res) => {
             approverRole: user.role || 'Safety Officer',
           });
           console.log('Permit approval email sent to:', requestorEmail);
+          
+          // Send push notification
+          await pushService.notifyPermitApproved({
+            _id: permit.id,
+            title: permit.title,
+          }, requestorId);
         } else {
           await sendPermitRejectedEmail({
             email: requestorEmail,
@@ -245,6 +253,12 @@ const updateApprovalDecision = async (req, res) => {
             comment,
           });
           console.log('Permit rejection email sent to:', requestorEmail);
+          
+          // Send push notification
+          await pushService.notifyPermitRejected({
+            _id: permit.id,
+            title: permit.title,
+          }, requestorId, comment);
         }
       } catch (emailError) {
         console.error('Failed to send permit email:', emailError);

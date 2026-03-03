@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const config = require('../config');
 const { createAuditLog } = require('../services/audit.service');
 const { sendOTP, verifyRegistrationOTP, sendPasswordChangeOTP, verifyPasswordChangeOTP, sendWelcomeEmail, notifyAdminsNewRegistration } = require('../services/otp.service');
+const pushService = require('../services/push.service');
 
 const prisma = new PrismaClient();
 
@@ -274,9 +275,12 @@ const register = async (req, res) => {
             isActive: true,
             isApproved: true,
           },
-          select: { email: true },
+          select: { id: true, email: true },
         });
         const adminEmails = admins.map(a => a.email);
+        const adminIds = admins.map(a => a.id);
+        
+        // Send email notifications
         if (adminEmails.length > 0) {
           await notifyAdminsNewRegistration({
             firstName,
@@ -286,6 +290,15 @@ const register = async (req, res) => {
             requestedRole: role,
             department,
           }, adminEmails);
+        }
+        
+        // Send push notifications to admins
+        if (adminIds.length > 0) {
+          await pushService.notifyNewRegistration({
+            firstName,
+            lastName,
+            email,
+          }, adminIds);
         }
       } catch (notifyError) {
         console.error('Failed to notify admins:', notifyError);
