@@ -184,6 +184,9 @@ export const AuthProvider = ({ children }) => {
     logout,
     updateUser,
     
+    // Token access for push notifications
+    getToken: () => localStorage.getItem('token'),
+    
     // Role checks (for UI display purposes only, NOT for permission checks)
     isAdmin: user?.role === 'ADMIN',
     isFireman: user?.role === 'FIREMAN' || user?.role === 'SAFETY_OFFICER',

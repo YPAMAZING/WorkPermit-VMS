@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { approvalsAPI } from '../services/api'
+import NotificationPrompt from './NotificationPrompt'
 import {
   LayoutDashboard,
   FileText,
@@ -21,7 +22,7 @@ import {
 } from 'lucide-react'
 
 const Layout = ({ systemType = 'workpermit' }) => {
-  const { user, logout, isAdmin, hasPermission, canViewApprovals } = useAuth()
+  const { user, logout, isAdmin, hasPermission, canViewApprovals, getToken } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -391,6 +392,14 @@ const Layout = ({ systemType = 'workpermit' }) => {
           <Outlet />
         </main>
       </div>
+
+      {/* Auto Notification Prompt for Work Permit users */}
+      {user && getToken && (
+        <NotificationPrompt 
+          token={getToken()} 
+          onSubscribed={() => console.log('Work Permit user subscribed to push notifications')} 
+        />
+      )}
     </div>
   )
 }

@@ -194,6 +194,7 @@ export const VMSAuthProvider = ({ children }) => {
     canAccessVMS,
     vmsApi,
     mainApi,
+    getToken, // Expose getToken for push notifications
     // Permission shortcuts
     canViewDashboard: hasPermission('vms.dashboard.view'),
     canViewVisitors: hasPermission('vms.visitors.view'),

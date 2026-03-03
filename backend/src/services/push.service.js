@@ -1,24 +1,44 @@
 // Push Notification Service using Web Push
 // Sends push notifications to subscribed devices
+// NOTE: Uses Prisma for database operations
 
 const webpush = require('web-push');
-const PushSubscription = require('../models/pushSubscription.model');
+const crypto = require('crypto');
 
-// VAPID keys - these should be stored in environment variables
-// Generate once using: npx web-push generate-vapid-keys
-const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || 'BLc-k4EXAMPLE_KEY_REPLACE_THIS_WITH_REAL_KEY_FROM_GENERATION';
-const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || 'EXAMPLE_PRIVATE_KEY_REPLACE_THIS';
+// Lazy load Prisma to avoid circular dependencies
+let prisma = null;
+const getPrisma = () => {
+  if (!prisma) {
+    const { PrismaClient } = require('@prisma/client');
+    prisma = new PrismaClient();
+  }
+  return prisma;
+};
 
-// Configure web-push
-if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
-  webpush.setVapidDetails(
-    `mailto:${process.env.SMTP_USER || 'admin@reliablespaces.cloud'}`,
-    process.env.VAPID_PUBLIC_KEY,
-    process.env.VAPID_PRIVATE_KEY
-  );
-  console.log('✅ Web Push configured with VAPID keys');
+// Generate SHA256 hash of endpoint for unique lookups
+const hashEndpoint = (endpoint) => {
+  return crypto.createHash('sha256').update(endpoint).digest('hex');
+};
+
+// Check if VAPID keys are configured
+const isPushConfigured = () => {
+  return !!(process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY);
+};
+
+// Configure web-push only if VAPID keys are present
+if (isPushConfigured()) {
+  try {
+    webpush.setVapidDetails(
+      `mailto:${process.env.SMTP_USER || 'admin@reliablespaces.cloud'}`,
+      process.env.VAPID_PUBLIC_KEY,
+      process.env.VAPID_PRIVATE_KEY
+    );
+    console.log('✅ Web Push configured with VAPID keys');
+  } catch (error) {
+    console.error('❌ Failed to configure web push:', error.message);
+  }
 } else {
-  console.log('⚠️  VAPID keys not configured - push notifications will not work');
+  console.log('⚠️  VAPID keys not configured - push notifications disabled');
   console.log('   Generate keys with: npx web-push generate-vapid-keys');
 }
 
@@ -27,72 +47,96 @@ const getVapidPublicKey = () => {
   return process.env.VAPID_PUBLIC_KEY || null;
 };
 
-// Check if push notifications are configured
-const isPushConfigured = () => {
-  return !!(process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY);
-};
-
 // Save push subscription for a user
 const saveSubscription = async (userId, subscription, deviceInfo = {}) => {
+  if (!isPushConfigured()) {
+    console.log('⚠️  Push not configured - skipping save subscription');
+    return null;
+  }
+
   try {
+    const db = getPrisma();
+    const endpointHash = hashEndpoint(subscription.endpoint);
+    
     // Check if subscription already exists
-    const existingSubscription = await PushSubscription.findOne({
-      endpoint: subscription.endpoint
+    const existingSubscription = await db.pushSubscription.findUnique({
+      where: { endpointHash }
     });
 
     if (existingSubscription) {
       // Update existing subscription
-      existingSubscription.userId = userId;
-      existingSubscription.keys = subscription.keys;
-      existingSubscription.deviceInfo = deviceInfo;
-      existingSubscription.lastUsed = new Date();
-      await existingSubscription.save();
+      const updated = await db.pushSubscription.update({
+        where: { endpointHash },
+        data: {
+          userId,
+          endpoint: subscription.endpoint,
+          p256dh: subscription.keys.p256dh,
+          auth: subscription.keys.auth,
+          userAgent: deviceInfo.userAgent || null,
+          deviceType: deviceInfo.deviceType || 'unknown',
+          browser: deviceInfo.browser || null,
+          lastUsed: new Date(),
+        }
+      });
       console.log(`📱 Updated push subscription for user ${userId}`);
-      return existingSubscription;
+      return updated;
     }
 
     // Create new subscription
-    const newSubscription = new PushSubscription({
-      userId,
-      endpoint: subscription.endpoint,
-      keys: subscription.keys,
-      deviceInfo,
-      isActive: true
+    const newSubscription = await db.pushSubscription.create({
+      data: {
+        userId,
+        endpoint: subscription.endpoint,
+        endpointHash,
+        p256dh: subscription.keys.p256dh,
+        auth: subscription.keys.auth,
+        userAgent: deviceInfo.userAgent || null,
+        deviceType: deviceInfo.deviceType || 'unknown',
+        browser: deviceInfo.browser || null,
+        isActive: true,
+      }
     });
 
-    await newSubscription.save();
     console.log(`📱 Saved new push subscription for user ${userId}`);
     return newSubscription;
   } catch (error) {
     console.error('❌ Error saving push subscription:', error.message);
-    throw error;
+    return null;
   }
 };
 
 // Remove push subscription
 const removeSubscription = async (endpoint) => {
+  if (!isPushConfigured()) return { count: 0 };
+
   try {
-    const result = await PushSubscription.deleteOne({ endpoint });
-    if (result.deletedCount > 0) {
+    const db = getPrisma();
+    const endpointHash = hashEndpoint(endpoint);
+    const result = await db.pushSubscription.deleteMany({
+      where: { endpointHash }
+    });
+    if (result.count > 0) {
       console.log(`📱 Removed push subscription`);
     }
     return result;
   } catch (error) {
     console.error('❌ Error removing push subscription:', error.message);
-    throw error;
+    return { count: 0 };
   }
 };
 
 // Send push notification to a single subscription
 const sendPushToSubscription = async (subscription, payload) => {
   if (!isPushConfigured()) {
-    console.log('⚠️  Push not configured - skipping');
     return false;
   }
 
   const pushSubscription = {
     endpoint: subscription.endpoint,
-    keys: subscription.keys
+    keys: {
+      p256dh: subscription.p256dh,
+      auth: subscription.auth
+    }
   };
 
   try {
@@ -100,10 +144,12 @@ const sendPushToSubscription = async (subscription, payload) => {
     console.log(`✅ Push notification sent successfully`);
     
     // Update last used
-    await PushSubscription.updateOne(
-      { endpoint: subscription.endpoint },
-      { lastUsed: new Date() }
-    );
+    const db = getPrisma();
+    const endpointHash = hashEndpoint(subscription.endpoint);
+    await db.pushSubscription.update({
+      where: { endpointHash },
+      data: { lastUsed: new Date() }
+    }).catch(() => {}); // Ignore errors on update
     
     return true;
   } catch (error) {
@@ -112,10 +158,12 @@ const sendPushToSubscription = async (subscription, payload) => {
     // If subscription is no longer valid, mark as inactive
     if (error.statusCode === 410 || error.statusCode === 404) {
       console.log(`📱 Subscription expired, marking as inactive`);
-      await PushSubscription.updateOne(
-        { endpoint: subscription.endpoint },
-        { isActive: false }
-      );
+      const db = getPrisma();
+      const endpointHash = hashEndpoint(subscription.endpoint);
+      await db.pushSubscription.update({
+        where: { endpointHash },
+        data: { isActive: false }
+      }).catch(() => {});
     }
     
     return false;
@@ -125,14 +173,16 @@ const sendPushToSubscription = async (subscription, payload) => {
 // Send push notification to a user (all their devices)
 const sendPushToUser = async (userId, payload) => {
   if (!isPushConfigured()) {
-    console.log('⚠️  Push not configured - skipping notification to user');
     return { sent: 0, failed: 0 };
   }
 
   try {
-    const subscriptions = await PushSubscription.find({
-      userId,
-      isActive: true
+    const db = getPrisma();
+    const subscriptions = await db.pushSubscription.findMany({
+      where: {
+        userId,
+        isActive: true
+      }
     });
 
     if (subscriptions.length === 0) {
@@ -163,8 +213,7 @@ const sendPushToUser = async (userId, payload) => {
 
 // Send push notification to multiple users
 const sendPushToUsers = async (userIds, payload) => {
-  if (!isPushConfigured()) {
-    console.log('⚠️  Push not configured - skipping');
+  if (!isPushConfigured() || !userIds || userIds.length === 0) {
     return { sent: 0, failed: 0 };
   }
 
@@ -181,32 +230,39 @@ const sendPushToUsers = async (userIds, payload) => {
 };
 
 // Send push notification to users by role
-const sendPushToRole = async (role, payload) => {
+const sendPushToRole = async (roleName, payload) => {
   if (!isPushConfigured()) {
-    console.log('⚠️  Push not configured - skipping');
     return { sent: 0, failed: 0 };
   }
 
   try {
+    const db = getPrisma();
+    
     // Get all active subscriptions for users with this role
-    const subscriptions = await PushSubscription.find({ isActive: true })
-      .populate('userId', 'role');
+    const subscriptions = await db.pushSubscription.findMany({
+      where: { 
+        isActive: true,
+        user: {
+          role: {
+            name: roleName
+          },
+          isActive: true,
+          isApproved: true
+        }
+      }
+    });
 
-    const filteredSubscriptions = subscriptions.filter(
-      sub => sub.userId && sub.userId.role === role
-    );
-
-    if (filteredSubscriptions.length === 0) {
-      console.log(`📱 No active push subscriptions for role ${role}`);
+    if (subscriptions.length === 0) {
+      console.log(`📱 No active push subscriptions for role ${roleName}`);
       return { sent: 0, failed: 0 };
     }
 
-    console.log(`📱 Sending push to ${filteredSubscriptions.length} ${role} device(s)`);
+    console.log(`📱 Sending push to ${subscriptions.length} ${roleName} device(s)`);
 
     let sent = 0;
     let failed = 0;
 
-    for (const subscription of filteredSubscriptions) {
+    for (const subscription of subscriptions) {
       const success = await sendPushToSubscription(subscription, payload);
       if (success) {
         sent++;
@@ -225,12 +281,14 @@ const sendPushToRole = async (role, payload) => {
 // Send push to all active subscriptions (broadcast)
 const sendPushToAll = async (payload) => {
   if (!isPushConfigured()) {
-    console.log('⚠️  Push not configured - skipping broadcast');
     return { sent: 0, failed: 0 };
   }
 
   try {
-    const subscriptions = await PushSubscription.find({ isActive: true });
+    const db = getPrisma();
+    const subscriptions = await db.pushSubscription.findMany({
+      where: { isActive: true }
+    });
 
     if (subscriptions.length === 0) {
       console.log(`📱 No active push subscriptions`);
@@ -258,6 +316,73 @@ const sendPushToAll = async (payload) => {
   }
 };
 
+// Get user's subscriptions
+const getSubscriptionsForUser = async (userId) => {
+  if (!isPushConfigured()) {
+    return [];
+  }
+
+  try {
+    const db = getPrisma();
+    return await db.pushSubscription.findMany({
+      where: {
+        userId,
+        isActive: true
+      },
+      select: {
+        id: true,
+        deviceType: true,
+        browser: true,
+        createdAt: true,
+        lastUsed: true,
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error getting subscriptions:', error.message);
+    return [];
+  }
+};
+
+// Get subscription count for a user
+const getSubscriptionCount = async (userId) => {
+  if (!isPushConfigured()) {
+    return 0;
+  }
+
+  try {
+    const db = getPrisma();
+    return await db.pushSubscription.count({
+      where: {
+        userId,
+        isActive: true
+      }
+    });
+  } catch (error) {
+    return 0;
+  }
+};
+
+// Delete subscription by ID
+const deleteSubscriptionById = async (subscriptionId, userId) => {
+  if (!isPushConfigured()) {
+    return false;
+  }
+
+  try {
+    const db = getPrisma();
+    await db.pushSubscription.delete({
+      where: {
+        id: subscriptionId,
+        userId
+      }
+    });
+    return true;
+  } catch (error) {
+    console.error('❌ Error deleting subscription:', error.message);
+    return false;
+  }
+};
+
 // ================================
 // NOTIFICATION TEMPLATES
 // ================================
@@ -269,17 +394,13 @@ const notifyNewPermit = async (permitData, approverUserIds) => {
     body: `${permitData.title} - ${permitData.workType} at ${permitData.location}`,
     icon: '/logo.png',
     badge: '/logo.png',
-    tag: `permit-new-${permitData._id}`,
+    tag: `permit-new-${permitData._id || permitData.id}`,
     data: {
       url: '/approvals',
       type: 'NEW_PERMIT',
-      permitId: permitData._id
+      permitId: permitData._id || permitData.id
     },
     requireInteraction: true,
-    actions: [
-      { action: 'view', title: 'Review' },
-      { action: 'dismiss', title: 'Later' }
-    ]
   };
 
   return await sendPushToUsers(approverUserIds, payload);
@@ -292,11 +413,11 @@ const notifyPermitApproved = async (permitData, requestorUserId) => {
     body: `Your permit "${permitData.title}" has been approved!`,
     icon: '/logo.png',
     badge: '/logo.png',
-    tag: `permit-approved-${permitData._id}`,
+    tag: `permit-approved-${permitData._id || permitData.id}`,
     data: {
-      url: `/permits/${permitData._id}`,
+      url: `/permits/${permitData._id || permitData.id}`,
       type: 'PERMIT_APPROVED',
-      permitId: permitData._id
+      permitId: permitData._id || permitData.id
     }
   };
 
@@ -310,11 +431,11 @@ const notifyPermitRejected = async (permitData, requestorUserId, reason) => {
     body: `Your permit "${permitData.title}" was not approved. ${reason ? `Reason: ${reason}` : ''}`,
     icon: '/logo.png',
     badge: '/logo.png',
-    tag: `permit-rejected-${permitData._id}`,
+    tag: `permit-rejected-${permitData._id || permitData.id}`,
     data: {
-      url: `/permits/${permitData._id}`,
+      url: `/permits/${permitData._id || permitData.id}`,
       type: 'PERMIT_REJECTED',
-      permitId: permitData._id
+      permitId: permitData._id || permitData.id
     }
   };
 
@@ -334,9 +455,6 @@ const notifyNewRegistration = async (userData, adminUserIds) => {
       type: 'NEW_REGISTRATION'
     },
     requireInteraction: true,
-    actions: [
-      { action: 'review', title: 'Review' }
-    ]
   };
 
   return await sendPushToUsers(adminUserIds, payload);
@@ -366,17 +484,13 @@ const notifyNewVisitor = async (visitorData, companyUserIds) => {
     body: `${visitorData.name} is requesting to visit`,
     icon: '/logo.png',
     badge: '/logo.png',
-    tag: `visitor-${visitorData._id}`,
+    tag: `visitor-${visitorData._id || visitorData.id}`,
     data: {
       url: '/vms/visitors',
       type: 'NEW_VISITOR',
-      visitorId: visitorData._id
+      visitorId: visitorData._id || visitorData.id
     },
     requireInteraction: true,
-    actions: [
-      { action: 'approve', title: 'Approve' },
-      { action: 'view', title: 'View Details' }
-    ]
   };
 
   return await sendPushToUsers(companyUserIds, payload);
@@ -389,16 +503,12 @@ const notifyPermitExpiringSoon = async (permitData, requestorUserId, hoursLeft) 
     body: `Your permit "${permitData.title}" will expire in ${hoursLeft} hours`,
     icon: '/logo.png',
     badge: '/logo.png',
-    tag: `permit-expiring-${permitData._id}`,
+    tag: `permit-expiring-${permitData._id || permitData.id}`,
     data: {
-      url: `/permits/${permitData._id}`,
+      url: `/permits/${permitData._id || permitData.id}`,
       type: 'PERMIT_EXPIRING',
-      permitId: permitData._id
+      permitId: permitData._id || permitData.id
     },
-    actions: [
-      { action: 'extend', title: 'Extend' },
-      { action: 'view', title: 'View' }
-    ]
   };
 
   return await sendPushToUser(requestorUserId, payload);
@@ -431,6 +541,9 @@ module.exports = {
   sendPushToUsers,
   sendPushToRole,
   sendPushToAll,
+  getSubscriptionsForUser,
+  getSubscriptionCount,
+  deleteSubscriptionById,
   // Notification templates
   notifyNewPermit,
   notifyPermitApproved,

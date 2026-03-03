@@ -34,8 +34,9 @@ model User {
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
   
-  role            Role?           @relation(fields: [roleId], references: [id])
-  permitRequests  PermitRequest[]
+  role              Role?              @relation(fields: [roleId], references: [id])
+  permitRequests    PermitRequest[]
+  pushSubscriptions PushSubscription[]
   
   @@index([email])
   @@index([roleId])
@@ -480,6 +481,29 @@ model VMSBlacklist {
   @@index([isActive])
   @@index([reason])
   @@map("vms_blacklist")
+}
+
+// Push Notification Subscriptions for Web Push
+model PushSubscription {
+  id            String   @id @default(uuid()) @db.VarChar(36)
+  userId        String   @db.VarChar(36)
+  endpoint      String   @db.Text
+  endpointHash  String   @unique @db.VarChar(64)  // SHA256 hash of endpoint for uniqueness
+  p256dh        String   @db.Text  // Public key
+  auth          String   @db.VarChar(100)  // Auth secret
+  userAgent     String?  @db.Text
+  deviceType    String   @default("unknown") @db.VarChar(20)  // mobile, tablet, desktop
+  browser       String?  @db.VarChar(50)  // Chrome, Firefox, Safari, Edge
+  isActive      Boolean  @default(true)
+  lastUsed      DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([isActive])
+  @@map("push_subscriptions")
 }
 
 // Employee Pass - Temporary passes for new employees before ID card issuance

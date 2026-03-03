@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Outlet, NavLink, useNavigate, useLocation, Navigate } from 'react-router-dom'
 import { useVMSAuth } from '../context/VMSAuthContext'
 import LoadingSpinner from './LoadingSpinner'
+import NotificationPrompt from './NotificationPrompt'
 import {
   LayoutDashboard,
   Users,
@@ -25,7 +26,7 @@ import {
 } from 'lucide-react'
 
 const VMSLayout = () => {
-  const { user, loading, logout, hasPermission, isAdmin, isCompanyUser, isReceptionist, isSecurityGuard } = useVMSAuth()
+  const { user, loading, logout, hasPermission, isAdmin, isCompanyUser, isReceptionist, isSecurityGuard, getToken } = useVMSAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -405,6 +406,14 @@ const VMSLayout = () => {
           <Outlet />
         </main>
       </div>
+
+      {/* Auto Notification Prompt for VMS users */}
+      {user && getToken && (
+        <NotificationPrompt 
+          token={getToken()} 
+          onSubscribed={() => console.log('VMS user subscribed to push notifications')} 
+        />
+      )}
     </div>
   )
 }

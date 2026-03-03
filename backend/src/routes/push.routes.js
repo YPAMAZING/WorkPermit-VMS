@@ -5,7 +5,6 @@ const express = require('express');
 const router = express.Router();
 const { auth } = require('../middleware/auth.middleware');
 const pushService = require('../services/push.service');
-const PushSubscription = require('../models/pushSubscription.model');
 
 // Get VAPID public key (no auth required)
 router.get('/vapid-public-key', (req, res) => {
@@ -65,16 +64,23 @@ router.post('/subscribe', auth, async (req, res) => {
     }
     
     const savedSubscription = await pushService.saveSubscription(
-      req.user._id || req.user.id,
+      req.user.id,
       subscription,
       parsedDeviceInfo
     );
     
-    res.json({
-      success: true,
-      message: 'Push subscription saved successfully',
-      subscriptionId: savedSubscription._id
-    });
+    if (savedSubscription) {
+      res.json({
+        success: true,
+        message: 'Push subscription saved successfully',
+        subscriptionId: savedSubscription.id
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to save push subscription - push may not be configured'
+      });
+    }
   } catch (error) {
     console.error('Error subscribing to push:', error);
     res.status(500).json({
@@ -114,20 +120,17 @@ router.post('/unsubscribe', auth, async (req, res) => {
 // Get user's subscriptions count
 router.get('/my-subscriptions', auth, async (req, res) => {
   try {
-    const userId = req.user._id || req.user.id;
-    const count = await PushSubscription.getCountForUser(userId);
-    const subscriptions = await PushSubscription.find({ 
-      userId, 
-      isActive: true 
-    }).select('deviceInfo createdAt lastUsed');
+    const userId = req.user.id;
+    const count = await pushService.getSubscriptionCount(userId);
+    const subscriptions = await pushService.getSubscriptionsForUser(userId);
     
     res.json({
       success: true,
       count,
       subscriptions: subscriptions.map(sub => ({
-        id: sub._id,
-        deviceType: sub.deviceInfo?.deviceType || 'unknown',
-        browser: sub.deviceInfo?.browser || 'unknown',
+        id: sub.id,
+        deviceType: sub.deviceType || 'unknown',
+        browser: sub.browser || 'unknown',
         createdAt: sub.createdAt,
         lastUsed: sub.lastUsed
       }))
@@ -144,27 +147,22 @@ router.get('/my-subscriptions', auth, async (req, res) => {
 // Remove a specific subscription by ID
 router.delete('/subscription/:id', auth, async (req, res) => {
   try {
-    const userId = req.user._id || req.user.id;
+    const userId = req.user.id;
     const subscriptionId = req.params.id;
     
-    const subscription = await PushSubscription.findOne({
-      _id: subscriptionId,
-      userId
-    });
+    const success = await pushService.deleteSubscriptionById(subscriptionId, userId);
     
-    if (!subscription) {
-      return res.status(404).json({
+    if (success) {
+      res.json({
+        success: true,
+        message: 'Subscription removed successfully'
+      });
+    } else {
+      res.status(404).json({
         success: false,
         message: 'Subscription not found'
       });
     }
-    
-    await subscription.deleteOne();
-    
-    res.json({
-      success: true,
-      message: 'Subscription removed successfully'
-    });
   } catch (error) {
     console.error('Error removing subscription:', error);
     res.status(500).json({
@@ -178,7 +176,7 @@ router.delete('/subscription/:id', auth, async (req, res) => {
 router.post('/test', auth, async (req, res) => {
   try {
     // Check if user is admin
-    const userRole = req.user.role || req.user.roleId?.name;
+    const userRole = req.user.role;
     if (userRole !== 'ADMIN') {
       return res.status(403).json({
         success: false,
@@ -186,7 +184,7 @@ router.post('/test', auth, async (req, res) => {
       });
     }
     
-    const userId = req.user._id || req.user.id;
+    const userId = req.user.id;
     const { title, body } = req.body;
     
     const result = await pushService.sendPushToUser(userId, {
