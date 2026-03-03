@@ -244,7 +244,15 @@ const sendPushToUser = async (vmsUserId, payload) => {
 
 // Send push notification to multiple VMS users
 const sendPushToUsers = async (vmsUserIds, payload) => {
-  if (!isPushConfigured() || !vmsUserIds || vmsUserIds.length === 0) {
+  console.log(`📱 [VMS Push] sendPushToUsers called with ${vmsUserIds?.length || 0} user IDs:`, vmsUserIds);
+  
+  if (!isPushConfigured()) {
+    console.log('⚠️ [VMS Push] Push not configured, skipping notification');
+    return { sent: 0, failed: 0 };
+  }
+  
+  if (!vmsUserIds || vmsUserIds.length === 0) {
+    console.log('⚠️ [VMS Push] No user IDs provided, skipping notification');
     return { sent: 0, failed: 0 };
   }
 
@@ -252,11 +260,14 @@ const sendPushToUsers = async (vmsUserIds, payload) => {
   let totalFailed = 0;
 
   for (const vmsUserId of vmsUserIds) {
+    console.log(`📱 [VMS Push] Attempting to send to VMS user: ${vmsUserId}`);
     const result = await sendPushToUser(vmsUserId, payload);
+    console.log(`📱 [VMS Push] Result for ${vmsUserId}: sent=${result.sent}, failed=${result.failed}`);
     totalSent += result.sent;
     totalFailed += result.failed;
   }
 
+  console.log(`📱 [VMS Push] Total notifications: sent=${totalSent}, failed=${totalFailed}`);
   return { sent: totalSent, failed: totalFailed };
 };
 
@@ -333,6 +344,10 @@ const deleteSubscriptionById = async (subscriptionId, vmsUserId) => {
 
 // New visitor - notify company users
 const notifyNewVisitor = async (visitorData, vmsUserIds) => {
+  console.log('📱 [VMS Push] notifyNewVisitor called');
+  console.log('📱 [VMS Push] Visitor data:', JSON.stringify(visitorData, null, 2));
+  console.log('📱 [VMS Push] Target VMS user IDs:', vmsUserIds);
+  
   const payload = {
     title: '👥 New Visitor',
     body: `${visitorData.name} is requesting to visit`,
