@@ -408,11 +408,12 @@ const VMSLayout = () => {
         </main>
       </div>
 
-      {/* Auto Notification Prompt for VMS users */}
-      {user && getToken && (
+      {/* Auto Notification Prompt for VMS company users */}
+      {user && getToken && user.companyId && (
         <VMSNotificationPrompt 
           token={getToken()} 
-          onSubscribed={() => console.log('VMS user subscribed to push notifications')} 
+          companyId={user.companyId}
+          onSubscribed={() => console.log('[VMS] User subscribed to notifications for company:', user.companyId)} 
         />
       )}
     </div>
