@@ -30,8 +30,8 @@ const isPushConfigured = () => {
 
 // Configure web-push only if VAPID keys are present and valid
 const initializePush = () => {
-  const publicKey = process.env.VAPID_PUBLIC_KEY;
-  const privateKey = process.env.VAPID_PRIVATE_KEY;
+  let publicKey = process.env.VAPID_PUBLIC_KEY;
+  let privateKey = process.env.VAPID_PRIVATE_KEY;
   
   if (!publicKey || !privateKey) {
     console.log('⚠️  VAPID keys not configured - push notifications disabled');
@@ -39,11 +39,26 @@ const initializePush = () => {
     return false;
   }
   
-  // Validate key format (must be URL-safe base64 without padding)
-  const urlSafeBase64Regex = /^[A-Za-z0-9_-]+$/;
+  // Trim whitespace from keys
+  publicKey = publicKey.trim();
+  privateKey = privateKey.trim();
+  
+  // Remove any trailing "=" padding if present (URL-safe base64 doesn't use padding)
+  publicKey = publicKey.replace(/=+$/, '');
+  privateKey = privateKey.replace(/=+$/, '');
+  
+  // Basic length validation
+  if (publicKey.length < 20 || privateKey.length < 20) {
+    console.log('⚠️  VAPID keys appear too short - push notifications disabled');
+    console.log('   Generate new keys with: npx web-push generate-vapid-keys');
+    return false;
+  }
+  
+  // More permissive format check (allows URL-safe base64 chars)
+  const urlSafeBase64Regex = /^[A-Za-z0-9_\-]+$/;
   if (!urlSafeBase64Regex.test(publicKey) || !urlSafeBase64Regex.test(privateKey)) {
-    console.log('⚠️  VAPID keys have invalid format - push notifications disabled');
-    console.log('   Keys must be URL-safe base64 without "=" padding');
+    console.log('⚠️  VAPID keys contain invalid characters - push notifications disabled');
+    console.log('   Keys must contain only: A-Z, a-z, 0-9, underscore (_), and hyphen (-)');
     console.log('   Generate new keys with: npx web-push generate-vapid-keys');
     return false;
   }
@@ -55,6 +70,7 @@ const initializePush = () => {
       privateKey
     );
     console.log('✅ Web Push configured with VAPID keys');
+    console.log(`   Public key length: ${publicKey.length} chars`);
     return true;
   } catch (error) {
     console.error('⚠️  Failed to configure web push:', error.message);
@@ -68,7 +84,10 @@ pushConfigured = initializePush();
 
 // Get VAPID public key for client
 const getVapidPublicKey = () => {
-  return process.env.VAPID_PUBLIC_KEY || null;
+  const key = process.env.VAPID_PUBLIC_KEY;
+  if (!key) return null;
+  // Return key without padding
+  return key.trim().replace(/=+$/, '');
 };
 
 // Save push subscription for a user
