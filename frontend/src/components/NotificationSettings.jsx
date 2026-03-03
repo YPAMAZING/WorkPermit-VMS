@@ -181,16 +181,66 @@ const NotificationSettings = () => {
     )
   }
 
+  // Show section even if not configured, but with disabled state
   if (!isConfigured) {
     return (
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <div className="flex items-center gap-3 text-gray-400 mb-3">
-          <BellOff className="w-6 h-6" />
-          <h3 className="text-lg font-semibold text-gray-500">Push Notifications</h3>
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <BellOff className="w-6 h-6 text-gray-400" />
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">Push Notifications</h3>
+              <p className="text-sm text-gray-500">
+                Receive instant alerts for permits, approvals, and visitor requests
+              </p>
+            </div>
+          </div>
+          
+          <button
+            disabled
+            className="px-4 py-2 rounded-lg font-medium bg-gray-100 text-gray-400 cursor-not-allowed flex items-center gap-2"
+          >
+            <Bell className="w-4 h-4" />
+            <span>Enable</span>
+          </button>
         </div>
-        <p className="text-gray-500">
-          Push notifications are not yet configured on the server. Contact your administrator to enable this feature.
-        </p>
+        
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+          <div className="flex items-center gap-2 text-amber-700">
+            <AlertTriangle className="w-5 h-5" />
+            <span className="font-medium">Not Yet Available</span>
+          </div>
+          <p className="text-sm text-amber-600 mt-1">
+            Push notifications are being configured. This feature will be available soon.
+          </p>
+        </div>
+
+        {/* Info Section */}
+        <div className="mt-6 pt-6 border-t border-gray-200">
+          <h4 className="text-sm font-medium text-gray-700 mb-2">You'll receive notifications for:</h4>
+          <ul className="text-sm text-gray-600 space-y-1">
+            <li className="flex items-center gap-2">
+              <Check className="w-4 h-4 text-green-500" />
+              New permit requests requiring approval
+            </li>
+            <li className="flex items-center gap-2">
+              <Check className="w-4 h-4 text-green-500" />
+              Permit approvals and rejections
+            </li>
+            <li className="flex items-center gap-2">
+              <Check className="w-4 h-4 text-green-500" />
+              New user registration requests
+            </li>
+            <li className="flex items-center gap-2">
+              <Check className="w-4 h-4 text-green-500" />
+              New visitor arrivals
+            </li>
+            <li className="flex items-center gap-2">
+              <Check className="w-4 h-4 text-green-500" />
+              Permit expiration reminders
+            </li>
+          </ul>
+        </div>
       </div>
     )
   }
