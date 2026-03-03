@@ -2,7 +2,7 @@ const vmsPrisma = require('../../config/vms-prisma');
 const QRCode = require('qrcode');
 const { v4: uuidv4 } = require('uuid');
 const { generateVisitorPassNumber, generateRequestNumber } = require('../../utils/passNumberGenerator');
-const { sendVisitorApprovedEmail, sendNewVisitorNotification } = require('../../utils/emailService');
+const { sendNewVisitorNotification } = require('../../utils/emailService');
 const vmsPushService = require('../../services/vms-push.service');
 
 // Helper to check if user is admin
@@ -375,24 +375,9 @@ exports.submitCheckInRequest = async (req, res) => {
         data: { status: 'APPROVED' }
       });
       
-      // Send approval email to visitor if auto-approved
-      if (visitor.email) {
-        try {
-          await sendVisitorApprovedEmail({
-            email: visitor.email,
-            visitorName: visitor.visitorName,
-            companyToVisit: company.displayName || company.name,
-            personToMeet: visitor.personToMeet,
-            purpose: visitor.purpose,
-            passNumber: gatepassNumber,
-            validFrom: gatepass.validFrom,
-            validUntil: gatepass.validUntil,
-          });
-          console.log('Auto-approval email sent to visitor:', visitor.email);
-        } catch (emailError) {
-          console.error('Failed to send auto-approval email:', emailError);
-        }
-      }
+      // Email notifications to visitors disabled - they will see status on check-in page
+      // Push notifications can be added here in the future if visitors subscribe
+      console.log('✅ Auto-approved visitor:', visitor.visitorName, '- No email sent (disabled)');
     }
     
     // If status is PENDING (requires approval), notify the company
@@ -1038,24 +1023,9 @@ exports.approveRequest = async (req, res) => {
     
     console.log('✅ Gatepass created:', gatepassNumber);
     
-    // Send approval email to visitor
-    if (visitor.email) {
-      try {
-        await sendVisitorApprovedEmail({
-          email: visitor.email,
-          visitorName: visitor.visitorName,
-          companyToVisit: visitor.companyToVisit,
-          personToMeet: visitor.personToMeet,
-          purpose: visitor.purpose,
-          passNumber: gatepassNumber,
-          validFrom: gatepass.validFrom,
-          validUntil: gatepass.validUntil,
-        });
-        console.log('✅ Approval email sent to:', visitor.email);
-      } catch (emailError) {
-        console.error('Failed to send approval email:', emailError);
-      }
-    }
+    // Email notifications to visitors disabled - they will see status on check-in page
+    // Push notifications can be added here in the future if visitors subscribe
+    console.log('✅ Visitor approved:', visitor.visitorName, '- No email sent (disabled)');
     
     res.json({
       success: true,
