@@ -20,27 +20,51 @@ const hashEndpoint = (endpoint) => {
   return crypto.createHash('sha256').update(endpoint).digest('hex');
 };
 
-// Check if VAPID keys are configured
+// Track if push is properly configured
+let pushConfigured = false;
+
+// Check if VAPID keys are configured and valid
 const isPushConfigured = () => {
-  return !!(process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY);
+  return pushConfigured;
 };
 
-// Configure web-push only if VAPID keys are present
-if (isPushConfigured()) {
+// Configure web-push only if VAPID keys are present and valid
+const initializePush = () => {
+  const publicKey = process.env.VAPID_PUBLIC_KEY;
+  const privateKey = process.env.VAPID_PRIVATE_KEY;
+  
+  if (!publicKey || !privateKey) {
+    console.log('⚠️  VAPID keys not configured - push notifications disabled');
+    console.log('   Generate keys with: npx web-push generate-vapid-keys');
+    return false;
+  }
+  
+  // Validate key format (must be URL-safe base64 without padding)
+  const urlSafeBase64Regex = /^[A-Za-z0-9_-]+$/;
+  if (!urlSafeBase64Regex.test(publicKey) || !urlSafeBase64Regex.test(privateKey)) {
+    console.log('⚠️  VAPID keys have invalid format - push notifications disabled');
+    console.log('   Keys must be URL-safe base64 without "=" padding');
+    console.log('   Generate new keys with: npx web-push generate-vapid-keys');
+    return false;
+  }
+  
   try {
     webpush.setVapidDetails(
       `mailto:${process.env.SMTP_USER || 'admin@reliablespaces.cloud'}`,
-      process.env.VAPID_PUBLIC_KEY,
-      process.env.VAPID_PRIVATE_KEY
+      publicKey,
+      privateKey
     );
     console.log('✅ Web Push configured with VAPID keys');
+    return true;
   } catch (error) {
-    console.error('❌ Failed to configure web push:', error.message);
+    console.error('⚠️  Failed to configure web push:', error.message);
+    console.log('   Push notifications disabled - generate new keys with: npx web-push generate-vapid-keys');
+    return false;
   }
-} else {
-  console.log('⚠️  VAPID keys not configured - push notifications disabled');
-  console.log('   Generate keys with: npx web-push generate-vapid-keys');
-}
+};
+
+// Initialize on module load
+pushConfigured = initializePush();
 
 // Get VAPID public key for client
 const getVapidPublicKey = () => {
