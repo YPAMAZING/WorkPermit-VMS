@@ -8,7 +8,8 @@ import {
   getNotificationPermission,
   requestNotificationPermission,
   subscribeToPush,
-  getSubscriptionStatus
+  getSubscriptionStatus,
+  getVapidPublicKey
 } from '../services/pushNotification'
 
 const PROMPT_DISMISSED_KEY = 'notification_prompt_dismissed'
@@ -31,6 +32,13 @@ const NotificationPrompt = ({ token, onSubscribed }) => {
       return
     }
 
+    // Check if server has push configured (VAPID keys)
+    const vapidKey = await getVapidPublicKey()
+    if (!vapidKey) {
+      console.log('Push notifications not configured on server')
+      return
+    }
+
     // Check if already subscribed
     const status = await getSubscriptionStatus()
     if (status.subscribed) {
@@ -43,6 +51,13 @@ const NotificationPrompt = ({ token, onSubscribed }) => {
     if (permission === 'denied') {
       // User has denied - don't show prompt, they can enable from browser settings
       console.log('Notifications denied - user can enable from browser settings')
+      return
+    }
+
+    // Check if user permanently dismissed
+    const permanentlyDismissed = localStorage.getItem(PROMPT_DISMISSED_KEY)
+    if (permanentlyDismissed === 'true') {
+      console.log('Prompt permanently dismissed')
       return
     }
 

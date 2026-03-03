@@ -47,18 +47,29 @@ export const getVapidPublicKey = async () => {
 
 // Convert VAPID key to Uint8Array
 const urlBase64ToUint8Array = (base64String) => {
-  const padding = '='.repeat((4 - base64String.length % 4) % 4);
-  const base64 = (base64String + padding)
-    .replace(/-/g, '+')
-    .replace(/_/g, '/');
-  
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-  
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
+  try {
+    // Validate the key format first
+    if (!base64String || typeof base64String !== 'string' || base64String.length < 10) {
+      console.error('Invalid VAPID key format');
+      return null;
+    }
+    
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding)
+      .replace(/-/g, '+')
+      .replace(/_/g, '/');
+    
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+  } catch (error) {
+    console.error('Error converting VAPID key:', error.message);
+    return null;
   }
-  return outputArray;
 };
 
 // Subscribe to push notifications
@@ -84,10 +95,16 @@ export const subscribeToPush = async (token) => {
         return { success: false, error: 'Push notifications not configured on server' };
       }
       
+      // Convert key to Uint8Array
+      const applicationServerKey = urlBase64ToUint8Array(vapidPublicKey);
+      if (!applicationServerKey) {
+        return { success: false, error: 'Invalid server configuration for push notifications' };
+      }
+      
       // Subscribe to push
       subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
+        applicationServerKey
       });
       console.log('✅ Subscribed to push notifications');
     }
