@@ -21,38 +21,51 @@ const NotificationSettings = () => {
   const checkStatus = async () => {
     setLoading(true)
     
-    // Check if push is supported
-    const supported = pushNotificationService.isPushSupported()
-    setIsSupported(supported)
-    
-    if (!supported) {
-      setLoading(false)
-      return
-    }
-    
-    // Check if server has VAPID configured
-    const vapidKey = await pushNotificationService.getVapidPublicKey()
-    setIsConfigured(!!vapidKey)
-    
-    if (!vapidKey) {
-      setLoading(false)
-      return
-    }
-    
-    // Get permission and subscription status
-    const perm = pushNotificationService.getNotificationPermission()
-    setPermission(perm)
-    
-    const status = await pushNotificationService.getSubscriptionStatus()
-    setIsSubscribed(status.subscribed)
-    
-    // Get server subscriptions
-    const token = getToken ? getToken() : null
-    if (token) {
-      const result = await pushNotificationService.getMySubscriptions(token)
-      if (result.success) {
-        setSubscriptions(result.subscriptions || [])
+    try {
+      // Check if push is supported
+      const supported = pushNotificationService.isPushSupported()
+      setIsSupported(supported)
+      
+      if (!supported) {
+        setLoading(false)
+        return
       }
+      
+      // Check if server has VAPID configured (with timeout)
+      let vapidKey = null
+      try {
+        vapidKey = await Promise.race([
+          pushNotificationService.getVapidPublicKey(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
+        ])
+      } catch (e) {
+        console.log('VAPID check failed or timed out:', e.message)
+      }
+      
+      setIsConfigured(!!vapidKey)
+      
+      if (!vapidKey) {
+        setLoading(false)
+        return
+      }
+      
+      // Get permission and subscription status
+      const perm = pushNotificationService.getNotificationPermission()
+      setPermission(perm)
+      
+      const status = await pushNotificationService.getSubscriptionStatus()
+      setIsSubscribed(status.subscribed)
+      
+      // Get server subscriptions
+      const token = getToken ? getToken() : null
+      if (token) {
+        const result = await pushNotificationService.getMySubscriptions(token)
+        if (result.success) {
+          setSubscriptions(result.subscriptions || [])
+        }
+      }
+    } catch (error) {
+      console.error('Error checking notification status:', error)
     }
     
     setLoading(false)
