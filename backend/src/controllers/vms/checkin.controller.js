@@ -418,15 +418,17 @@ exports.submitCheckInRequest = async (req, res) => {
           }
         }
         
-        // Get company users who can approve (if no notification emails configured)
+        // Get company users who can approve for THIS SPECIFIC COMPANY only
+        console.log('🔍 Looking for users of company:', company.id, company.displayName || company.name);
         const companyUsers = await vmsPrisma.vMSCompanyUser.findMany({
           where: { 
-            companyId: company.id,
+            companyId: company.id,  // Only users linked to the visitor's selected company
             isActive: true,
             canApprove: true
           },
           select: { userId: true }
         });
+        console.log('👥 Found', companyUsers.length, 'company users with approval permission');
         
         // Get user emails and IDs from main User table for push notifications
         const companyUserIds = [];
@@ -446,6 +448,9 @@ exports.submitCheckInRequest = async (req, res) => {
           }
           companyUserIds.push(...users.map(u => u.id));
           await mainPrisma.$disconnect();
+          console.log('✅ Will notify these users:', users.map(u => u.email).join(', '));
+        } else {
+          console.log('⚠️ No company users found with approval permission for company:', company.displayName || company.name);
         }
         
         // Remove duplicates
