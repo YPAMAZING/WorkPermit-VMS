@@ -269,6 +269,9 @@ model VMSUser {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   
+  // Push notification subscriptions
+  pushSubscriptions VMSPushSubscription[]
+  
   @@index([email])
   @@index([companyId])
   @@index([workPermitUserId])
@@ -504,6 +507,29 @@ model PushSubscription {
   @@index([userId])
   @@index([isActive])
   @@map("push_subscriptions")
+}
+
+// VMS Push Notification Subscriptions (separate from Work Permit)
+model VMSPushSubscription {
+  id            String   @id @default(uuid()) @db.VarChar(36)
+  vmsUserId     String   @db.VarChar(36)
+  endpoint      String   @db.Text
+  endpointHash  String   @unique @db.VarChar(64)  // SHA256 hash of endpoint for uniqueness
+  p256dh        String   @db.Text  // Public key
+  auth          String   @db.VarChar(100)  // Auth secret
+  userAgent     String?  @db.Text
+  deviceType    String   @default("unknown") @db.VarChar(20)  // mobile, tablet, desktop
+  browser       String?  @db.VarChar(50)  // Chrome, Firefox, Safari, Edge
+  isActive      Boolean  @default(true)
+  lastUsed      DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  vmsUser       VMSUser  @relation(fields: [vmsUserId], references: [id], onDelete: Cascade)
+  
+  @@index([vmsUserId])
+  @@index([isActive])
+  @@map("vms_push_subscriptions")
 }
 
 // Employee Pass - Temporary passes for new employees before ID card issuance

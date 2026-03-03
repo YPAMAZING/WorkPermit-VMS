@@ -1,15 +1,16 @@
 // VMS Push Notification Routes
-// Separate from Work Permit push routes - uses VMSUser table
+// Separate from Work Permit push routes - uses VMSUser table and VMSPushSubscription table
 // Handles push subscription management for VMS users
 
 const express = require('express');
 const router = express.Router();
 const { vmsAuth } = require('../../middleware/vms-auth');
-const pushService = require('../../services/push.service');
+// Use VMS-specific push service that uses VMSPushSubscription table
+const vmsPushService = require('../../services/vms-push.service');
 
 // Get VAPID public key (no auth required - same key for both systems)
 router.get('/vapid-public-key', (req, res) => {
-  const publicKey = pushService.getVapidPublicKey();
+  const publicKey = vmsPushService.getVapidPublicKey();
   
   if (!publicKey) {
     return res.status(503).json({
@@ -28,12 +29,12 @@ router.get('/vapid-public-key', (req, res) => {
 router.get('/status', (req, res) => {
   res.json({
     success: true,
-    configured: pushService.isPushConfigured()
+    configured: vmsPushService.isPushConfigured()
   });
 });
 
 // Subscribe to push notifications (requires VMS auth)
-// Uses VMSUser ID prefixed with 'vms_' to distinguish from Work Permit users
+// Uses VMSUser ID directly (no prefix needed - separate table)
 router.post('/subscribe', vmsAuth, async (req, res) => {
   try {
     const { subscription, deviceInfo } = req.body;
@@ -65,13 +66,12 @@ router.post('/subscribe', vmsAuth, async (req, res) => {
       else if (ua.includes('edge')) parsedDeviceInfo.browser = 'Edge';
     }
     
-    // Use 'vms_' prefix to distinguish VMS users from Work Permit users
-    // This allows both systems to share the PushSubscription table
-    const vmsUserId = `vms_${req.user.userId}`;
+    // Use the VMS User ID directly (stored in VMSPushSubscription table)
+    const vmsUserId = req.user.userId;
     
-    console.log(`📱 VMS Push subscribe - User: ${req.user.email}, VMS User ID: ${vmsUserId}`);
+    console.log(`📱 [VMS Push] Subscribe - User: ${req.user.email}, VMS User ID: ${vmsUserId}`);
     
-    const savedSubscription = await pushService.saveSubscription(
+    const savedSubscription = await vmsPushService.saveSubscription(
       vmsUserId,
       subscription,
       parsedDeviceInfo
@@ -90,7 +90,7 @@ router.post('/subscribe', vmsAuth, async (req, res) => {
       });
     }
   } catch (error) {
-    console.error('Error subscribing VMS user to push:', error);
+    console.error('❌ [VMS Push] Error subscribing:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to save push subscription'
@@ -110,14 +110,14 @@ router.post('/unsubscribe', vmsAuth, async (req, res) => {
       });
     }
     
-    await pushService.removeSubscription(endpoint);
+    await vmsPushService.removeSubscription(endpoint);
     
     res.json({
       success: true,
       message: 'Push subscription removed successfully'
     });
   } catch (error) {
-    console.error('Error unsubscribing VMS user from push:', error);
+    console.error('❌ [VMS Push] Error unsubscribing:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to remove push subscription'
@@ -128,9 +128,9 @@ router.post('/unsubscribe', vmsAuth, async (req, res) => {
 // Get user's subscriptions count
 router.get('/my-subscriptions', vmsAuth, async (req, res) => {
   try {
-    const vmsUserId = `vms_${req.user.userId}`;
-    const count = await pushService.getSubscriptionCount(vmsUserId);
-    const subscriptions = await pushService.getSubscriptionsForUser(vmsUserId);
+    const vmsUserId = req.user.userId;
+    const count = await vmsPushService.getSubscriptionCount(vmsUserId);
+    const subscriptions = await vmsPushService.getSubscriptionsForUser(vmsUserId);
     
     res.json({
       success: true,
@@ -144,7 +144,7 @@ router.get('/my-subscriptions', vmsAuth, async (req, res) => {
       }))
     });
   } catch (error) {
-    console.error('Error getting VMS subscriptions:', error);
+    console.error('❌ [VMS Push] Error getting subscriptions:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to get subscriptions'
@@ -155,10 +155,10 @@ router.get('/my-subscriptions', vmsAuth, async (req, res) => {
 // Remove a specific subscription by ID
 router.delete('/subscription/:id', vmsAuth, async (req, res) => {
   try {
-    const vmsUserId = `vms_${req.user.userId}`;
+    const vmsUserId = req.user.userId;
     const subscriptionId = req.params.id;
     
-    const success = await pushService.deleteSubscriptionById(subscriptionId, vmsUserId);
+    const success = await vmsPushService.deleteSubscriptionById(subscriptionId, vmsUserId);
     
     if (success) {
       res.json({
@@ -172,7 +172,7 @@ router.delete('/subscription/:id', vmsAuth, async (req, res) => {
       });
     }
   } catch (error) {
-    console.error('Error removing VMS subscription:', error);
+    console.error('❌ [VMS Push] Error removing subscription:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to remove subscription'
@@ -191,10 +191,10 @@ router.post('/test', vmsAuth, async (req, res) => {
       });
     }
     
-    const vmsUserId = `vms_${req.user.userId}`;
+    const vmsUserId = req.user.userId;
     const { title, body } = req.body;
     
-    const result = await pushService.sendPushToUser(vmsUserId, {
+    const result = await vmsPushService.sendPushToUser(vmsUserId, {
       title: title || '🔔 VMS Test Notification',
       body: body || 'This is a test push notification from Reliable Group VMS',
       icon: '/logo.png',
@@ -212,7 +212,7 @@ router.post('/test', vmsAuth, async (req, res) => {
       result
     });
   } catch (error) {
-    console.error('Error sending VMS test notification:', error);
+    console.error('❌ [VMS Push] Error sending test notification:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to send test notification'

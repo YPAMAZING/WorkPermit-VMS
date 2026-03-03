@@ -3,7 +3,7 @@ const QRCode = require('qrcode');
 const { v4: uuidv4 } = require('uuid');
 const { generateVisitorPassNumber, generateRequestNumber } = require('../../utils/passNumberGenerator');
 const { sendVisitorApprovedEmail, sendNewVisitorNotification } = require('../../utils/emailService');
-const pushService = require('../../services/push.service');
+const vmsPushService = require('../../services/vms-push.service');
 
 // Helper to check if user is admin
 const isUserAdmin = (user) => {
@@ -421,7 +421,7 @@ exports.submitCheckInRequest = async (req, res) => {
         // Get company users who can approve for THIS SPECIFIC COMPANY only
         console.log('🔍 Looking for users of company:', company.id, company.displayName || company.name);
         
-        // First, get VMSUsers who are directly assigned to this company
+        // Get VMSUsers who are directly assigned to this company (for push notifications)
         const vmsUsersForCompany = await vmsPrisma.vMSUser.findMany({
           where: { 
             companyId: company.id,
@@ -432,10 +432,16 @@ exports.submitCheckInRequest = async (req, res) => {
         });
         console.log('👥 Found', vmsUsersForCompany.length, 'VMS users assigned to this company');
         
+        // Add VMS user emails for notifications
+        vmsUsersForCompany.forEach(user => {
+          notificationEmails.push(user.email);
+        });
+        console.log('✅ VMS users to notify:', vmsUsersForCompany.map(u => u.email).join(', ') || 'none');
+        
         // Also get company users from VMSCompanyUser table (Work Permit users with VMS access)
         const companyUsers = await vmsPrisma.vMSCompanyUser.findMany({
           where: { 
-            companyId: company.id,  // Only users linked to the visitor's selected company
+            companyId: company.id,
             isActive: true,
             canApprove: true
           },
@@ -443,20 +449,7 @@ exports.submitCheckInRequest = async (req, res) => {
         });
         console.log('👥 Found', companyUsers.length, 'VMSCompanyUser entries with approval permission');
         
-        // Collect all user IDs for push notifications
-        // VMS users get 'vms_' prefix, Work Permit users use their regular IDs
-        const pushUserIds = [];
-        
-        // Add VMS users (with vms_ prefix for push subscriptions)
-        vmsUsersForCompany.forEach(user => {
-          pushUserIds.push(`vms_${user.id}`);
-          if (notificationEmails.length === 0) {
-            notificationEmails.push(user.email);
-          }
-        });
-        console.log('✅ VMS users to notify:', vmsUsersForCompany.map(u => u.email).join(', ') || 'none');
-        
-        // Add Work Permit users (if any VMSCompanyUser entries exist)
+        // Add Work Permit users' emails for notifications
         if (companyUsers.length > 0) {
           const { PrismaClient } = require('@prisma/client');
           const mainPrisma = new PrismaClient();
@@ -468,26 +461,24 @@ exports.submitCheckInRequest = async (req, res) => {
             select: { id: true, email: true }
           });
           
-          // Work Permit users use their regular IDs for push (they subscribe via /api/push/*)
-          pushUserIds.push(...users.map(u => u.id));
-          if (notificationEmails.length === 0) {
-            notificationEmails.push(...users.map(u => u.email));
-          }
+          notificationEmails.push(...users.map(u => u.email));
           await mainPrisma.$disconnect();
           console.log('✅ Work Permit users to notify:', users.map(u => u.email).join(', ') || 'none');
         }
         
         // Remove duplicates
         const uniqueEmails = [...new Set(notificationEmails)];
-        const uniquePushUserIds = [...new Set(pushUserIds)];
+        
+        // Get VMS user IDs for push notifications
+        const vmsUserIds = vmsUsersForCompany.map(u => u.id);
         
         console.log('📧 Notification emails for new visitor:', uniqueEmails);
-        console.log('📱 Push notification user IDs:', uniquePushUserIds);
+        console.log('📱 VMS Push user IDs:', vmsUserIds);
         
-        // Send push notifications to company users
-        if (uniquePushUserIds.length > 0) {
+        // Send push notifications to VMS users (company users)
+        if (vmsUserIds.length > 0) {
           try {
-            await pushService.notifyNewVisitor(
+            await vmsPushService.notifyNewVisitor(
               {
                 id: visitor.id,
                 name: fullName,
@@ -495,14 +486,14 @@ exports.submitCheckInRequest = async (req, res) => {
                 companyFrom: companyFrom || visitorCompany,
                 purpose,
               },
-              uniquePushUserIds
+              vmsUserIds
             );
-            console.log('📱 Push notifications sent to', uniquePushUserIds.length, 'users');
+            console.log('📱 Push notifications sent to', vmsUserIds.length, 'VMS users');
           } catch (pushError) {
             console.error('Failed to send push notifications:', pushError.message);
           }
         } else {
-          console.log('⚠️ No users to notify via push for company:', company.displayName || company.name);
+          console.log('⚠️ No VMS users to notify via push for company:', company.displayName || company.name);
         }
         
         if (uniqueEmails.length > 0) {
