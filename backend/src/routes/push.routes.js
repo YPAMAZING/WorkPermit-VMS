@@ -3,7 +3,7 @@
 
 const express = require('express');
 const router = express.Router();
-const { auth } = require('../middleware/auth.middleware');
+const { authenticate } = require('../middleware/auth.middleware');
 const pushService = require('../services/push.service');
 
 // Get VAPID public key (no auth required)
@@ -32,7 +32,7 @@ router.get('/status', (req, res) => {
 });
 
 // Subscribe to push notifications (requires auth)
-router.post('/subscribe', auth, async (req, res) => {
+router.post('/subscribe', authenticate, async (req, res) => {
   try {
     const { subscription, deviceInfo } = req.body;
     
@@ -91,7 +91,7 @@ router.post('/subscribe', auth, async (req, res) => {
 });
 
 // Unsubscribe from push notifications
-router.post('/unsubscribe', auth, async (req, res) => {
+router.post('/unsubscribe', authenticate, async (req, res) => {
   try {
     const { endpoint } = req.body;
     
@@ -118,7 +118,7 @@ router.post('/unsubscribe', auth, async (req, res) => {
 });
 
 // Get user's subscriptions count
-router.get('/my-subscriptions', auth, async (req, res) => {
+router.get('/my-subscriptions', authenticate, async (req, res) => {
   try {
     const userId = req.user.id;
     const count = await pushService.getSubscriptionCount(userId);
@@ -145,7 +145,7 @@ router.get('/my-subscriptions', auth, async (req, res) => {
 });
 
 // Remove a specific subscription by ID
-router.delete('/subscription/:id', auth, async (req, res) => {
+router.delete('/subscription/:id', authenticate, async (req, res) => {
   try {
     const userId = req.user.id;
     const subscriptionId = req.params.id;
@@ -173,7 +173,7 @@ router.delete('/subscription/:id', auth, async (req, res) => {
 });
 
 // Test push notification (for debugging - admin only)
-router.post('/test', auth, async (req, res) => {
+router.post('/test', authenticate, async (req, res) => {
   try {
     // Check if user is admin
     const userRole = req.user.role;
