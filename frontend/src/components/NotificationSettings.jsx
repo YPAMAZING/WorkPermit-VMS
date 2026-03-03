@@ -5,8 +5,9 @@ import pushNotificationService from '../services/pushNotification'
 import toast from 'react-hot-toast'
 
 const NotificationSettings = () => {
-  const { token, user } = useAuth()
+  const { getToken, user } = useAuth()
   const [isSupported, setIsSupported] = useState(false)
+  const [isConfigured, setIsConfigured] = useState(false)
   const [permission, setPermission] = useState('default')
   const [isSubscribed, setIsSubscribed] = useState(false)
   const [subscriptions, setSubscriptions] = useState([])
@@ -15,7 +16,7 @@ const NotificationSettings = () => {
 
   useEffect(() => {
     checkStatus()
-  }, [token])
+  }, [])
 
   const checkStatus = async () => {
     setLoading(true)
@@ -29,6 +30,15 @@ const NotificationSettings = () => {
       return
     }
     
+    // Check if server has VAPID configured
+    const vapidKey = await pushNotificationService.getVapidPublicKey()
+    setIsConfigured(!!vapidKey)
+    
+    if (!vapidKey) {
+      setLoading(false)
+      return
+    }
+    
     // Get permission and subscription status
     const perm = pushNotificationService.getNotificationPermission()
     setPermission(perm)
@@ -37,6 +47,7 @@ const NotificationSettings = () => {
     setIsSubscribed(status.subscribed)
     
     // Get server subscriptions
+    const token = getToken ? getToken() : null
     if (token) {
       const result = await pushNotificationService.getMySubscriptions(token)
       if (result.success) {
@@ -66,6 +77,7 @@ const NotificationSettings = () => {
       }
       
       // Subscribe to push
+      const token = getToken ? getToken() : null
       const subResult = await pushNotificationService.subscribeToPush(token)
       
       if (subResult.success) {
@@ -95,6 +107,7 @@ const NotificationSettings = () => {
     setSubscribing(true)
     
     try {
+      const token = getToken ? getToken() : null
       const result = await pushNotificationService.unsubscribeFromPush(token)
       
       if (result.success) {
@@ -114,6 +127,7 @@ const NotificationSettings = () => {
 
   const handleSendTestNotification = async () => {
     try {
+      const token = getToken ? getToken() : null
       const result = await pushNotificationService.sendTestNotification(
         token,
         '🔔 Test Notification',
@@ -162,6 +176,20 @@ const NotificationSettings = () => {
         </div>
         <p className="text-gray-600">
           Your browser doesn't support push notifications. Try using Chrome, Firefox, or Edge for the best experience.
+        </p>
+      </div>
+    )
+  }
+
+  if (!isConfigured) {
+    return (
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="flex items-center gap-3 text-gray-400 mb-3">
+          <BellOff className="w-6 h-6" />
+          <h3 className="text-lg font-semibold text-gray-500">Push Notifications</h3>
+        </div>
+        <p className="text-gray-500">
+          Push notifications are not yet configured on the server. Contact your administrator to enable this feature.
         </p>
       </div>
     )
