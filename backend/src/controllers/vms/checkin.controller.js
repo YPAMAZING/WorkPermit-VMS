@@ -3,6 +3,7 @@ const QRCode = require('qrcode');
 const { v4: uuidv4 } = require('uuid');
 const { generateVisitorPassNumber, generateRequestNumber } = require('../../utils/passNumberGenerator');
 const { sendVisitorApprovedEmail, sendNewVisitorNotification } = require('../../utils/emailService');
+const pushService = require('../../services/push.service');
 
 // Helper to check if user is admin
 const isUserAdmin = (user) => {
@@ -418,36 +419,59 @@ exports.submitCheckInRequest = async (req, res) => {
         }
         
         // Get company users who can approve (if no notification emails configured)
-        if (notificationEmails.length === 0) {
-          const companyUsers = await vmsPrisma.vMSCompanyUser.findMany({
+        const companyUsers = await vmsPrisma.vMSCompanyUser.findMany({
+          where: { 
+            companyId: company.id,
+            isActive: true,
+            canApprove: true
+          },
+          select: { userId: true }
+        });
+        
+        // Get user emails and IDs from main User table for push notifications
+        const companyUserIds = [];
+        if (companyUsers.length > 0) {
+          const { PrismaClient } = require('@prisma/client');
+          const mainPrisma = new PrismaClient();
+          const users = await mainPrisma.user.findMany({
             where: { 
-              companyId: company.id,
-              isActive: true,
-              canApprove: true
+              id: { in: companyUsers.map(cu => cu.userId) },
+              isApproved: true
             },
-            select: { userId: true }
+            select: { id: true, email: true }
           });
           
-          // Get user emails from main User table
-          if (companyUsers.length > 0) {
-            const { PrismaClient } = require('@prisma/client');
-            const mainPrisma = new PrismaClient();
-            const users = await mainPrisma.user.findMany({
-              where: { 
-                id: { in: companyUsers.map(cu => cu.userId) },
-                isApproved: true
-              },
-              select: { email: true }
-            });
+          if (notificationEmails.length === 0) {
             notificationEmails.push(...users.map(u => u.email));
-            await mainPrisma.$disconnect();
           }
+          companyUserIds.push(...users.map(u => u.id));
+          await mainPrisma.$disconnect();
         }
         
         // Remove duplicates
         const uniqueEmails = [...new Set(notificationEmails)];
         
         console.log('📧 Notification emails for new visitor:', uniqueEmails);
+        console.log('📱 Push notification user IDs:', companyUserIds);
+        
+        // Send push notifications to company users
+        if (companyUserIds.length > 0) {
+          try {
+            await pushService.notifyNewVisitor(
+              {
+                id: visitor.id,
+                name: fullName,
+                phone,
+                companyFrom: companyFrom || visitorCompany,
+                purpose,
+              },
+              companyUserIds
+            );
+            console.log('📱 Push notifications sent to', companyUserIds.length, 'company users');
+          } catch (pushError) {
+            console.error('Failed to send push notifications:', pushError.message);
+          }
+        }
         
         if (uniqueEmails.length > 0) {
           // Send to each email

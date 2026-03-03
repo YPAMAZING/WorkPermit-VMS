@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useVMSAuth } from '../../context/VMSAuthContext'
 import { companySettingsApi } from '../../services/vmsApi'
+import VMSNotificationSettings from '../../components/VMSNotificationSettings'
 import {
   Settings,
   Building,
@@ -297,6 +298,17 @@ const VMSSettings = () => {
             Company Management ({companies.length})
           </button>
           <button
+            onClick={() => setActiveTab('notifications')}
+            className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
+              activeTab === 'notifications'
+                ? 'border-teal-500 text-teal-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            <Bell size={18} className="inline mr-2" />
+            Push Notifications
+          </button>
+          <button
             onClick={() => setActiveTab('workflow')}
             className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
               activeTab === 'workflow'
@@ -309,6 +321,11 @@ const VMSSettings = () => {
           </button>
         </nav>
       </div>
+
+      {/* Notifications Tab */}
+      {activeTab === 'notifications' && (
+        <VMSNotificationSettings />
+      )}
 
       {/* Tab Content */}
       {activeTab === 'companies' && (
