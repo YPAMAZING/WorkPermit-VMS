@@ -22,6 +22,7 @@ import {
   MessageCircle,
   Hash,
   UserCheck as PersonIcon,
+  Car,
 } from 'lucide-react'
 
 const PreApprovalDetail = () => {
@@ -73,10 +74,11 @@ const PreApprovalDetail = () => {
   }
 
   const handleShare = async (method) => {
+    const vehicleInfo = entry.vehicleNumber ? `\nVehicle Number: ${entry.vehicleNumber}` : '';
     const text = `Pre-approved Visit Pass
 
 Visitor: ${entry.visitorName}
-Purpose: ${entry.purpose}
+Purpose: ${entry.purpose}${vehicleInfo}
 Valid From: ${formatDateTime(entry.validFrom)}
 Valid Until: ${formatDateTime(entry.validUntil)}
 
@@ -207,6 +209,23 @@ Please show this at the reception desk upon arrival.`
             </div>
           </div>
         </div>
+
+        {/* Vehicle Number - Highlighted Section */}
+        {entry.vehicleNumber && (
+          <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-blue-600 uppercase font-semibold mb-1">Vehicle Number</p>
+                <p className="text-2xl font-bold text-blue-800 font-mono tracking-wider">
+                  {entry.vehicleNumber}
+                </p>
+              </div>
+              <div className="w-14 h-14 bg-blue-100 rounded-lg flex items-center justify-center">
+                <Car size={28} className="text-blue-600" />
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Pass Number / Request ID */}
         <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-teal-50 to-cyan-50">

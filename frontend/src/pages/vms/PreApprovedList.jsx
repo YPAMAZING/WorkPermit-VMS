@@ -21,6 +21,7 @@ import {
   Mail,
   Share2,
   RefreshCw,
+  Car,
 } from 'lucide-react'
 
 const PreApprovedList = () => {
@@ -202,7 +203,7 @@ const PreApprovedList = () => {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
             <input
               type="text"
-              placeholder="Search by name, phone, email..."
+              placeholder="Search by name, phone, email, vehicle number..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
@@ -269,6 +270,7 @@ const PreApprovedList = () => {
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Visitor</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Contact</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Vehicle</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Purpose</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Valid Period</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Status</th>
@@ -307,6 +309,16 @@ const PreApprovedList = () => {
                               </p>
                             )}
                           </div>
+                        </td>
+                        <td className="px-4 py-4">
+                          {entry.vehicleNumber ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded-md font-semibold text-sm">
+                              <Car size={14} />
+                              {entry.vehicleNumber}
+                            </span>
+                          ) : (
+                            <span className="text-gray-400 text-sm">-</span>
+                          )}
                         </td>
                         <td className="px-4 py-4">
                           <span className="text-sm text-gray-600">{entry.purpose}</span>

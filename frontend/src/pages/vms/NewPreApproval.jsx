@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 import { useVMSAuth } from '../../context/VMSAuthContext'
 import { preapprovedApi } from '../../services/vmsApi'
 import useCompanyList from '../../hooks/useCompanyList'
@@ -17,12 +17,16 @@ import {
   AlertCircle,
   Shield,
   CheckCircle,
+  Car,
 } from 'lucide-react'
 
 const NewPreApproval = () => {
   const navigate = useNavigate()
+  const { id } = useParams()  // For edit mode
+  const isEditMode = Boolean(id)
   const { user, isAdmin } = useVMSAuth()
   const [loading, setLoading] = useState(false)
+  const [loadingEntry, setLoadingEntry] = useState(false)
   const [error, setError] = useState('')
   
   // Use the reusable hook for company list
@@ -45,6 +49,7 @@ const NewPreApproval = () => {
     companyId: user?.companyId || '',
     personToMeet: '',
     purpose: 'MEETING',
+    vehicleNumber: '',
     validFrom: new Date().toISOString().slice(0, 16),
     validUntil: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16),
     remarks: '',
@@ -59,6 +64,38 @@ const NewPreApproval = () => {
 
   // Get selected company info
   const selectedCompany = formData.companyId ? getCompanyById(formData.companyId) : null
+
+  // Load existing entry for edit mode
+  useEffect(() => {
+    if (isEditMode) {
+      const fetchEntry = async () => {
+        try {
+          setLoadingEntry(true)
+          const response = await preapprovedApi.getById(id)
+          const entry = response.data
+          setFormData({
+            visitorName: entry.visitorName || '',
+            phone: entry.phone || '',
+            email: entry.email || '',
+            companyFrom: entry.companyFrom || '',
+            companyId: entry.companyId || user?.companyId || '',
+            personToMeet: entry.personToMeet || '',
+            purpose: entry.purpose || 'MEETING',
+            vehicleNumber: entry.vehicleNumber || '',
+            validFrom: entry.validFrom ? new Date(entry.validFrom).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16),
+            validUntil: entry.validUntil ? new Date(entry.validUntil).toISOString().slice(0, 16) : new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16),
+            remarks: entry.remarks || '',
+          })
+        } catch (error) {
+          console.error('Failed to load entry:', error)
+          setError('Failed to load pre-approval for editing')
+        } finally {
+          setLoadingEntry(false)
+        }
+      }
+      fetchEntry()
+    }
+  }, [id, isEditMode])
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -102,20 +139,38 @@ const NewPreApproval = () => {
     setError('')
 
     try {
-      await preapprovedApi.create({
-        ...formData,
-        phone: formData.phone.replace(/\D/g, ''),
-        createdBy: user?.id,
-      })
-      navigate('/vms/admin/preapproved', { 
-        state: { message: 'Pre-approval created successfully!' } 
-      })
+      if (isEditMode) {
+        await preapprovedApi.update(id, {
+          ...formData,
+          phone: formData.phone.replace(/\D/g, ''),
+        })
+        navigate('/vms/admin/preapproved', { 
+          state: { message: 'Pre-approval updated successfully!' } 
+        })
+      } else {
+        await preapprovedApi.create({
+          ...formData,
+          phone: formData.phone.replace(/\D/g, ''),
+          createdBy: user?.id,
+        })
+        navigate('/vms/admin/preapproved', { 
+          state: { message: 'Pre-approval created successfully!' } 
+        })
+      }
     } catch (error) {
-      console.error('Failed to create pre-approval:', error)
-      setError(error.response?.data?.message || 'Failed to create pre-approval')
+      console.error('Failed to save pre-approval:', error)
+      setError(error.response?.data?.message || `Failed to ${isEditMode ? 'update' : 'create'} pre-approval`)
     } finally {
       setLoading(false)
     }
+  }
+
+  if (loadingEntry) {
+    return (
+      <div className="max-w-3xl mx-auto flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-10 w-10 border-4 border-teal-500 border-t-transparent" />
+      </div>
+    )
   }
 
   return (
@@ -129,8 +184,8 @@ const NewPreApproval = () => {
           <ArrowLeft size={20} />
         </button>
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">New Pre-approval</h1>
-          <p className="text-gray-500 mt-1">Create a pre-approved visitor pass</p>
+          <h1 className="text-2xl font-bold text-gray-800">{isEditMode ? 'Edit Pre-approval' : 'New Pre-approval'}</h1>
+          <p className="text-gray-500 mt-1">{isEditMode ? 'Update pre-approved visitor pass' : 'Create a pre-approved visitor pass'}</p>
         </div>
       </div>
 
@@ -208,6 +263,22 @@ const NewPreApproval = () => {
                   onChange={handleChange}
                   placeholder="Company they represent"
                   className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Vehicle Number (Optional)
+              </label>
+              <div className="relative">
+                <Car className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                <input
+                  type="text"
+                  name="vehicleNumber"
+                  value={formData.vehicleNumber}
+                  onChange={handleChange}
+                  placeholder="e.g., KA01AB1234"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 uppercase"
                 />
               </div>
             </div>
@@ -380,12 +451,12 @@ const NewPreApproval = () => {
             {loading ? (
               <>
                 <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
-                Creating...
+                {isEditMode ? 'Updating...' : 'Creating...'}
               </>
             ) : (
               <>
                 <Save size={18} />
-                Create Pre-approval
+                {isEditMode ? 'Update Pre-approval' : 'Create Pre-approval'}
               </>
             )}
           </button>

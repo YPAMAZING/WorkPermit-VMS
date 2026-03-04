@@ -430,6 +430,7 @@ model VMSPreApproval {
   personToMeet    String?  @db.VarChar(255)
   purpose         String   @db.VarChar(100)
   remarks         String?  @db.Text  // Additional notes/remarks about the pre-approval
+  vehicleNumber   String?  @db.VarChar(20)  // Vehicle registration number
   
   validFrom       DateTime
   validUntil      DateTime
@@ -450,6 +451,7 @@ model VMSPreApproval {
   
   @@index([companyId])
   @@index([phone])
+  @@index([vehicleNumber])
   @@index([status])
   @@map("vms_pre_approvals")
 }

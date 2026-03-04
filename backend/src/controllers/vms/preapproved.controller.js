@@ -74,6 +74,7 @@ exports.getPreApprovedVisitors = async (req, res) => {
         { phone: { contains: search } },
         { email: { contains: search } },
         { companyFrom: { contains: search } },
+        { vehicleNumber: { contains: search } },
       ];
     }
 
@@ -129,6 +130,7 @@ exports.getPreApprovedVisitors = async (req, res) => {
           personToMeet: e.personToMeet,
           purpose: e.purpose,
           remarks: e.remarks,
+          vehicleNumber: e.vehicleNumber,
           validFrom: e.validFrom,
           validUntil: e.validUntil,
           status: e.status,
@@ -194,7 +196,8 @@ exports.getPreApprovedVisitor = async (req, res) => {
       ...entry,
       companyName,
       passNumber,
-      approvalCode: passNumber
+      approvalCode: passNumber,
+      vehicleNumber: entry.vehicleNumber,
     });
   } catch (error) {
     console.error('Get pre-approved visitor error:', error);
@@ -255,6 +258,7 @@ exports.createPreApprovedVisitor = async (req, res) => {
       validFrom,
       validUntil,
       remarks,
+      vehicleNumber,
     } = req.body;
 
     // Validation
@@ -295,6 +299,7 @@ exports.createPreApprovedVisitor = async (req, res) => {
         personToMeet: personToMeet || null,
         purpose,
         remarks: remarks || null, // Save remarks to database
+        vehicleNumber: vehicleNumber?.trim() || null, // Vehicle registration number
         validFrom: new Date(validFrom),
         validUntil: new Date(validUntil),
         status: 'ACTIVE',
@@ -332,6 +337,7 @@ exports.createPreApprovedVisitor = async (req, res) => {
         companyId: entry.companyId,
         companyToVisit: companyData?.displayName || companyData?.name,
         purpose: entry.purpose,
+        vehicleNumber: entry.vehicleNumber,
         validFrom: entry.validFrom,
         validUntil: entry.validUntil,
         status: entry.status,
@@ -376,6 +382,7 @@ exports.updatePreApprovedVisitor = async (req, res) => {
       purpose,
       validFrom,
       validUntil,
+      vehicleNumber,
     } = req.body;
 
     const existing = await prisma.vMSPreApproval.findUnique({ where: { id } });
@@ -395,6 +402,7 @@ exports.updatePreApprovedVisitor = async (req, res) => {
         email,
         companyFrom,
         purpose,
+        vehicleNumber: vehicleNumber !== undefined ? (vehicleNumber?.trim() || null) : undefined,
         validFrom: validFrom ? new Date(validFrom) : undefined,
         validUntil: validUntil ? new Date(validUntil) : undefined,
       },
