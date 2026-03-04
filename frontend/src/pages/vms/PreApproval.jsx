@@ -18,7 +18,8 @@ import {
   QrCode,
   Loader2,
   AlertCircle,
-  Users
+  Users,
+  Car
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { vmsAPI } from '../../services/vmsApi'
@@ -56,6 +57,7 @@ const PreApproval = () => {
     companyId: '',
     personToMeet: '',
     purpose: '',
+    vehicleNumber: '',
     visitDate: '',
     visitTime: '',
     validHours: 8,
@@ -147,6 +149,7 @@ const PreApproval = () => {
         companyId: formData.companyId,
         personToMeet: formData.personToMeet,
         purpose: formData.purpose,
+        vehicleNumber: formData.vehicleNumber?.trim().toUpperCase() || null,
         validFrom: visitDateTime.toISOString(),
         validUntil: validUntil.toISOString(),
         remarks: formData.remarks,
@@ -163,6 +166,7 @@ const PreApproval = () => {
           visitDate: formData.visitDate,
           visitTime: formData.visitTime,
           personToMeet: formData.personToMeet,
+          vehicleNumber: apiPreApproval.vehicleNumber || formData.vehicleNumber,
           qrCode: `https://reliablespaces.cloud/vms/checkin/${apiPreApproval.id}`,
         })
         setStep(2)
@@ -186,6 +190,7 @@ const PreApproval = () => {
         companyToVisit: formData.companyToVisit,
         personToMeet: formData.personToMeet,
         purpose: formData.purpose,
+        vehicleNumber: formData.vehicleNumber?.trim().toUpperCase() || null,
         visitDate: formData.visitDate,
         visitTime: formData.visitTime,
         validUntil: new Date(new Date(`${formData.visitDate}T${formData.visitTime}`).getTime() + formData.validHours * 60 * 60 * 1000).toISOString(),
@@ -202,12 +207,14 @@ const PreApproval = () => {
   const generateWhatsAppMessage = () => {
     if (!preApproval) return ''
     
+    const vehicleInfo = preApproval.vehicleNumber ? `\n🚗 *Vehicle:* ${preApproval.vehicleNumber}` : ''
+    
     const message = `🎫 *Visitor Pre-Approval Pass*
 ━━━━━━━━━━━━━━━━━━
 📋 *Approval Code:* ${preApproval.approvalCode}
 
 👤 *Visitor:* ${preApproval.visitorName}
-📞 *Phone:* ${preApproval.phone}
+📞 *Phone:* ${preApproval.phone}${vehicleInfo}
 
 🏢 *Visiting:* ${preApproval.companyToVisit}
 👨‍💼 *Meeting:* ${preApproval.personToMeet}
@@ -360,6 +367,24 @@ _Reliable Group - Visitor Management System_`
                         onChange={handleChange}
                         className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500"
                         placeholder="Visitor's company name"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Vehicle Number */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Vehicle Number (Optional)
+                    </label>
+                    <div className="relative">
+                      <Car className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                      <input
+                        type="text"
+                        name="vehicleNumber"
+                        value={formData.vehicleNumber}
+                        onChange={handleChange}
+                        className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 uppercase"
+                        placeholder="e.g., KA01AB1234"
                       />
                     </div>
                   </div>
@@ -613,6 +638,21 @@ _Reliable Group - Visitor Management System_`
                   </div>
                 </div>
 
+                {/* Vehicle Number - Highlighted */}
+                {preApproval.vehicleNumber && (
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 p-4 rounded-lg mb-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs text-blue-600 font-semibold mb-1">Vehicle Number</p>
+                        <p className="text-xl font-bold text-blue-800 font-mono tracking-wider">{preApproval.vehicleNumber}</p>
+                      </div>
+                      <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <Car className="w-6 h-6 text-blue-600" />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* QR Info */}
                 <div className="bg-gray-50 p-4 rounded-lg text-center mb-4">
                   <QrCode className="w-12 h-12 mx-auto text-gray-400 mb-2" />
@@ -663,6 +703,7 @@ _Reliable Group - Visitor Management System_`
                         companyId: userCompany?.id || '',
                         personToMeet: '',
                         purpose: '',
+                        vehicleNumber: '',
                         visitDate: '',
                         visitTime: '',
                         validHours: 8,
