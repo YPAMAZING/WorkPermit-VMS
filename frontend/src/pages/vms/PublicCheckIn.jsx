@@ -64,6 +64,7 @@ const PublicCheckIn = () => {
   // ID Proof options
   const idProofOptions = [
     { value: 'AADHAAR', label: 'Aadhaar Card' },
+    { value: 'PAN_CARD', label: 'PAN Card' },
     { value: 'DRIVING_LICENSE', label: 'Driving License' },
   ]
   

@@ -79,6 +79,8 @@ const statusConfig = {
 const idProofTypes = {
   'aadhaar': 'Aadhaar Card',
   'AADHAAR': 'Aadhaar Card',
+  'pan_card': 'PAN Card',
+  'PAN_CARD': 'PAN Card',
   'driving_license': 'Driving License',
   'DRIVING_LICENSE': 'Driving License',
 }
