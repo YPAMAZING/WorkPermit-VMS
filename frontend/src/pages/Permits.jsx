@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { permitsAPI } from '../services/api'
 import { useAuth } from '../context/AuthContext'
@@ -23,8 +23,12 @@ import {
   ChevronLeft,
   ChevronRight,
   AlertTriangle,
+  RefreshCw,
 } from 'lucide-react'
 import { format } from 'date-fns'
+
+// Auto-refresh interval in milliseconds (30 seconds)
+const AUTO_REFRESH_INTERVAL = 30 * 1000
 
 const Permits = () => {
   const { user, canDeletePermits, canCreatePermits } = useAuth()
@@ -35,6 +39,7 @@ const Permits = () => {
   const [searchParams, setSearchParams] = useSearchParams()
   const [permits, setPermits] = useState([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [pagination, setPagination] = useState({})
   const [workTypes, setWorkTypes] = useState([])
   const [filters, setFilters] = useState({
@@ -45,6 +50,10 @@ const Permits = () => {
   })
   const [showFilters, setShowFilters] = useState(false)
   const [deleteModal, setDeleteModal] = useState({ open: false, permit: null })
+  const [lastRefresh, setLastRefresh] = useState(new Date())
+  
+  // Ref for auto-refresh interval
+  const autoRefreshRef = useRef(null)
 
   useEffect(() => {
     fetchWorkTypes()
@@ -61,6 +70,21 @@ const Permits = () => {
     setSearchParams(params)
   }, [filters])
 
+  // Auto-refresh setup
+  useEffect(() => {
+    // Set up auto-refresh interval
+    autoRefreshRef.current = setInterval(() => {
+      refreshData()
+    }, AUTO_REFRESH_INTERVAL)
+
+    // Cleanup on unmount
+    return () => {
+      if (autoRefreshRef.current) {
+        clearInterval(autoRefreshRef.current)
+      }
+    }
+  }, [filters])
+
   const fetchWorkTypes = async () => {
     try {
       const response = await permitsAPI.getWorkTypes()
@@ -68,6 +92,33 @@ const Permits = () => {
     } catch (error) {
       console.error('Error fetching work types:', error)
     }
+  }
+
+  // Silent refresh (no loading spinner)
+  const refreshData = async () => {
+    setRefreshing(true)
+    try {
+      const response = await permitsAPI.getAll({
+        page: filters.page,
+        limit: 10,
+        search: filters.search,
+        status: filters.status,
+        workType: filters.workType,
+      })
+      setPermits(response.data.permits)
+      setPagination(response.data.pagination)
+      setLastRefresh(new Date())
+    } catch (error) {
+      console.error('Error refreshing permits:', error)
+    } finally {
+      setRefreshing(false)
+    }
+  }
+
+  // Manual refresh with toast notification
+  const handleManualRefresh = async () => {
+    await refreshData()
+    toast.success('Permits list refreshed')
   }
 
   const fetchPermits = async () => {
@@ -82,6 +133,7 @@ const Permits = () => {
       })
       setPermits(response.data.permits)
       setPagination(response.data.pagination)
+      setLastRefresh(new Date())
     } catch (error) {
       toast.error('Error fetching permits')
     } finally {
@@ -144,12 +196,27 @@ const Permits = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Permit Requests</h1>
-          <p className="text-gray-500 mt-1">Manage and track all permit requests</p>
+          <p className="text-gray-500 mt-1">
+            Manage and track all permit requests
+            <span className="text-xs ml-2 text-gray-400">
+              (Auto-refreshes every 30s • Last: {format(lastRefresh, 'HH:mm:ss')})
+            </span>
+          </p>
         </div>
-        <Link to="/workpermit/permits/new" className="btn btn-primary">
-          <Plus className="w-5 h-5 mr-2" />
-          New Permit
-        </Link>
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={handleManualRefresh}
+            disabled={refreshing}
+            className="btn btn-secondary"
+            title="Refresh Now"
+          >
+            <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
+          </button>
+          <Link to="/workpermit/permits/new" className="btn btn-primary">
+            <Plus className="w-5 h-5 mr-2" />
+            New Permit
+          </Link>
+        </div>
       </div>
 
       {/* Search and Filters */}
@@ -218,7 +285,14 @@ const Permits = () => {
       </div>
 
       {/* Permits Table */}
-      <div className="card overflow-hidden">
+      <div className="card overflow-hidden relative">
+        {/* Refreshing indicator */}
+        {refreshing && !loading && (
+          <div className="absolute top-0 left-0 right-0 h-1 bg-primary-500/20">
+            <div className="h-full bg-primary-500 animate-pulse" style={{ width: '100%' }} />
+          </div>
+        )}
+        
         {loading ? (
           <div className="flex items-center justify-center h-64">
             <LoadingSpinner size="lg" />
