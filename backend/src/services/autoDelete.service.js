@@ -1,19 +1,29 @@
 /**
  * Auto-Delete Service
- * Automatically deletes data older than 90 days (3 months)
+ * Automatically deletes visitor/permit data older than 90 days (3 months)
  * 
- * Affected tables:
- * - Work Permit System: PermitRequest, PermitApproval, PermitActionHistory, AuditLog, Worker
- * - VMS: VMSVisitor, VMSGatepass, VMSPreApproval, VMSBlacklist, CheckInRequest
+ * ✅ DELETED (after 90 days):
+ * - Work Permit System: PermitRequest, PermitApproval, PermitActionHistory
+ * - VMS (Main DB): VMSVisitor, VMSGatepass, VMSPreApproval, VMSBlacklist (non-permanent), VMSEmployeePass
+ * - VMS (Second DB): Visitor, Gatepass, CheckInRequest, PreApprovedVisitor, BlacklistEntry (non-permanent)
  * 
- * Note: User accounts and roles are NOT deleted
+ * ❌ NOT DELETED (preserved forever):
+ * - Users, Roles, Permissions (system accounts)
+ * - Companies, Departments (master data)
+ * - SystemSettings, AuditLogs (system config & logs)
+ * - Workers (kept for reference)
  */
 
 const { PrismaClient } = require('@prisma/client');
+const { PrismaClient: VMSPrismaClient } = require('../../node_modules/.prisma/vms-client');
 
+// Main database (Work Permit + VMS models)
 const prisma = new PrismaClient();
 
-// 90 days in milliseconds
+// Second VMS database (multi-tenant VMS)
+const vmsPrisma = new VMSPrismaClient();
+
+// 90 days retention period
 const RETENTION_DAYS = 90;
 
 /**
@@ -26,22 +36,19 @@ const getCutoffDate = () => {
 };
 
 /**
- * Delete old Work Permit data
+ * Delete old Work Permit data (Main DB)
+ * Only permits and related approval data - NOT users, roles, workers
  */
 const deleteOldWorkPermitData = async () => {
   const cutoffDate = getCutoffDate();
   const results = {
     permits: 0,
     approvals: 0,
-    actionHistory: 0,
-    auditLogs: 0,
-    workers: 0,
-    ssoTokens: 0,
-    analyticsCache: 0
+    actionHistory: 0
   };
 
   try {
-    console.log(`[AutoDelete] Starting Work Permit data cleanup for data older than ${cutoffDate.toISOString()}`);
+    console.log(`[AutoDelete] Starting Work Permit cleanup for data older than ${cutoffDate.toISOString()}`);
 
     // 1. Delete old permit action history (must delete before permits due to FK constraint)
     const actionHistoryResult = await prisma.permitActionHistory.deleteMany({
@@ -67,38 +74,6 @@ const deleteOldWorkPermitData = async () => {
     });
     results.permits = permitsResult.count;
 
-    // 4. Delete old audit logs
-    const auditLogsResult = await prisma.auditLog.deleteMany({
-      where: {
-        createdAt: { lt: cutoffDate }
-      }
-    });
-    results.auditLogs = auditLogsResult.count;
-
-    // 5. Delete old workers
-    const workersResult = await prisma.worker.deleteMany({
-      where: {
-        createdAt: { lt: cutoffDate }
-      }
-    });
-    results.workers = workersResult.count;
-
-    // 6. Delete old SSO tokens
-    const ssoTokensResult = await prisma.sSOToken.deleteMany({
-      where: {
-        createdAt: { lt: cutoffDate }
-      }
-    });
-    results.ssoTokens = ssoTokensResult.count;
-
-    // 7. Delete expired analytics cache
-    const analyticsCacheResult = await prisma.analyticsCache.deleteMany({
-      where: {
-        expiresAt: { lt: new Date() }
-      }
-    });
-    results.analyticsCache = analyticsCacheResult.count;
-
     console.log('[AutoDelete] Work Permit cleanup completed:', results);
     return results;
   } catch (error) {
@@ -108,9 +83,10 @@ const deleteOldWorkPermitData = async () => {
 };
 
 /**
- * Delete old VMS data
+ * Delete old VMS data from Main DB
+ * Only visitor/gatepass data - NOT users, roles, companies
  */
-const deleteOldVMSData = async () => {
+const deleteOldVMSMainData = async () => {
   const cutoffDate = getCutoffDate();
   const results = {
     gatepasses: 0,
@@ -121,7 +97,7 @@ const deleteOldVMSData = async () => {
   };
 
   try {
-    console.log(`[AutoDelete] Starting VMS data cleanup for data older than ${cutoffDate.toISOString()}`);
+    console.log(`[AutoDelete] Starting VMS (Main DB) cleanup for data older than ${cutoffDate.toISOString()}`);
 
     // 1. Delete old gatepasses (must delete before visitors due to FK constraint)
     const gatepassesResult = await prisma.vMSGatepass.deleteMany({
@@ -166,11 +142,80 @@ const deleteOldVMSData = async () => {
     });
     results.employeePasses = employeePassesResult.count;
 
-    console.log('[AutoDelete] VMS cleanup completed:', results);
+    console.log('[AutoDelete] VMS (Main DB) cleanup completed:', results);
     return results;
   } catch (error) {
-    console.error('[AutoDelete] Error deleting VMS data:', error);
+    console.error('[AutoDelete] Error deleting VMS (Main DB) data:', error);
     throw error;
+  }
+};
+
+/**
+ * Delete old VMS data from Second DB (Multi-tenant VMS)
+ * Only visitor/gatepass data - NOT users, roles, companies, departments
+ */
+const deleteOldVMSSecondData = async () => {
+  const cutoffDate = getCutoffDate();
+  const results = {
+    gatepasses: 0,
+    visitors: 0,
+    checkInRequests: 0,
+    preApprovedVisitors: 0,
+    blacklistEntries: 0
+  };
+
+  try {
+    console.log(`[AutoDelete] Starting VMS (Second DB) cleanup for data older than ${cutoffDate.toISOString()}`);
+
+    // 1. Delete old gatepasses (must delete before visitors due to FK constraint)
+    const gatepassesResult = await vmsPrisma.gatepass.deleteMany({
+      where: {
+        updatedAt: { lt: cutoffDate }
+      }
+    });
+    results.gatepasses = gatepassesResult.count;
+
+    // 2. Delete old visitors (after gatepasses are deleted)
+    const visitorsResult = await vmsPrisma.visitor.deleteMany({
+      where: {
+        createdAt: { lt: cutoffDate }
+      }
+    });
+    results.visitors = visitorsResult.count;
+
+    // 3. Delete old check-in requests
+    const checkInRequestsResult = await vmsPrisma.checkInRequest.deleteMany({
+      where: {
+        submittedAt: { lt: cutoffDate }
+      }
+    });
+    results.checkInRequests = checkInRequestsResult.count;
+
+    // 4. Delete old pre-approved visitors
+    const preApprovedResult = await vmsPrisma.preApprovedVisitor.deleteMany({
+      where: {
+        createdAt: { lt: cutoffDate }
+      }
+    });
+    results.preApprovedVisitors = preApprovedResult.count;
+
+    // 5. Delete old blacklist entries (only non-active/expired ones to be safe)
+    const blacklistResult = await vmsPrisma.blacklistEntry.deleteMany({
+      where: {
+        AND: [
+          { createdAt: { lt: cutoffDate } },
+          { isActive: false }
+        ]
+      }
+    });
+    results.blacklistEntries = blacklistResult.count;
+
+    console.log('[AutoDelete] VMS (Second DB) cleanup completed:', results);
+    return results;
+  } catch (error) {
+    console.error('[AutoDelete] Error deleting VMS (Second DB) data:', error);
+    // Don't throw - second DB might not be configured
+    return results;
   }
 };
 
@@ -181,36 +226,46 @@ const runAutoDelete = async () => {
   console.log(`[AutoDelete] ========================================`);
   console.log(`[AutoDelete] Starting auto-delete process at ${new Date().toISOString()}`);
   console.log(`[AutoDelete] Retention period: ${RETENTION_DAYS} days`);
+  console.log(`[AutoDelete] Cutoff date: ${getCutoffDate().toISOString()}`);
   console.log(`[AutoDelete] ========================================`);
 
   try {
+    // Delete from Main DB
     const workPermitResults = await deleteOldWorkPermitData();
-    const vmsResults = await deleteOldVMSData();
+    const vmsMainResults = await deleteOldVMSMainData();
+    
+    // Delete from Second VMS DB
+    const vmsSecondResults = await deleteOldVMSSecondData();
 
     const summary = {
       timestamp: new Date().toISOString(),
       retentionDays: RETENTION_DAYS,
       cutoffDate: getCutoffDate().toISOString(),
       workPermit: workPermitResults,
-      vms: vmsResults,
+      vmsMain: vmsMainResults,
+      vmsSecond: vmsSecondResults,
       totalDeleted: 
         workPermitResults.permits + 
         workPermitResults.approvals + 
         workPermitResults.actionHistory + 
-        workPermitResults.auditLogs + 
-        workPermitResults.workers + 
-        workPermitResults.ssoTokens + 
-        workPermitResults.analyticsCache +
-        vmsResults.gatepasses + 
-        vmsResults.visitors + 
-        vmsResults.preApprovals + 
-        vmsResults.blacklist + 
-        vmsResults.employeePasses
+        vmsMainResults.gatepasses + 
+        vmsMainResults.visitors + 
+        vmsMainResults.preApprovals + 
+        vmsMainResults.blacklist + 
+        vmsMainResults.employeePasses +
+        vmsSecondResults.gatepasses +
+        vmsSecondResults.visitors +
+        vmsSecondResults.checkInRequests +
+        vmsSecondResults.preApprovedVisitors +
+        vmsSecondResults.blacklistEntries
     };
 
     console.log(`[AutoDelete] ========================================`);
     console.log(`[AutoDelete] Auto-delete completed successfully`);
     console.log(`[AutoDelete] Total records deleted: ${summary.totalDeleted}`);
+    console.log(`[AutoDelete] - Work Permits: ${workPermitResults.permits}`);
+    console.log(`[AutoDelete] - VMS Main Visitors: ${vmsMainResults.visitors}`);
+    console.log(`[AutoDelete] - VMS Second Visitors: ${vmsSecondResults.visitors}`);
     console.log(`[AutoDelete] ========================================`);
 
     return summary;
@@ -227,31 +282,41 @@ const getAutoDeleteStats = async () => {
   const cutoffDate = getCutoffDate();
 
   try {
+    // Main DB counts
     const [
       permitsCount,
       approvalsCount,
       actionHistoryCount,
-      auditLogsCount,
-      workersCount,
-      ssoTokensCount,
-      gatepassesCount,
-      visitorsCount,
-      preApprovalsCount,
-      blacklistCount,
-      employeePassesCount
+      vmsGatepassesCount,
+      vmsVisitorsCount,
+      vmsPreApprovalsCount,
+      vmsBlacklistCount,
+      vmsEmployeePassesCount
     ] = await Promise.all([
       prisma.permitRequest.count({ where: { createdAt: { lt: cutoffDate } } }),
       prisma.permitApproval.count({ where: { createdAt: { lt: cutoffDate } } }),
       prisma.permitActionHistory.count({ where: { createdAt: { lt: cutoffDate } } }),
-      prisma.auditLog.count({ where: { createdAt: { lt: cutoffDate } } }),
-      prisma.worker.count({ where: { createdAt: { lt: cutoffDate } } }),
-      prisma.sSOToken.count({ where: { createdAt: { lt: cutoffDate } } }),
       prisma.vMSGatepass.count({ where: { createdAt: { lt: cutoffDate } } }),
       prisma.vMSVisitor.count({ where: { createdAt: { lt: cutoffDate } } }),
       prisma.vMSPreApproval.count({ where: { createdAt: { lt: cutoffDate } } }),
       prisma.vMSBlacklist.count({ where: { AND: [{ createdAt: { lt: cutoffDate } }, { isPermanent: false }] } }),
       prisma.vMSEmployeePass.count({ where: { createdAt: { lt: cutoffDate } } })
     ]);
+
+    // Second VMS DB counts (with error handling)
+    let vms2Counts = { gatepasses: 0, visitors: 0, checkInRequests: 0, preApproved: 0, blacklist: 0 };
+    try {
+      const [gp, v, cir, pav, bl] = await Promise.all([
+        vmsPrisma.gatepass.count({ where: { updatedAt: { lt: cutoffDate } } }),
+        vmsPrisma.visitor.count({ where: { createdAt: { lt: cutoffDate } } }),
+        vmsPrisma.checkInRequest.count({ where: { submittedAt: { lt: cutoffDate } } }),
+        vmsPrisma.preApprovedVisitor.count({ where: { createdAt: { lt: cutoffDate } } }),
+        vmsPrisma.blacklistEntry.count({ where: { AND: [{ createdAt: { lt: cutoffDate } }, { isActive: false }] } })
+      ]);
+      vms2Counts = { gatepasses: gp, visitors: v, checkInRequests: cir, preApproved: pav, blacklist: bl };
+    } catch (e) {
+      console.log('[AutoDelete] Second VMS DB not available for stats');
+    }
 
     return {
       cutoffDate: cutoffDate.toISOString(),
@@ -260,23 +325,23 @@ const getAutoDeleteStats = async () => {
         workPermit: {
           permits: permitsCount,
           approvals: approvalsCount,
-          actionHistory: actionHistoryCount,
-          auditLogs: auditLogsCount,
-          workers: workersCount,
-          ssoTokens: ssoTokensCount
+          actionHistory: actionHistoryCount
         },
-        vms: {
-          gatepasses: gatepassesCount,
-          visitors: visitorsCount,
-          preApprovals: preApprovalsCount,
-          blacklist: blacklistCount,
-          employeePasses: employeePassesCount
-        }
+        vmsMain: {
+          gatepasses: vmsGatepassesCount,
+          visitors: vmsVisitorsCount,
+          preApprovals: vmsPreApprovalsCount,
+          blacklist: vmsBlacklistCount,
+          employeePasses: vmsEmployeePassesCount
+        },
+        vmsSecond: vms2Counts
       },
       totalToDelete: 
-        permitsCount + approvalsCount + actionHistoryCount + auditLogsCount + 
-        workersCount + ssoTokensCount + gatepassesCount + visitorsCount + 
-        preApprovalsCount + blacklistCount + employeePassesCount
+        permitsCount + approvalsCount + actionHistoryCount + 
+        vmsGatepassesCount + vmsVisitorsCount + vmsPreApprovalsCount + 
+        vmsBlacklistCount + vmsEmployeePassesCount +
+        vms2Counts.gatepasses + vms2Counts.visitors + vms2Counts.checkInRequests +
+        vms2Counts.preApproved + vms2Counts.blacklist
     };
   } catch (error) {
     console.error('[AutoDelete] Error getting stats:', error);
@@ -287,7 +352,8 @@ const getAutoDeleteStats = async () => {
 module.exports = {
   runAutoDelete,
   deleteOldWorkPermitData,
-  deleteOldVMSData,
+  deleteOldVMSMainData,
+  deleteOldVMSSecondData,
   getAutoDeleteStats,
   RETENTION_DAYS,
   getCutoffDate
