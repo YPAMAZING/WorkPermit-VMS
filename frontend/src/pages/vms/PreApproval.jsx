@@ -65,6 +65,7 @@ const PreApproval = () => {
     remarks: '',
     hostPhone: '',
     hostEmail: '',
+    agreeConsent: false,
   })
 
   const [errors, setErrors] = useState({})
@@ -128,6 +129,7 @@ const PreApproval = () => {
     if (!formData.purpose) newErrors.purpose = 'Select purpose'
     if (!formData.visitDate) newErrors.visitDate = 'Visit date is required'
     if (!formData.visitTime) newErrors.visitTime = 'Visit time is required'
+    if (!formData.agreeConsent) newErrors.agreeConsent = 'You must agree to the declaration to proceed'
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -565,23 +567,42 @@ _Reliable Group - Visitor Management System_`
                     The information submitted through this system will be used solely for visitor management, safety compliance, and access control purposes. Visitor data will be handled confidentially by the authorized organization and its designated system provider. The information may be accessed only by authorized personnel or where required by law and will be securely retained for operational purposes. All visitor data will be <strong>automatically deleted within 90 days (three months)</strong> unless required for statutory compliance. This data processing is conducted in accordance with applicable laws, including the <strong>Digital Personal Data Protection Act, 2023 (India)</strong>.
                   </p>
                 </div>
-                <label className="flex items-start gap-3 cursor-pointer p-3 rounded-lg border-2 border-gray-200 hover:border-purple-300 bg-white transition-all">
+                <label className={`flex items-start gap-3 cursor-pointer p-3 rounded-lg border-2 transition-all ${
+                  formData.agreeConsent 
+                    ? 'border-green-400 bg-green-50' 
+                    : errors.agreeConsent 
+                      ? 'border-red-400 bg-red-50' 
+                      : 'border-gray-200 hover:border-purple-300 bg-white'
+                }`}>
                   <input
                     type="checkbox"
-                    checked={true}
-                    readOnly
-                    className="mt-0.5 w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                    name="agreeConsent"
+                    checked={formData.agreeConsent}
+                    onChange={handleChange}
+                    className={`mt-0.5 w-5 h-5 rounded border-gray-300 text-green-600 focus:ring-green-500 ${
+                      errors.agreeConsent ? 'border-red-500' : ''
+                    }`}
                   />
                   <span className="text-xs text-gray-700">
-                    <strong>✔ I/We have read, understood, and agree to the above declaration.</strong> I/We confirm that the visitor information provided is accurate and consent to the collection, processing, and temporary storage of this information as described above.
+                    <strong>I/We have read, understood, and agree to the above declaration.</strong> I/We confirm that the visitor information provided is accurate and consent to the collection, processing, and temporary storage of this information as described above. <span className="text-red-500">*</span>
                   </span>
                 </label>
+                {errors.agreeConsent && (
+                  <p className="text-red-500 text-xs mt-2 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    {errors.agreeConsent}
+                  </p>
+                )}
               </div>
 
               <button
                 type="submit"
-                disabled={loading}
-                className="w-full bg-purple-600 text-white py-3 rounded-lg font-semibold hover:bg-purple-700 transition-colors flex items-center justify-center gap-2"
+                disabled={loading || !formData.agreeConsent}
+                className={`w-full py-3 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2 ${
+                  formData.agreeConsent && !loading
+                    ? 'bg-purple-600 text-white hover:bg-purple-700' 
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                }`}
               >
                 {loading ? (
                   <>

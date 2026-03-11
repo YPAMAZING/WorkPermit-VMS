@@ -116,6 +116,7 @@ const VisitorRegister = () => {
     idProofType: 'aadhaar',
     vehicleNumber: '',
     numberOfVisitors: 1,
+    agreeConsent: false,
   })
 
   const [errors, setErrors] = useState({})
@@ -201,6 +202,7 @@ const VisitorRegister = () => {
     // Person to meet is now optional
     if (!formData.purpose) newErrors.purpose = 'Select purpose'
     if (!idDocumentImage) newErrors.idDocument = 'ID document image is required'
+    if (!formData.agreeConsent) newErrors.agreeConsent = 'You must agree to the declaration to proceed'
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -1066,22 +1068,42 @@ const VisitorRegister = () => {
                 <p className="text-xs text-gray-600 leading-relaxed mb-3">
                   The information submitted through this system will be used solely for visitor management, safety compliance, and access control purposes. Your data will be handled confidentially by the authorized organization and its designated system provider. The information may be accessed only by authorized personnel or where required by law and will be securely retained for operational purposes. All visitor data will be <strong>automatically deleted within 90 days (three months)</strong> unless required for statutory compliance. This data processing is conducted in accordance with applicable laws, including the <strong>Digital Personal Data Protection Act, 2023 (India)</strong>.
                 </p>
-                <label className="flex items-start gap-3 cursor-pointer p-3 rounded-lg border-2 border-indigo-200 hover:border-indigo-400 bg-white transition-all">
+                <label className={`flex items-start gap-3 cursor-pointer p-3 rounded-lg border-2 transition-all ${
+                  formData.agreeConsent 
+                    ? 'border-green-400 bg-green-50' 
+                    : errors.agreeConsent 
+                      ? 'border-red-400 bg-red-50' 
+                      : 'border-indigo-200 hover:border-indigo-400 bg-white'
+                }`}>
                   <input
                     type="checkbox"
-                    checked={true}
-                    readOnly
-                    className="mt-0.5 w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    name="agreeConsent"
+                    checked={formData.agreeConsent}
+                    onChange={handleChange}
+                    className={`mt-0.5 w-5 h-5 rounded border-gray-300 text-green-600 focus:ring-green-500 ${
+                      errors.agreeConsent ? 'border-red-500' : ''
+                    }`}
                   />
                   <span className="text-xs text-gray-700">
-                    <strong>✔ I have read, understood, and agree to the above declaration.</strong> I confirm that the information provided is true and I consent to the collection, processing, and temporary storage of my information as described above.
+                    <strong>I have read, understood, and agree to the above declaration.</strong> I confirm that the information provided is true and I consent to the collection, processing, and temporary storage of my information as described above. <span className="text-red-500">*</span>
                   </span>
                 </label>
+                {errors.agreeConsent && (
+                  <p className="text-red-500 text-xs mt-2 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    {errors.agreeConsent}
+                  </p>
+                )}
               </div>
 
               <button
                 type="submit"
-                className="w-full bg-teal-600 text-white py-3 rounded-lg font-semibold hover:bg-teal-700 transition-colors flex items-center justify-center gap-2 mt-6"
+                disabled={!formData.agreeConsent}
+                className={`w-full py-3 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2 mt-6 ${
+                  formData.agreeConsent 
+                    ? 'bg-teal-600 text-white hover:bg-teal-700' 
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                }`}
               >
                 Continue to Photo
                 <Camera className="w-5 h-5" />
