@@ -196,7 +196,7 @@ exports.createVisitor = async (req, res) => {
       data: {
         visitorName, phone, email, companyFrom, companyToVisit, companyId,
         personToMeet, purpose, idProofType: idProofType || 'OTHER',
-        idProofNumber: idProofNumber || '', photo, vehicleNumber, numberOfVisitors,
+        idProofNumber: idProofNumber || '', photo, vehicleNumber, numberOfVisitors: parseInt(numberOfVisitors) || 1,
         status: 'APPROVED', entryType: 'WALK_IN', approvedAt: new Date(),
       },
     });

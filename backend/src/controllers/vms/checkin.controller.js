@@ -327,7 +327,7 @@ exports.submitCheckInRequest = async (req, res) => {
         idDocumentImage,
         photo,
         vehicleNumber,
-        numberOfVisitors: numberOfVisitors || 1,
+        numberOfVisitors: parseInt(numberOfVisitors) || 1,
         status,
         entryType: preApproved ? 'PRE_APPROVED' : 'WALK_IN',
       }
@@ -493,7 +493,7 @@ exports.submitCheckInRequest = async (req, res) => {
               companyToVisit: company.displayName || company.name,
               personToMeet: personToMeet || 'Reception',
               purpose,
-              numberOfVisitors: numberOfVisitors || 1,
+              numberOfVisitors: parseInt(numberOfVisitors) || 1,
               dashboardUrl: `${process.env.FRONTEND_URL || 'https://reliablespaces.cloud'}/vms/admin/guard`,
             });
             console.log('New visitor notification sent to:', companyEmail);
