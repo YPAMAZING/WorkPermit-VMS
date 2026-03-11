@@ -93,7 +93,16 @@ const PreApproval = () => {
   ]
 
   const handleChange = (e) => {
-    const { name, value } = e.target
+    const { name, value, type, checked } = e.target
+    
+    // Handle checkbox specially
+    if (type === 'checkbox') {
+      setFormData(prev => ({ ...prev, [name]: checked }))
+      if (errors[name]) {
+        setErrors(prev => ({ ...prev, [name]: '' }))
+      }
+      return
+    }
     
     // Handle company selection specially
     if (name === 'companyToVisit') {
