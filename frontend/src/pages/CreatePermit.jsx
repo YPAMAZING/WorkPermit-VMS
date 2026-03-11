@@ -1414,7 +1414,7 @@ const CreatePermit = () => {
                     Data Privacy Consent
                   </h4>
                   <p className="text-gray-700 text-sm leading-relaxed">
-                    I/We hereby confirm that the information and documents submitted through this system are true and provided with proper authorization. I/We understand that the data collected will be used solely for visitor management, work permit processing, safety compliance, and access control purposes. The submitted information will be handled confidentially by the authorized organization and its designated system provider and will not be used for personal or unauthorized purposes. I/We acknowledge that the data may be accessed only by authorized personnel or where required by law and will be securely retained for operational purposes and <strong>automatically deleted within 90 days (three months)</strong> unless required for statutory compliance. By proceeding, I/We voluntarily consent to the collection, processing, and temporary storage of this information in accordance with applicable laws, including the <strong>Digital Personal Data Protection Act, 2023 (India)</strong>.
+                    The information and documents submitted through this system will be used solely for work permit processing, safety compliance, and access control purposes. Your data will be handled confidentially by the authorized organization and its designated system provider and will not be used for personal or unauthorized purposes. The data may be accessed only by authorized personnel or where required by law and will be securely retained for operational purposes. All permit and worker data will be <strong>automatically deleted within 90 days (three months)</strong> unless required for statutory compliance. This data processing is conducted in accordance with applicable laws, including the <strong>Digital Personal Data Protection Act, 2023 (India)</strong>.
                   </p>
                 </div>
                 
@@ -1440,10 +1440,10 @@ const CreatePermit = () => {
                   </div>
                   <div className="flex-1">
                     <span className="text-gray-900 font-semibold text-base block">
-                      I/We have read, understood, and agree to the above Declaration, Undertaking & Data Privacy Consent <span className="text-red-500">*</span>
+                      ✔ I/We have read, understood, and agree to the above Declaration, Undertaking & Data Privacy Consent <span className="text-red-500">*</span>
                     </span>
                     <span className="text-gray-500 text-sm block mt-1">
-                      I/We consent to the collection, processing, and temporary storage of submitted information.
+                      I/We confirm that the information provided is accurate and consent to the collection, processing, and temporary storage of submitted information as described above.
                     </span>
                     {declarationAgreed && (
                       <span className="text-emerald-600 text-sm flex items-center gap-1 mt-1">

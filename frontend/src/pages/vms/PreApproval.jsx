@@ -562,7 +562,7 @@ _Reliable Group - Visitor Management System_`
                 </h3>
                 <div className="text-xs text-gray-600 bg-white p-3 rounded-lg border border-gray-200 leading-relaxed mb-3">
                   <p>
-                    I hereby confirm that the information submitted through this system is true and provided with proper authorization. I understand that the data collected will be used solely for visitor management, safety compliance, and access control purposes. The submitted information will be handled confidentially by the authorized organization and its designated system provider. I acknowledge that the data may be accessed only by authorized personnel or where required by law and will be securely retained for operational purposes and <strong>automatically deleted within 90 days (three months)</strong> unless required for statutory compliance. By proceeding, I voluntarily consent to the collection, processing, and temporary storage of this information in accordance with applicable laws, including the <strong>Digital Personal Data Protection Act, 2023 (India)</strong>.
+                    The information submitted through this system will be used solely for visitor management, safety compliance, and access control purposes. Visitor data will be handled confidentially by the authorized organization and its designated system provider. The information may be accessed only by authorized personnel or where required by law and will be securely retained for operational purposes. All visitor data will be <strong>automatically deleted within 90 days (three months)</strong> unless required for statutory compliance. This data processing is conducted in accordance with applicable laws, including the <strong>Digital Personal Data Protection Act, 2023 (India)</strong>.
                   </p>
                 </div>
                 <label className="flex items-start gap-3 cursor-pointer p-3 rounded-lg border-2 border-gray-200 hover:border-purple-300 bg-white transition-all">
@@ -573,7 +573,7 @@ _Reliable Group - Visitor Management System_`
                     className="mt-0.5 w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                   />
                   <span className="text-xs text-gray-700">
-                    ✔ I/We have read, understood, and agree to the above declaration and consent to the processing of the submitted information.
+                    <strong>✔ I/We have read, understood, and agree to the above declaration.</strong> I/We confirm that the visitor information provided is accurate and consent to the collection, processing, and temporary storage of this information as described above.
                   </span>
                 </label>
               </div>

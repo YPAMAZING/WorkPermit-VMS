@@ -798,11 +798,11 @@ const PublicCheckIn = () => {
               
               <div className="text-xs text-gray-600 bg-gray-50 p-3 rounded-lg leading-relaxed">
                 <p>
-                  I hereby confirm that the information submitted through this system is true and provided with proper authorization. I understand that the data collected will be used solely for visitor management, safety compliance, and access control purposes. The submitted information will be handled confidentially by the authorized organization and its designated system provider. I acknowledge that the data may be accessed only by authorized personnel or where required by law and will be securely retained for operational purposes and <strong>automatically deleted within 90 days (three months)</strong> unless required for statutory compliance. By proceeding, I voluntarily consent to the collection, processing, and temporary storage of this information in accordance with applicable laws, including the <strong>Digital Personal Data Protection Act, 2023 (India)</strong>.
+                  The information submitted through this system will be used solely for visitor management, safety compliance, and access control purposes. Your data will be handled confidentially by the authorized organization and its designated system provider. The information may be accessed only by authorized personnel or where required by law and will be securely retained for operational purposes. All visitor data will be <strong>automatically deleted within 90 days (three months)</strong> unless required for statutory compliance. This data processing is conducted in accordance with applicable laws, including the <strong>Digital Personal Data Protection Act, 2023 (India)</strong>.
                 </p>
               </div>
               
-              <label className="flex items-start gap-3 cursor-pointer p-3 rounded-lg border-2 transition-all ${formData.agreeTerms ? 'border-green-400 bg-green-50' : 'border-gray-200 hover:border-blue-300'}">
+              <label className={`flex items-start gap-3 cursor-pointer p-3 rounded-lg border-2 transition-all ${formData.agreeTerms ? 'border-green-400 bg-green-50' : 'border-gray-200 hover:border-blue-300'}`}>
                 <input
                   type="checkbox"
                   name="agreeTerms"
@@ -814,10 +814,10 @@ const PublicCheckIn = () => {
                 />
                 <div>
                   <span className="text-sm font-medium text-gray-800 block">
-                    I have read, understood, and agree to the Declaration & Data Privacy Consent <span className="text-red-500">*</span>
+                    ✔ I have read, understood, and agree to the above declaration <span className="text-red-500">*</span>
                   </span>
                   <span className="text-xs text-gray-500 block mt-1">
-                    I consent to the collection, processing, and temporary storage of my information.
+                    I confirm that the information provided is true and I consent to the collection, processing, and temporary storage of my information as described above.
                   </span>
                 </div>
               </label>

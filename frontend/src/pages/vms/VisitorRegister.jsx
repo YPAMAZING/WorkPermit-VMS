@@ -1063,9 +1063,20 @@ const VisitorRegister = () => {
                   <Shield className="w-4 h-4" />
                   Declaration & Data Privacy Consent
                 </h4>
-                <p className="text-xs text-gray-600 leading-relaxed">
-                  By proceeding, I confirm that the information submitted is true and provided with proper authorization. I understand that the data will be used solely for visitor management, safety compliance, and access control purposes. The information will be handled confidentially and <strong>automatically deleted within 90 days</strong> unless required for statutory compliance. I consent to the collection, processing, and temporary storage of this information in accordance with applicable laws, including the <strong>Digital Personal Data Protection Act, 2023 (India)</strong>.
+                <p className="text-xs text-gray-600 leading-relaxed mb-3">
+                  The information submitted through this system will be used solely for visitor management, safety compliance, and access control purposes. Your data will be handled confidentially by the authorized organization and its designated system provider. The information may be accessed only by authorized personnel or where required by law and will be securely retained for operational purposes. All visitor data will be <strong>automatically deleted within 90 days (three months)</strong> unless required for statutory compliance. This data processing is conducted in accordance with applicable laws, including the <strong>Digital Personal Data Protection Act, 2023 (India)</strong>.
                 </p>
+                <label className="flex items-start gap-3 cursor-pointer p-3 rounded-lg border-2 border-indigo-200 hover:border-indigo-400 bg-white transition-all">
+                  <input
+                    type="checkbox"
+                    checked={true}
+                    readOnly
+                    className="mt-0.5 w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <span className="text-xs text-gray-700">
+                    <strong>✔ I have read, understood, and agree to the above declaration.</strong> I confirm that the information provided is true and I consent to the collection, processing, and temporary storage of my information as described above.
+                  </span>
+                </label>
               </div>
 
               <button
