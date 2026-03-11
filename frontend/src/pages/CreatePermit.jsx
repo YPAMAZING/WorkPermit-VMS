@@ -1407,6 +1407,17 @@ const CreatePermit = () => {
                   </div>
                 </div>
                 
+                {/* Data Privacy Consent Section */}
+                <div className="mt-6 p-5 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl border border-indigo-200">
+                  <h4 className="font-semibold text-indigo-800 mb-3 flex items-center gap-2">
+                    <Shield className="w-5 h-5" />
+                    Data Privacy Consent
+                  </h4>
+                  <p className="text-gray-700 text-sm leading-relaxed">
+                    I/We hereby confirm that the information and documents submitted through this system are true and provided with proper authorization. I/We understand that the data collected will be used solely for visitor management, work permit processing, safety compliance, and access control purposes. The submitted information will be handled confidentially by the authorized organization and its designated system provider and will not be used for personal or unauthorized purposes. I/We acknowledge that the data may be accessed only by authorized personnel or where required by law and will be securely retained for operational purposes and <strong>automatically deleted within 90 days (three months)</strong> unless required for statutory compliance. By proceeding, I/We voluntarily consent to the collection, processing, and temporary storage of this information in accordance with applicable laws, including the <strong>Digital Personal Data Protection Act, 2023 (India)</strong>.
+                  </p>
+                </div>
+                
                 <div className="mt-6 p-4 bg-gray-50 rounded-xl border border-gray-200">
                   <p className="text-gray-600 italic text-sm">
                     By checking the box below, I/We confirm that this declaration has been read, understood, and agreed upon by all parties involved in this work permit application. This constitutes a legally binding undertaking.
@@ -1429,12 +1440,15 @@ const CreatePermit = () => {
                   </div>
                   <div className="flex-1">
                     <span className="text-gray-900 font-semibold text-base block">
-                      I Agree to the Declaration & Undertaking <span className="text-red-500">*</span>
+                      I/We have read, understood, and agree to the above Declaration, Undertaking & Data Privacy Consent <span className="text-red-500">*</span>
+                    </span>
+                    <span className="text-gray-500 text-sm block mt-1">
+                      I/We consent to the collection, processing, and temporary storage of submitted information.
                     </span>
                     {declarationAgreed && (
                       <span className="text-emerald-600 text-sm flex items-center gap-1 mt-1">
                         <CheckCircle2 className="w-4 h-4" />
-                        Declaration accepted and acknowledged
+                        Declaration & Data Privacy Consent accepted
                       </span>
                     )}
                   </div>

@@ -789,21 +789,37 @@ const PublicCheckIn = () => {
               )}
             </div>
             
-            {/* Terms & Conditions */}
+            {/* Data Privacy Consent & Terms */}
             <div className="bg-white rounded-xl shadow-sm p-4 space-y-4">
-              <label className="flex items-start gap-3 cursor-pointer">
+              <h2 className="font-semibold text-gray-800 flex items-center gap-2">
+                <Shield className="w-5 h-5 text-blue-600" />
+                Declaration & Data Privacy Consent
+              </h2>
+              
+              <div className="text-xs text-gray-600 bg-gray-50 p-3 rounded-lg leading-relaxed">
+                <p>
+                  I hereby confirm that the information submitted through this system is true and provided with proper authorization. I understand that the data collected will be used solely for visitor management, safety compliance, and access control purposes. The submitted information will be handled confidentially by the authorized organization and its designated system provider. I acknowledge that the data may be accessed only by authorized personnel or where required by law and will be securely retained for operational purposes and <strong>automatically deleted within 90 days (three months)</strong> unless required for statutory compliance. By proceeding, I voluntarily consent to the collection, processing, and temporary storage of this information in accordance with applicable laws, including the <strong>Digital Personal Data Protection Act, 2023 (India)</strong>.
+                </p>
+              </div>
+              
+              <label className="flex items-start gap-3 cursor-pointer p-3 rounded-lg border-2 transition-all ${formData.agreeTerms ? 'border-green-400 bg-green-50' : 'border-gray-200 hover:border-blue-300'}">
                 <input
                   type="checkbox"
                   name="agreeTerms"
                   checked={formData.agreeTerms}
                   onChange={handleChange}
-                  className={`mt-1 w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 ${
+                  className={`mt-0.5 w-5 h-5 rounded border-gray-300 text-green-600 focus:ring-green-500 ${
                     errors.agreeTerms ? 'border-red-500' : ''
                   }`}
                 />
-                <span className="text-sm text-gray-600">
-                  I agree to the visitor terms and conditions. I understand that my visit will be recorded and my information may be used for security purposes.
-                </span>
+                <div>
+                  <span className="text-sm font-medium text-gray-800 block">
+                    I have read, understood, and agree to the Declaration & Data Privacy Consent <span className="text-red-500">*</span>
+                  </span>
+                  <span className="text-xs text-gray-500 block mt-1">
+                    I consent to the collection, processing, and temporary storage of my information.
+                  </span>
+                </div>
               </label>
               {errors.agreeTerms && (
                 <p className="text-xs text-red-500">{errors.agreeTerms}</p>
@@ -812,7 +828,7 @@ const PublicCheckIn = () => {
               {company?.termsAndConditions && (
                 <details className="text-sm text-gray-500">
                   <summary className="cursor-pointer text-blue-600 hover:text-blue-700">
-                    View full terms
+                    View additional terms
                   </summary>
                   <p className="mt-2 p-3 bg-gray-50 rounded-lg whitespace-pre-wrap">
                     {company.termsAndConditions}

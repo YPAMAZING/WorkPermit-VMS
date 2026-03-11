@@ -1057,6 +1057,17 @@ const VisitorRegister = () => {
                 </div>
               </div>
 
+              {/* Data Privacy Consent */}
+              <div className="mt-4 p-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl border border-indigo-200">
+                <h4 className="font-semibold text-indigo-800 mb-2 flex items-center gap-2 text-sm">
+                  <Shield className="w-4 h-4" />
+                  Declaration & Data Privacy Consent
+                </h4>
+                <p className="text-xs text-gray-600 leading-relaxed">
+                  By proceeding, I confirm that the information submitted is true and provided with proper authorization. I understand that the data will be used solely for visitor management, safety compliance, and access control purposes. The information will be handled confidentially and <strong>automatically deleted within 90 days</strong> unless required for statutory compliance. I consent to the collection, processing, and temporary storage of this information in accordance with applicable laws, including the <strong>Digital Personal Data Protection Act, 2023 (India)</strong>.
+                </p>
+              </div>
+
               <button
                 type="submit"
                 className="w-full bg-teal-600 text-white py-3 rounded-lg font-semibold hover:bg-teal-700 transition-colors flex items-center justify-center gap-2 mt-6"
